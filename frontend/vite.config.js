@@ -9,7 +9,7 @@ export default defineConfig(({ mode }) => {
   const allowedHosts = env.VITE_ALLOWED_HOSTS ? env.VITE_ALLOWED_HOSTS.split(',') : []
 
   return {
-    plugins: [react(), tailwindcss()],
+    plugins: [tailwindcss(), react()],
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),
@@ -17,6 +17,17 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       allowedHosts: allowedHosts,
+      proxy: {
+        '/api': {
+          target: 'http://localhost:3002',
+          changeOrigin: true,
+        },
+        '/ws': {
+          target: 'http://localhost:3002',
+          ws: true,
+          changeOrigin: true,
+        }
+      }
     },
   }
 })

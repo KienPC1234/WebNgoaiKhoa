@@ -88,6 +88,19 @@ async def create_publication(pub: PublicationCreate, db: Session = Depends(get_d
     db.refresh(new_pub)
     return new_pub
 
+@router.put("/publications/{pub_id}", response_model=PublicationOut)
+async def update_publication(pub_id: int, pub_update: PublicationCreate, db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
+    pub = db.query(Publication).filter(Publication.id == pub_id).first()
+    if not pub:
+        raise HTTPException(status_code=404, detail="Publication not found")
+    
+    for key, value in pub_update.dict().items():
+        setattr(pub, key, value)
+    
+    db.commit()
+    db.refresh(pub)
+    return pub
+
 @router.delete("/publications/{pub_id}")
 async def delete_publication(pub_id: int, db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
     pub = db.query(Publication).filter(Publication.id == pub_id).first()

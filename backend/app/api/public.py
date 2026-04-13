@@ -9,37 +9,6 @@ from datetime import datetime
 
 router = APIRouter()
 
-# ... schemas unchanged ...
-
-@router.get("/publications", response_model=List[PublicationOut])
-async def get_public_publications(category: Optional[str] = None, db: Session = Depends(get_db)):
-    query = db.query(Publication)
-    if category:
-        query = query.filter(Publication.category == category)
-    return query.order_by(Publication.created_at.desc()).all()
-
-@router.get("/submissions", response_model=List[SubmissionOut])
-async def get_public_submissions(db: Session = Depends(get_db)):
-    # Only show approved submissions to the public
-    return db.query(Submission).filter(Submission.status == "approved").order_by(Submission.created_at.desc()).all()
-
-@router.post("/submissions", response_model=SubmissionOut)
-async def create_public_submission(sub: SubmissionCreate, db: Session = Depends(get_db)):
-    new_sub = Submission(**sub.dict(), status="pending", votes=0)
-    db.add(new_sub)
-    db.commit()
-    db.refresh(new_sub)
-    
-    # Notify admins about new submission
-    await manager.broadcast({
-        "type": "new_submission",
-        "title": f"Bài mới: {new_sub.title}",
-        "message": f"Sinh viên {new_sub.student_name} vừa gửi một bài dự thi mới.",
-        "id": new_sub.id
-    })
-    
-    return new_sub
-
 # --- Schemas ---
 class PublicationOut(BaseModel):
     id: int
@@ -88,6 +57,15 @@ async def create_public_submission(sub: SubmissionCreate, db: Session = Depends(
     db.add(new_sub)
     db.commit()
     db.refresh(new_sub)
+    
+    # Notify admins about new submission
+    await manager.broadcast({
+        "type": "new_submission",
+        "title": f"Bài mới: {new_sub.title}",
+        "message": f"Sinh viên {new_sub.student_name} vừa gửi một bài dự thi mới.",
+        "id": new_sub.id
+    })
+    
     return new_sub
 
 @router.post("/submissions/{sub_id}/vote")

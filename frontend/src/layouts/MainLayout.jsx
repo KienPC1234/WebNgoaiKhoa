@@ -1,6 +1,6 @@
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { AiChatWidget } from '../components/AiChatWidget'
-import { Home, Compass, GraduationCap, Phone, Sparkles, ChevronDown, ArrowUp, Bell, X } from 'lucide-react'
+import { Home, Compass, GraduationCap, Phone, Sparkles, ChevronDown, ArrowUp, Bell, X, UserCircle } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -23,28 +23,51 @@ export const MainLayout = () => {
 
   // WebSocket Notifications
   useEffect(() => {
-    const wsUrl = `ws://${window.location.hostname}:3002/ws/notifications`
-    let ws = new WebSocket(wsUrl)
-
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data)
-      const newNotif = { ...data, id: Date.now() }
-      setNotifications(prev => [newNotif, ...prev])
+    let ws;
+    let reconnectTimeout;
+    
+    const connectWS = () => {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+      const wsUrl = `${protocol}//${window.location.host}/ws/notifications`
       
-      // Auto-remove after 5 seconds
-      setTimeout(() => {
-        setNotifications(prev => prev.filter(n => n.id !== newNotif.id))
-      }, 5000)
-    }
-
-    ws.onclose = () => {
-      // Reconnect after 3 seconds
-      setTimeout(() => {
+      try {
         ws = new WebSocket(wsUrl)
-      }, 3000)
+
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data)
+            const newNotif = { ...data, id: Date.now() }
+            setNotifications(prev => [newNotif, ...prev])
+            
+            setTimeout(() => {
+              setNotifications(prev => prev.filter(n => n.id !== newNotif.id))
+            }, 8000)
+          } catch (e) {
+            console.error("Lỗi parse thông báo:", e)
+          }
+        }
+
+        ws.onclose = () => {
+          reconnectTimeout = setTimeout(connectWS, 5000)
+        }
+
+        ws.onerror = (err) => {
+          console.warn("WebSocket gặp lỗi kết nối.")
+        }
+      } catch (e) {
+        console.error("Không thể khởi tạo WebSocket:", e)
+      }
     }
 
-    return () => ws.close()
+    connectWS()
+
+    return () => {
+      if (ws) {
+        ws.onclose = null // Prevent reconnect on unmount
+        ws.close()
+      }
+      if (reconnectTimeout) clearTimeout(reconnectTimeout)
+    }
   }, [])
 
   const scrollToTop = () => {
@@ -56,41 +79,28 @@ export const MainLayout = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-white">
+    <div className="min-h-screen flex flex-col bg-transparent">
       {/* Navigation Header */}
-      <header className="bg-white border-b border-gray-100 sticky top-0 z-50 shadow-sm">
+      <header className="glass-nav border-b border-gray-100 shadow-sm transition-all duration-300">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           {/* Logo Section */}
           <Link to="/" className="flex items-center gap-2 group">
             <motion.div 
-              whileHover={{ rotate: 12 }}
-              className="bg-fpt-orange p-1.5 rounded-lg"
+              whileHover={{ rotate: 12, scale: 1.1 }}
+              className="bg-fpt-orange p-2 rounded-xl shadow-lg shadow-orange-200"
             >
               <Sparkles className="text-white" size={24} />
             </motion.div>
             <div className="flex flex-col">
-              <span className="text-xl font-black text-fpt-blue leading-none">NGOẠI KHOÁ</span>
-              <span className="text-sm font-bold text-fpt-orange tracking-widest uppercase">Nhịp đập</span>
+              <span className="text-2xl font-black text-fpt-blue leading-none italic tracking-tighter">NGOẠI KHOÁ</span>
+              <span className="text-[10px] font-black text-fpt-orange tracking-[0.3em] uppercase ml-0.5">Nhịp đập số</span>
             </div>
           </Link>
 
           {/* Menu Items */}
-          <nav className="hidden lg:flex items-center gap-8">
-            <Link 
-              to="/" 
-              className={`flex items-center gap-1.5 font-bold transition-colors ${isActive('/') ? 'text-fpt-orange' : 'text-gray-600 hover:text-fpt-orange'}`}
-            >
-              <Home size={18} />
-              Trang chủ
-            </Link>
-            
-            <Link 
-              to="/ngoaikhoa" 
-              className={`flex items-center gap-1.5 font-bold transition-colors ${isActive('/ngoaikhoa') ? 'text-fpt-orange' : 'text-gray-600 hover:text-fpt-orange'}`}
-            >
-              <Compass size={18} />
-              Ngoại khoá
-            </Link>
+          <nav className="hidden lg:flex items-center gap-10">
+            <NavLink to="/" icon={Home} label="Trang chủ" active={isActive('/')} />
+            <NavLink to="/ngoaikhoa" icon={Compass} label="Ngoại khoá" active={isActive('/ngoaikhoa')} />
 
             {/* Dropdown Phân các môn */}
             <div 
@@ -98,57 +108,47 @@ export const MainLayout = () => {
               onMouseEnter={() => setShowPhanMonDropdown(true)}
               onMouseLeave={() => setShowPhanMonDropdown(false)}
             >
-              <button className={`flex items-center gap-1.5 font-bold transition-colors ${location.pathname.startsWith('/phanmon') ? 'text-fpt-orange' : 'text-gray-600 hover:text-fpt-orange'}`}>
+              <button className={cn(
+                "flex items-center gap-2 font-black text-xs uppercase tracking-widest transition-all",
+                location.pathname.startsWith('/phanmon') ? 'text-fpt-orange' : 'text-gray-500 hover:text-fpt-orange'
+              )}>
                 <GraduationCap size={18} />
                 Phân các môn
-                <ChevronDown size={14} className={`transition-transform ${showPhanMonDropdown ? 'rotate-180' : ''}`} />
+                <ChevronDown size={14} className={cn("transition-transform duration-300", showPhanMonDropdown ? "rotate-180" : "")} />
               </button>
               
               <AnimatePresence>
                 {showPhanMonDropdown && (
                   <motion.div 
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 10 }}
-                    className="absolute top-full left-0 bg-white border border-gray-100 shadow-xl rounded-xl py-3 min-w-[220px] z-50"
+                    initial={{ opacity: 0, y: 15, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    className="absolute top-full left-0 bg-white/95 backdrop-blur-xl border border-gray-100 shadow-2xl rounded-2xl py-4 min-w-[240px] z-50 overflow-hidden"
                   >
-                    <Link 
-                      to="/phanmon/van" 
-                      className="flex items-center gap-2 px-4 py-2 hover:bg-orange-50 hover:text-fpt-orange transition-colors font-semibold"
-                    >
-                      <span className="w-1.5 h-1.5 rounded-full bg-fpt-orange"></span>
-                      Phân môn Văn (Nhái Bén)
-                    </Link>
-                    <Link 
-                      to="/phanmon/ktpl" 
-                      className="flex items-center gap-2 px-4 py-2 hover:bg-orange-50 hover:text-fpt-orange transition-colors font-semibold"
-                    >
-                      <span className="w-1.5 h-1.5 rounded-full bg-fpt-blue"></span>
-                      Kinh tế Pháp luật
-                    </Link>
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-fpt-orange to-fpt-blue"></div>
+                    <DropdownLink to="/phanmon/van" color="bg-fpt-orange" label="Phân môn Văn (Nhái Bén)" />
+                    <DropdownLink to="/phanmon/ktpl" color="bg-fpt-blue" label="Kinh tế Pháp luật" />
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
 
-            <Link 
-              to="/lienhe" 
-              className={`flex items-center gap-1.5 font-bold transition-colors ${isActive('/lienhe') ? 'text-fpt-orange' : 'text-gray-600 hover:text-fpt-orange'}`}
-            >
-              <Phone size={18} />
-              Liên hệ
-            </Link>
+            <NavLink to="/lienhe" icon={Phone} label="Liên hệ" active={isActive('/lienhe')} />
           </nav>
 
-          {/* Featured AI Button */}
+          {/* Action Buttons */}
           <div className="flex items-center gap-4">
+            <Link to="/admin/login" className="hidden xl:flex items-center gap-2 text-[10px] font-black text-gray-400 hover:text-fpt-blue transition-colors uppercase tracking-widest border-r border-gray-200 pr-4">
+              <UserCircle size={16} />
+              Quản trị
+            </Link>
             <motion.button 
-              whileHover={{ scale: 1.05 }}
+              whileHover={{ scale: 1.05, boxShadow: '0 10px 20px -5px rgba(242,112,36,0.4)' }}
               whileTap={{ scale: 0.95 }}
-              className="hidden sm:flex items-center gap-2 bg-gradient-to-r from-fpt-orange to-fpt-orange/80 text-white px-6 py-2.5 rounded-full font-black shadow-lg shadow-orange-200"
+              className="flex items-center gap-2 bg-fpt-orange text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-orange-100 border-none"
               onClick={() => window.dispatchEvent(new CustomEvent('toggle-ai-chat'))}
             >
-              <Sparkles size={18} />
+              <Sparkles size={18} className="animate-pulse" />
               AI CHAT
             </motion.button>
           </div>
@@ -156,16 +156,44 @@ export const MainLayout = () => {
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1">
+      <main className="flex-1 relative z-10">
         <Outlet />
       </main>
 
       {/* Footer */}
-      <footer className="bg-gray-50 border-t border-gray-100 pt-16 pb-8">
-        {/* ... footer content unchanged ... */}
-        <div className="container mx-auto px-4 text-center">
-           <div className="border-t border-gray-200 pt-8 text-center text-gray-400 text-xs font-bold uppercase tracking-widest">
-            © 2026 NGOẠI KHOÁ NHỊP ĐẬP - POWERED BY FPT EDUCATION
+      <footer className="bg-white/50 backdrop-blur-sm border-t border-gray-100 pt-20 pb-10 mt-20 relative z-10">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
+            <div className="col-span-1 md:col-span-2 space-y-6">
+              <div className="flex items-center gap-2">
+                <div className="bg-fpt-blue p-1.5 rounded-lg"><Sparkles className="text-white" size={20} /></div>
+                <span className="text-xl font-black text-fpt-blue italic uppercase tracking-tighter">WebNgoaiKhoa</span>
+              </div>
+              <p className="text-gray-500 font-medium leading-relaxed max-w-md">
+                Nền tảng kết nối tri thức và phát triển kỹ năng toàn diện cho sinh viên FPT Education. Tích hợp trí tuệ nhân tạo thế hệ mới.
+              </p>
+            </div>
+            <div className="space-y-6">
+              <h4 className="font-black text-sm text-fpt-blue uppercase tracking-widest">Khám phá</h4>
+              <ul className="space-y-4 text-sm font-bold text-gray-400">
+                <li><Link to="/phanmon/van" className="hover:text-fpt-orange transition-colors uppercase tracking-widest text-[10px]">Phân môn Văn</Link></li>
+                <li><Link to="/phanmon/ktpl" className="hover:text-fpt-orange transition-colors uppercase tracking-widest text-[10px]">Kinh tế Pháp luật</Link></li>
+                <li><Link to="/ngoaikhoa" className="hover:text-fpt-orange transition-colors uppercase tracking-widest text-[10px]">Hoạt động ngoại khoá</Link></li>
+              </ul>
+            </div>
+            <div className="space-y-6">
+              <h4 className="font-black text-sm text-fpt-blue uppercase tracking-widest">Hệ thống</h4>
+              <ul className="space-y-4 text-sm font-bold text-gray-400">
+                <li><Link to="/admin/login" className="hover:text-fpt-orange transition-colors uppercase tracking-widest text-[10px]">Đăng nhập Quản trị</Link></li>
+                <li><a href="#" className="hover:text-fpt-orange transition-colors uppercase tracking-widest text-[10px]">Điều khoản sử dụng</a></li>
+                <li><a href="#" className="hover:text-fpt-orange transition-colors uppercase tracking-widest text-[10px]">Chính sách bảo mật</a></li>
+              </ul>
+            </div>
+          </div>
+          <div className="border-t border-gray-100 pt-10 text-center">
+            <p className="text-gray-400 text-[10px] font-black uppercase tracking-[0.4em]">
+              © 2026 NGOẠI KHOÁ NHỊP ĐẬP • FPT EDUCATION
+            </p>
           </div>
         </div>
       </footer>
@@ -173,23 +201,28 @@ export const MainLayout = () => {
       {/* Persistent AI Widget */}
       <AiChatWidget />
 
-      {/* Back to Top */}
-      <AnimatePresence>
-        {showBackToTop && (
-          <motion.button
-            initial={{ opacity: 0, scale: 0.5 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.5 }}
-            onClick={scrollToTop}
-            className="fixed bottom-24 right-6 bg-fpt-blue text-white p-4 rounded-full shadow-2xl z-40 hover:bg-fpt-orange transition-colors"
-          >
-            <ArrowUp size={24} />
-          </motion.button>
-        )}
-      </AnimatePresence>
+      {/* Control Buttons Group - Fix Overlap */}
+      <div className="fixed bottom-6 right-6 z-[60] flex flex-col gap-4">
+        <AnimatePresence>
+          {showBackToTop && (
+            <motion.button
+              initial={{ opacity: 0, scale: 0.5, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.5, y: 20 }}
+              onClick={scrollToTop}
+              className="bg-white text-fpt-blue p-4 rounded-2xl shadow-2xl border border-gray-100 hover:bg-fpt-blue hover:text-white transition-all group"
+            >
+              <ArrowUp size={24} className="group-hover:-translate-y-1 transition-transform" />
+            </motion.button>
+          )}
+        </AnimatePresence>
+        
+        {/* Spacer for AI Widget Button which is also at bottom-right */}
+        <div className="h-16 w-16"></div>
+      </div>
 
       {/* Real-time Notifications Toast */}
-      <div className="fixed top-24 right-6 z-[60] flex flex-col gap-4 pointer-events-none">
+      <div className="fixed top-24 right-6 z-[100] flex flex-col gap-4 pointer-events-none">
         <AnimatePresence>
           {notifications.map((notif) => (
             <motion.div
@@ -197,17 +230,17 @@ export const MainLayout = () => {
               initial={{ opacity: 0, x: 50, scale: 0.9 }}
               animate={{ opacity: 1, x: 0, scale: 1 }}
               exit={{ opacity: 0, x: 20, scale: 0.9 }}
-              className="pointer-events-auto bg-white border-l-4 border-fpt-orange shadow-2xl rounded-2xl p-4 min-w-[300px] max-w-sm flex gap-4 items-start"
+              className="pointer-events-auto glass-card border-l-4 border-fpt-orange shadow-2xl rounded-2xl p-5 min-w-[320px] max-w-sm flex gap-4 items-start"
             >
-              <div className="bg-orange-50 p-2 rounded-xl text-fpt-orange">
+              <div className="bg-orange-500 p-2.5 rounded-xl text-white shadow-lg shadow-orange-100">
                 <Bell size={20} />
               </div>
               <div className="flex-1">
-                <h4 className="font-black text-fpt-blue text-sm uppercase italic">{notif.title}</h4>
-                <p className="text-xs text-gray-500 font-medium mt-1">{notif.message}</p>
+                <h4 className="font-black text-fpt-blue text-sm uppercase italic tracking-tighter">{notif.title}</h4>
+                <p className="text-xs text-gray-500 font-medium mt-1 leading-relaxed">{notif.message}</p>
               </div>
-              <button onClick={() => removeNotification(notif.id)} className="text-gray-300 hover:text-gray-500">
-                <X size={16} />
+              <button onClick={() => removeNotification(notif.id)} className="text-gray-300 hover:text-red-500 p-1">
+                <X size={18} />
               </button>
             </motion.div>
           ))}
@@ -216,3 +249,32 @@ export const MainLayout = () => {
     </div>
   )
 }
+
+const NavLink = ({ to, icon: Icon, label, active }) => (
+  <Link 
+    to={to} 
+    className={cn(
+      "flex items-center gap-2 font-black text-xs uppercase tracking-widest transition-all relative group",
+      active ? 'text-fpt-orange' : 'text-gray-500 hover:text-fpt-orange'
+    )}
+  >
+    <Icon size={18} />
+    {label}
+    <span className={cn(
+      "absolute -bottom-2 left-0 h-0.5 bg-fpt-orange transition-all duration-300",
+      active ? 'w-full' : 'w-0 group-hover:w-full'
+    )}></span>
+  </Link>
+)
+
+const DropdownLink = ({ to, color, label }) => (
+  <Link 
+    to={to} 
+    className="flex items-center gap-3 px-6 py-3.5 hover:bg-gray-50 transition-all group"
+  >
+    <span className={cn("w-2 h-2 rounded-full transition-transform group-hover:scale-150", color)}></span>
+    <span className="font-black text-[10px] uppercase tracking-widest text-gray-600 group-hover:text-fpt-blue">{label}</span>
+  </Link>
+)
+
+const cn = (...classes) => classes.filter(Boolean).join(' ')

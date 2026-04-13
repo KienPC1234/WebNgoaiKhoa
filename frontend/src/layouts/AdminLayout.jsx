@@ -8,16 +8,18 @@ export const AdminLayout = () => {
 
   const menuItems = [
     { title: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
-    { title: 'Quản lý Bài viết', path: '/admin/publications', icon: FileText },
-    { title: 'Duyệt Bài thi', path: '/admin/submissions', icon: Send },
+    { title: 'Bài viết', path: '/admin/publications', icon: FileText },
+    { title: 'Duyệt bài', path: '/admin/submissions', icon: Send },
+    { title: 'Người dùng', path: '/admin/users', icon: User },
     { title: 'AI Knowledge', path: '/admin/ai-knowledge', icon: Database },
   ]
 
   const isActive = (path) => location.pathname === path
 
   const handleLogout = () => {
-    // Simple logout logic
-    navigate('/')
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    navigate('/admin/login')
   }
 
   return (

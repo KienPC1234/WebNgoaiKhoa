@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import { Card, Button, cn } from '../components/UI'
-import { Send, ThumbsUp, MessageCircle, Edit3, ShieldCheck, PenTool, BookOpen, User, Calendar } from 'lucide-react'
+import { Send, ThumbsUp, MessageCircle, Edit3, ShieldCheck, PenTool, BookOpen, User, Calendar, X, Sparkles } from 'lucide-react'
 import axios from 'axios'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3002/api'
+const API_URL = import.meta.env.VITE_API_URL || '/api'
 
 export const PhanMonVan = () => {
   const [activeTab, setActiveTab] = useState('sang-tac')
@@ -50,7 +50,6 @@ export const PhanMonVan = () => {
         student_email: studentEmail
       })
       setSubmissionStatus('success')
-      // Reset form
       setTitle('')
       setContent('')
     } catch (error) {
@@ -69,209 +68,246 @@ export const PhanMonVan = () => {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-12 space-y-12 animate-fadeIn">
-      {/* Header Section */}
-      <div className="text-center space-y-4">
-        <div className="inline-flex items-center gap-2 bg-orange-100 text-fpt-orange px-4 py-1.5 rounded-full font-black text-xs uppercase tracking-widest">
-          <BookOpen size={14} />
-          Ấn phẩm chuyên san
-        </div>
-        <h1 className="text-5xl font-black text-fpt-blue italic">"NHÁI BÉN"</h1>
-        <p className="text-gray-500 font-medium max-w-xl mx-auto">
-          Không gian sáng tạo dành riêng cho những tâm hồn yêu văn chương. Nơi những nét bút trẻ được bay bổng và lan tỏa.
-        </p>
-      </div>
-
-      {/* Tabs Navigation */}
-      <div className="flex justify-center border-b border-gray-100">
-        <div className="flex gap-8">
-          {[
-            { id: 'sang-tac', label: 'TRANG SÁNG TÁC', icon: PenTool },
-            { id: 'the-le', label: 'THỂ LỆ', icon: ShieldCheck },
-            { id: 'bai-thi', label: 'BÀI DỰ THI', icon: Send },
-          ].map((tab) => (
-            <button 
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={cn(
-                "flex items-center gap-2 pb-4 font-black text-sm transition-all border-b-4",
-                activeTab === tab.id 
-                  ? "border-fpt-orange text-fpt-orange translate-y-1" 
-                  : "border-transparent text-gray-400 hover:text-gray-600"
-              )}
-            >
-              <tab.icon size={18} />
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Content Sections */}
-      <div className="min-h-[400px]">
-        {activeTab === 'sang-tac' && (
-          <div className="max-w-3xl mx-auto space-y-6 animate-fadeIn">
-            <Card className="p-8 border-2 border-orange-50 shadow-xl shadow-orange-50/50">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-black text-fpt-blue flex items-center gap-2">
-                  <Edit3 className="text-fpt-orange" /> SOẠN THẢO TÁC PHẨM
-                </h2>
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Bản nháp tự động lưu</span>
-              </div>
-              
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <input 
-                    type="text" 
-                    placeholder="Họ và tên tác giả..." 
-                    value={studentName}
-                    onChange={(e) => setStudentName(e.target.value)}
-                    className="w-full text-sm font-bold text-gray-800 outline-none border-b-2 border-gray-50 focus:border-fpt-orange transition-colors py-2 bg-transparent"
-                  />
-                  <input 
-                    type="email" 
-                    placeholder="Email liên hệ..." 
-                    value={studentEmail}
-                    onChange={(e) => setStudentEmail(e.target.value)}
-                    className="w-full text-sm font-bold text-gray-800 outline-none border-b-2 border-gray-50 focus:border-fpt-orange transition-colors py-2 bg-transparent"
-                  />
-                </div>
-                <input 
-                  type="text" 
-                  placeholder="Tiêu đề tác phẩm..." 
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="w-full text-2xl font-black text-gray-800 outline-none border-b-2 border-gray-50 focus:border-fpt-orange transition-colors py-2 bg-transparent"
-                />
-                <textarea 
-                  className="w-full h-80 p-0 rounded-lg outline-none bg-white text-gray-700 leading-relaxed resize-none font-medium"
-                  placeholder="Hãy để cảm hứng của bạn bắt đầu tại đây..."
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                ></textarea>
-              </div>
-
-              <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-gray-50 pt-6">
-                <div className="flex items-center gap-2 text-gray-400 text-xs font-bold italic">
-                  <ShieldCheck size={14} />
-                  Bài dự thi sẽ được gửi trực tiếp đến Ban giám khảo
-                </div>
-                <div className="flex gap-3 w-full sm:w-auto">
-                  <Button 
-                    className="flex-1 sm:flex-none bg-white text-fpt-blue border-2 border-fpt-blue hover:bg-gray-50 px-6 font-black"
-                    onClick={() => {setTitle(''); setContent('');}}
-                  >XÓA TRỐNG</Button>
-                  <Button 
-                    onClick={handleSendToBGK}
-                    disabled={submissionStatus === 'loading' || submissionStatus === 'success'}
-                    className="flex-1 sm:flex-none bg-fpt-orange shadow-lg shadow-orange-200 px-8 font-black flex items-center gap-2"
-                  >
-                    {submissionStatus === 'loading' ? 'ĐANG GỬI...' : submissionStatus === 'success' ? 'ĐÃ GỬI!' : 'GỬI BÀI THI'}
-                    <Send size={18} />
-                  </Button>
-                </div>
-              </div>
-
-              {submissionStatus === 'success' && (
-                <div className="mt-4 p-4 bg-green-50 border border-green-100 rounded-xl text-green-700 text-sm font-bold flex items-center gap-2 animate-bounce">
-                  <ShieldCheck size={18} />
-                  Chúc mừng! Bài thi đã được gửi trực tiếp đến Ban giám khảo thành công.
-                </div>
-              )}
-              {submissionStatus === 'error' && (
-                <div className="mt-4 p-4 bg-red-50 border border-red-100 rounded-xl text-red-700 text-sm font-bold flex items-center gap-2">
-                  <X size={18} />
-                  Lỗi: Không thể gửi bài. Vui lòng kiểm tra lại kết nối server.
-                </div>
-              )}
-            </Card>
+    <div className="min-h-screen bg-orange-50/30">
+      {/* Hero Header */}
+      <section className="bg-gradient-to-br from-orange-400 via-fpt-orange to-red-500 py-20 px-4 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+        <div className="absolute top-0 right-0 w-96 h-96 bg-white/20 blur-3xl rounded-full translate-x-1/2 -translate-y-1/2"></div>
+        <div className="max-w-5xl mx-auto text-center space-y-6 relative z-10" data-aos="zoom-in">
+          <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md text-white px-5 py-2 rounded-full font-black text-xs uppercase tracking-widest shadow-xl border border-white/30">
+            <BookOpen size={16} />
+            Ấn phẩm chuyên san
           </div>
-        )}
+          <h1 className="text-5xl md:text-7xl font-black text-white italic drop-shadow-lg">"NHÁI BÉN"</h1>
+          <p className="text-orange-50 font-medium max-w-2xl mx-auto text-lg leading-relaxed">
+            Không gian sáng tạo dành riêng cho những tâm hồn yêu văn chương. Nơi nét bút trẻ được bay bổng, tôn vinh và lan tỏa.
+          </p>
+        </div>
+      </section>
 
-        {activeTab === 'the-le' && (
-          <div className="max-w-3xl mx-auto animate-fadeIn">
-            <Card className="p-10 border-2 border-fpt-blue/5 shadow-2xl relative overflow-hidden">
-              <h2 className="text-3xl font-black text-fpt-blue mb-8 flex items-center gap-3">
-                <ShieldCheck size={32} className="text-fpt-orange" />
-                THỂ LỆ "NHÁI BÉN" 2026
-              </h2>
-              
-              <div className="space-y-6 text-gray-600 font-medium leading-relaxed">
-                <div className="flex gap-4">
-                  <div className="bg-fpt-orange text-white w-8 h-8 rounded-lg flex items-center justify-center font-black flex-shrink-0">01</div>
-                  <p>Tác phẩm phải là sáng tác mới, chưa từng công bố trên bất kỳ phương tiện thông tin đại chúng nào.</p>
-                </div>
-                <div className="flex gap-4">
-                  <div className="bg-fpt-orange text-white w-8 h-8 rounded-lg flex items-center justify-center font-black flex-shrink-0">02</div>
-                  <p>Chủ đề năm nay: <span className="text-fpt-blue font-black uppercase">"Nhịp đập số - Khát vọng vươn tầm"</span>.</p>
-                </div>
-                <div className="flex gap-4">
-                  <div className="bg-fpt-orange text-white w-8 h-8 rounded-lg flex items-center justify-center font-black flex-shrink-0">03</div>
-                  <p>Thể loại: Truyện ngắn (tối đa 3000 chữ), Tản văn, Thơ.</p>
-                </div>
-                <div className="flex gap-4">
-                  <div className="bg-fpt-orange text-white w-8 h-8 rounded-lg flex items-center justify-center font-black flex-shrink-0">04</div>
-                  <p>Đối tượng tham gia: Toàn thể học sinh, sinh viên yêu văn chương.</p>
-                </div>
-              </div>
-            </Card>
+      <div className="max-w-6xl mx-auto px-4 py-12 -mt-10 relative z-20">
+        {/* Tabs Navigation */}
+        <div className="flex justify-center mb-12" data-aos="fade-up">
+          <div className="flex gap-4 p-2 bg-white rounded-full shadow-xl border border-gray-100">
+            {[
+              { id: 'sang-tac', label: 'SÁNG TÁC', icon: PenTool },
+              { id: 'the-le', label: 'THỂ LỆ', icon: ShieldCheck },
+              { id: 'bai-thi', label: 'BÀI DỰ THI', icon: Send },
+            ].map((tab) => (
+              <button 
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={cn(
+                  "flex items-center gap-2 px-8 py-3 rounded-full font-black text-sm transition-all",
+                  activeTab === tab.id 
+                    ? "bg-gradient-to-r from-fpt-orange to-orange-500 text-white shadow-lg shadow-orange-200/50" 
+                    : "bg-transparent text-gray-500 hover:bg-orange-50 hover:text-fpt-orange"
+                )}
+              >
+                <tab.icon size={18} />
+                {tab.label}
+              </button>
+            ))}
           </div>
-        )}
+        </div>
 
-        {activeTab === 'bai-thi' && (
-          <div className="space-y-8 animate-fadeIn">
-            {loading ? (
-              <div className="text-center py-20 font-black text-fpt-blue animate-pulse uppercase tracking-[0.2em]">Đang tải bài dự thi...</div>
-            ) : approvedSubmissions.length === 0 ? (
-              <div className="text-center py-20 bg-gray-50 rounded-[32px] border-2 border-dashed border-gray-200">
-                <BookOpen size={48} className="mx-auto text-gray-300 mb-4" />
-                <p className="text-gray-400 font-black uppercase tracking-widest">Chưa có bài dự thi nào được phê duyệt.</p>
-                <p className="text-xs text-gray-400 mt-2 font-medium">Hãy là người đầu tiên gửi bài sáng tác!</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {approvedSubmissions.map((sub) => (
-                  <Card key={sub.id} className="group hover:shadow-2xl transition-all duration-300 border-none bg-gray-50/50 p-6 overflow-hidden flex flex-col">
-                    <div className="bg-fpt-blue/5 h-40 rounded-2xl mb-6 flex items-center justify-center text-fpt-blue/20 relative group-hover:bg-fpt-orange/5 transition-colors">
-                      <BookOpen size={64} />
-                      <div className="absolute top-4 left-4 bg-white/80 backdrop-blur px-3 py-1 rounded-full text-[10px] font-black text-fpt-blue border border-fpt-blue/10">
-                        BÀI DỰ THI #{sub.id}
+        {/* Content Sections */}
+        <div className="min-h-[500px]">
+          {activeTab === 'sang-tac' && (
+            <div className="max-w-4xl mx-auto" data-aos="fade-up">
+              <Card className="p-10 border-0 shadow-2xl rounded-[40px] bg-white relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-fpt-orange to-orange-400"></div>
+                <div className="flex justify-between items-center mb-8">
+                  <h2 className="text-2xl font-black text-fpt-blue flex items-center gap-3">
+                    <div className="p-3 bg-orange-50 rounded-2xl text-fpt-orange"><Edit3 size={24} /></div>
+                    SOẠN THẢO TÁC PHẨM
+                  </h2>
+                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">Bản nháp tự động lưu</span>
+                </div>
+                
+                <div className="space-y-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Họ và tên tác giả</label>
+                      <input 
+                        type="text" 
+                        placeholder="Nguyễn Văn A..." 
+                        value={studentName}
+                        onChange={(e) => setStudentName(e.target.value)}
+                        className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-fpt-orange focus:bg-white rounded-2xl outline-none font-bold transition-all text-sm"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Email liên hệ (Email trường)</label>
+                      <input 
+                        type="email" 
+                        placeholder="anv@fpt.edu.vn..." 
+                        value={studentEmail}
+                        onChange={(e) => setStudentEmail(e.target.value)}
+                        className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-fpt-orange focus:bg-white rounded-2xl outline-none font-bold transition-all text-sm"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Tên tác phẩm</label>
+                    <input 
+                      type="text" 
+                      placeholder="Tiêu đề tác phẩm..." 
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-fpt-orange focus:bg-white rounded-2xl outline-none font-black transition-all text-xl"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Nội dung sáng tác</label>
+                    <textarea 
+                      className="w-full h-96 px-6 py-6 bg-gray-50 border-2 border-transparent focus:border-fpt-orange focus:bg-white rounded-3xl outline-none text-gray-700 leading-relaxed resize-none font-medium custom-scrollbar transition-all"
+                      placeholder="Hãy để cảm hứng của bạn bắt đầu tại đây..."
+                      value={content}
+                      onChange={(e) => setContent(e.target.value)}
+                    ></textarea>
+                  </div>
+                </div>
+
+                <div className="mt-10 flex flex-col md:flex-row items-center justify-between gap-6 pt-8 border-t border-gray-100">
+                  <div className="flex items-center gap-3 text-fpt-blue text-xs font-bold bg-blue-50 px-4 py-2 rounded-xl">
+                    <ShieldCheck size={16} className="text-fpt-orange" />
+                    Tác phẩm sẽ được mã hóa và gửi trực tiếp tới Ban Giám Khảo
+                  </div>
+                  <div className="flex gap-4 w-full md:w-auto">
+                    <Button 
+                      className="flex-1 md:flex-none bg-white text-gray-500 border-2 border-gray-200 hover:bg-gray-50 hover:text-fpt-blue hover:border-fpt-blue px-8 font-black"
+                      onClick={() => {setTitle(''); setContent('');}}
+                    >XÓA TRỐNG</Button>
+                    <Button 
+                      onClick={handleSendToBGK}
+                      disabled={submissionStatus === 'loading' || submissionStatus === 'success'}
+                      className="flex-1 md:flex-none bg-gradient-to-r from-fpt-orange to-orange-500 hover:from-orange-500 hover:to-orange-600 shadow-[0_10px_30px_-10px_rgba(242,112,36,0.6)] px-10 font-black flex items-center gap-2 border-none"
+                    >
+                      {submissionStatus === 'loading' ? 'ĐANG XỬ LÝ...' : submissionStatus === 'success' ? 'THÀNH CÔNG!' : 'GỬI BÀI THI'}
+                      <Sparkles size={18} />
+                    </Button>
+                  </div>
+                </div>
+
+                {submissionStatus === 'success' && (
+                  <div className="mt-6 p-5 bg-green-50 border-2 border-green-100 rounded-2xl text-green-700 text-sm font-black flex items-center gap-3 animate-bounce">
+                    <div className="bg-green-100 p-2 rounded-full"><ShieldCheck size={20} /></div>
+                    Tuyệt vời! Tác phẩm của bạn đã nằm trên bàn của Ban Giám Khảo. Hãy theo dõi thông báo nhé.
+                  </div>
+                )}
+                {submissionStatus === 'error' && (
+                  <div className="mt-6 p-5 bg-red-50 border-2 border-red-100 rounded-2xl text-red-700 text-sm font-black flex items-center gap-3">
+                    <div className="bg-red-100 p-2 rounded-full"><X size={20} /></div>
+                    Ối! Có lỗi xảy ra trong quá trình gửi. Vui lòng kiểm tra lại kết nối mạng.
+                  </div>
+                )}
+              </Card>
+            </div>
+          )}
+
+          {activeTab === 'the-le' && (
+            <div className="max-w-4xl mx-auto" data-aos="zoom-in">
+              <Card className="p-12 border-0 shadow-2xl rounded-[40px] bg-white relative overflow-hidden">
+                <div className="absolute -top-32 -right-32 w-64 h-64 bg-fpt-orange opacity-5 rounded-full"></div>
+                <div className="absolute -bottom-32 -left-32 w-64 h-64 bg-fpt-blue opacity-5 rounded-full"></div>
+                
+                <div className="relative z-10">
+                  <h2 className="text-4xl font-black text-fpt-blue mb-10 flex items-center gap-4 border-b-4 border-orange-100 pb-6 inline-flex italic uppercase tracking-tighter">
+                    <div className="p-3 bg-gradient-to-br from-fpt-orange to-orange-400 rounded-2xl text-white shadow-lg"><ShieldCheck size={32} /></div>
+                    THỂ LỆ "NHÁI BÉN" 2026
+                  </h2>
+                  
+                  <div className="space-y-8 text-gray-700 font-medium leading-relaxed text-lg">
+                    <div className="flex gap-6 items-start group">
+                      <div className="bg-orange-50 text-fpt-orange w-12 h-12 rounded-2xl flex items-center justify-center font-black text-xl flex-shrink-0 group-hover:bg-fpt-orange group-hover:text-white transition-colors shadow-sm">01</div>
+                      <p className="pt-2">Tác phẩm tham gia phải là <span className="font-black text-fpt-blue">sáng tác mới 100%</span>, chưa từng công bố trên bất kỳ phương tiện thông tin đại chúng hay mạng xã hội nào.</p>
+                    </div>
+                    <div className="flex gap-6 items-start group">
+                      <div className="bg-orange-50 text-fpt-orange w-12 h-12 rounded-2xl flex items-center justify-center font-black text-xl flex-shrink-0 group-hover:bg-fpt-orange group-hover:text-white transition-colors shadow-sm">02</div>
+                      <p className="pt-2">Chủ đề xuyên suốt năm nay: <span className="text-transparent bg-clip-text bg-gradient-to-r from-fpt-orange to-red-500 font-black uppercase text-2xl ml-2">"Nhịp đập số - Khát vọng vươn tầm"</span>.</p>
+                    </div>
+                    <div className="flex gap-6 items-start group">
+                      <div className="bg-orange-50 text-fpt-orange w-12 h-12 rounded-2xl flex items-center justify-center font-black text-xl flex-shrink-0 group-hover:bg-fpt-orange group-hover:text-white transition-colors shadow-sm">03</div>
+                      <div>
+                        <p className="pt-2 font-black text-fpt-blue">Thể loại được chấp nhận:</p>
+                        <ul className="list-disc ml-6 mt-2 space-y-1 text-gray-500">
+                          <li>Truyện ngắn (tối đa 3000 chữ)</li>
+                          <li>Tản văn, Ghi chép (tối đa 1500 chữ)</li>
+                          <li>Thơ tự do, Thơ có luật</li>
+                        </ul>
                       </div>
                     </div>
-                    
-                    <h3 className="text-xl font-black text-fpt-blue mb-1 group-hover:text-fpt-orange transition-colors line-clamp-1">{sub.title}</h3>
-                    <div className="flex items-center gap-2 text-gray-400 text-[10px] font-black uppercase tracking-tighter mb-4">
-                      <User size={12} /> {sub.student_name}
-                      <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                      <Calendar size={12} /> {new Date(sub.created_at).toLocaleDateString('vi-VN')}
+                    <div className="flex gap-6 items-start group">
+                      <div className="bg-orange-50 text-fpt-orange w-12 h-12 rounded-2xl flex items-center justify-center font-black text-xl flex-shrink-0 group-hover:bg-fpt-orange group-hover:text-white transition-colors shadow-sm">04</div>
+                      <p className="pt-2">Đối tượng tham gia mở rộng cho <span className="font-black text-fpt-blue">toàn thể học sinh, sinh viên</span> trong hệ thống giáo dục FPT yêu thích văn chương.</p>
                     </div>
-                    
-                    <p className="text-gray-500 text-sm font-medium mb-6 flex-1 line-clamp-3 leading-relaxed italic">
-                      "{sub.content}"
-                    </p>
+                  </div>
+                </div>
+              </Card>
+            </div>
+          )}
 
-                    <div className="flex items-center justify-between pt-6 border-t border-gray-100">
-                      <div className="flex gap-4">
-                        <button 
-                          onClick={() => handleVote(sub.id)}
-                          className="flex items-center gap-1.5 text-gray-400 hover:text-fpt-orange transition-colors group/vote"
-                        >
-                          <ThumbsUp size={18} className="group-active/vote:scale-125 transition-transform" />
-                          <span className="text-xs font-black">{sub.votes}</span>
-                        </button>
-                        <button className="flex items-center gap-1.5 text-gray-400 hover:text-fpt-blue transition-colors">
-                          <MessageCircle size={18} />
-                          <span className="text-xs font-black">0</span>
-                        </button>
+          {activeTab === 'bai-thi' && (
+            <div className="space-y-8" data-aos="fade-up">
+              {loading ? (
+                <div className="text-center py-32">
+                  <div className="w-16 h-16 border-4 border-fpt-orange border-t-transparent rounded-full animate-spin mx-auto mb-6 shadow-lg"></div>
+                  <p className="font-black text-fpt-blue uppercase tracking-[0.2em] animate-pulse">Đang tải Thư viện Tác phẩm...</p>
+                </div>
+              ) : approvedSubmissions.length === 0 ? (
+                <div className="max-w-2xl mx-auto text-center py-20 bg-white rounded-[40px] border-2 border-dashed border-orange-100 shadow-xl shadow-orange-50">
+                  <div className="w-24 h-24 bg-orange-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <BookOpen size={40} className="text-fpt-orange" />
+                  </div>
+                  <h3 className="text-2xl font-black text-fpt-blue mb-2 uppercase tracking-tighter">Kho tàng đang chờ mở</h3>
+                  <p className="text-gray-500 font-medium">Chưa có tác phẩm nào được công bố. Hãy là ngòi bút đầu tiên khai bút!</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                  {approvedSubmissions.map((sub, idx) => (
+                    <Card key={sub.id} data-aos="fade-up" data-aos-delay={idx * 100} className="group hover:shadow-[0_20px_50px_-15px_rgba(242,112,36,0.3)] transition-all duration-500 border-none bg-white p-0 overflow-hidden flex flex-col rounded-[32px] hover:-translate-y-2">
+                      <div className="bg-gradient-to-br from-orange-50 to-orange-100 h-48 flex flex-col items-center justify-center relative overflow-hidden p-6 border-b border-orange-200/50">
+                        <div className="absolute top-4 left-4 bg-white px-3 py-1.5 rounded-lg text-[10px] font-black text-fpt-orange shadow-sm uppercase tracking-widest border border-orange-100">
+                          MS: {sub.id.toString().padStart(4, '0')}
+                        </div>
+                        <BookOpen size={48} className="text-fpt-orange/40 group-hover:scale-110 group-hover:text-fpt-orange transition-all duration-500" />
                       </div>
-                      <Button className="bg-fpt-blue text-white px-4 py-1.5 text-xs font-black rounded-lg">CHI TIẾT</Button>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+                      
+                      <div className="p-8 flex-1 flex flex-col relative bg-white">
+                        <h3 className="text-2xl font-black text-gray-800 mb-4 group-hover:text-fpt-orange transition-colors line-clamp-2 leading-snug">{sub.title}</h3>
+                        
+                        <p className="text-gray-500 text-sm font-medium mb-8 flex-1 line-clamp-4 leading-relaxed prose-sm">
+                          {sub.content}
+                        </p>
+
+                        <div className="flex flex-col gap-4">
+                          <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-gray-400 bg-gray-50 p-3 rounded-xl border border-gray-100">
+                            <span className="flex items-center gap-2"><User size={14} className="text-fpt-blue" /> {sub.student_name}</span>
+                            <span className="flex items-center gap-2"><Calendar size={14} className="text-fpt-orange" /> {new Date(sub.created_at).toLocaleDateString('vi-VN')}</span>
+                          </div>
+                          
+                          <div className="flex items-center justify-between pt-2">
+                            <button 
+                              onClick={() => handleVote(sub.id)}
+                              className="flex items-center gap-2 text-gray-400 hover:text-white hover:bg-fpt-orange transition-colors group/vote bg-orange-50 px-4 py-2 rounded-xl"
+                            >
+                              <ThumbsUp size={18} className="group-active/vote:scale-125 group-hover/vote:text-white text-fpt-orange transition-transform" />
+                              <span className="text-sm font-black text-fpt-orange group-hover/vote:text-white">{sub.votes} Lượt thích</span>
+                            </button>
+                            <Button className="bg-transparent border-2 border-gray-200 text-gray-500 hover:border-fpt-blue hover:text-fpt-blue hover:bg-white px-6 py-2 text-xs font-black rounded-xl">ĐỌC</Button>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

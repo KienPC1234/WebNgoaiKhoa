@@ -1,5 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
+import { useEffect } from 'react'
+import AOS from 'aos'
+import 'aos/dist/aos.css'
 import { MainLayout } from './layouts/MainLayout'
 import { AdminLayout } from './layouts/AdminLayout'
 import { Home } from './pages/Home'
@@ -9,6 +12,7 @@ import { AdminLogin } from './pages/Admin/Login'
 import { AdminDashboard } from './pages/Admin/Dashboard'
 import { AdminPublications } from './pages/Admin/Publications'
 import { AdminSubmissions } from './pages/Admin/Submissions'
+import { AdminUsers } from './pages/Admin/Users'
 
 const PageWrapper = ({ children }) => (
   <motion.div
@@ -45,6 +49,7 @@ const AnimatedRoutes = () => {
           <Route path="dashboard" element={<PageWrapper><AdminDashboard /></PageWrapper>} />
           <Route path="publications" element={<PageWrapper><AdminPublications /></PageWrapper>} />
           <Route path="submissions" element={<PageWrapper><AdminSubmissions /></PageWrapper>} />
+          <Route path="users" element={<PageWrapper><AdminUsers /></PageWrapper>} />
           <Route path="ai-knowledge" element={<div className="text-center py-20 text-gray-500 font-black italic">Tính năng AI Knowledge đang phát triển...</div>} />
           <Route index element={<Navigate to="/admin/dashboard" replace />} />
         </Route>
@@ -60,8 +65,16 @@ const ProtectedRoute = ({ children }) => {
 }
 
 function App() {
+  useEffect(() => {
+    AOS.init({
+      duration: 800,
+      once: true,
+      easing: 'ease-out-cubic',
+    });
+  }, []);
+
   return (
-    <BrowserRouter>
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <AnimatedRoutes />
     </BrowserRouter>
   )
