@@ -18,12 +18,14 @@ echo -e "${ORANGE}=== HỆ THỐNG NGOẠI KHOÁ NHỊP ĐẬP (FPT EDITION) ===
 # 1. Kill processes on ports
 kill_port() {
     local port=$1
+    # Get only PIDs, excluding the command header
     local pids=$(lsof -t -i:$port)
     if [ ! -z "$pids" ]; then
         echo -e "${RED}Dừng các tiến trình trên cổng $port (PIDs: $pids)...${NC}"
-        for pid in $pids; do
-            kill -9 $pid 2>/dev/null
-        done
+        # Use xargs for cleaner multi-PID killing
+        echo $pids | xargs kill -9 2>/dev/null
+        # Wait a moment for OS to release the port
+        sleep 2
     fi
 }
 
