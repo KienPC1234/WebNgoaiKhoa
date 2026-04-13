@@ -1,0 +1,24 @@
+# Node
+node_modules/
+dist/
+build/
+.eslintcache
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.venv
+venv/
+ENV/
+env/
+.conda/
+
+# Logs
+*.log
+.run_pids
+
+# OS
+.DS_Store
+Thumbs.db
