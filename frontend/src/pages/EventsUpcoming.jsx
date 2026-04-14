@@ -9,13 +9,66 @@ const API_URL = import.meta.env.VITE_API_URL || '/api'
 export const EventsUpcoming = () => {
     const [events, setEvents] = useState([])
     const [loading, setLoading] = useState(false)
+    const [currentMonth, setCurrentMonth] = useState(new Date())
+    const [selectedDate, setSelectedDate] = useState(null)
+
+    const monthStart = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1)
+    const monthEnd = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0)
+
+    const startWeekday = monthStart.getDay()
+    const dayCount = monthEnd.getDate()
+
+    const monthLabel = monthStart.toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' })
+
+    const formatDateKey = (dateValue) => {
+        const d = new Date(dateValue)
+        const y = d.getFullYear()
+        const m = String(d.getMonth() + 1).padStart(2, '0')
+        const day = String(d.getDate()).padStart(2, '0')
+        return `${y}-${m}-${day}`
+    }
+
+    const eventMap = events.reduce((acc, item) => {
+        const key = formatDateKey(item.event_date)
+        if (!acc[key]) acc[key] = []
+        acc[key].push(item)
+        return acc
+    }, {})
+
+    const selectedDateKey = selectedDate ? formatDateKey(selectedDate) : null
+    const selectedDateEvents = selectedDateKey ? (eventMap[selectedDateKey] || []) : []
+
+    const calendarCells = []
+    for (let i = 0; i < startWeekday; i += 1) {
+        calendarCells.push(null)
+    }
+    for (let d = 1; d <= dayCount; d += 1) {
+        calendarCells.push(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), d))
+    }
+    while (calendarCells.length % 7 !== 0) {
+        calendarCells.push(null)
+    }
+
+    const weekRows = []
+    for (let i = 0; i < calendarCells.length; i += 7) {
+        weekRows.push(calendarCells.slice(i, i + 7))
+    }
 
     useEffect(() => {
         const fetchEvents = async () => {
             setLoading(true)
             try {
                 const res = await axios.get(`${API_URL}/public/events/upcoming`)
-                setEvents(res.data || [])
+                const fetched = res.data || []
+                setEvents(fetched)
+
+                if (fetched.length > 0) {
+                    const firstDate = new Date(fetched[0].event_date)
+                    setCurrentMonth(new Date(firstDate.getFullYear(), firstDate.getMonth(), 1))
+                    setSelectedDate(firstDate)
+                } else {
+                    setSelectedDate(new Date())
+                }
             } catch (error) {
                 console.error('Error fetching upcoming events:', error)
             } finally {
@@ -24,6 +77,14 @@ export const EventsUpcoming = () => {
         }
         fetchEvents()
     }, [])
+
+    const goPrevMonth = () => {
+        setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))
+    }
+
+    const goNextMonth = () => {
+        setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))
+    }
 
     return (
         <div className="min-h-screen bg-gray-50/50 pb-20">
@@ -59,6 +120,101 @@ export const EventsUpcoming = () => {
             </section>
 
             <div className="max-w-6xl mx-auto px-4 mt-20">
+                <section className="mb-16">
+                    <Card className="p-8 rounded-[32px] border border-white/60 shadow-[0_20px_60px_-30px_rgba(15,23,42,0.25)] bg-white/90 backdrop-blur">
+                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+                            <h2 className="text-2xl md:text-3xl font-black text-fpt-blue uppercase italic">Lịch sự kiện theo tháng</h2>
+                            <div className="flex items-center gap-3">
+                                <button
+                                    type="button"
+                                    onClick={goPrevMonth}
+                                    className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-black text-xs uppercase tracking-widest"
+                                >
+                                    Tháng trước
+                                </button>
+                                <span className="px-4 py-2 rounded-xl bg-fpt-blue text-white font-black text-xs uppercase tracking-widest">
+                                    {monthLabel}
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={goNextMonth}
+                                    className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-black text-xs uppercase tracking-widest"
+                                >
+                                    Tháng sau
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="overflow-x-auto rounded-2xl border border-gray-100">
+                            <table className="w-full border-collapse">
+                                <thead>
+                                    <tr>
+                                        {['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'].map((day) => (
+                                            <th key={day} className="p-3 text-left text-[11px] font-black uppercase tracking-widest text-gray-500 border-b border-gray-100">{day}</th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {weekRows.map((row, rowIdx) => (
+                                        <tr key={rowIdx}>
+                                            {row.map((cell, cellIdx) => {
+                                                if (!cell) {
+                                                    return <td key={`${rowIdx}-${cellIdx}`} className="h-24 border-b border-gray-50" />
+                                                }
+
+                                                const cellKey = formatDateKey(cell)
+                                                const hasEvents = Boolean(eventMap[cellKey]?.length)
+                                                const isSelected = selectedDateKey === cellKey
+
+                                                return (
+                                                    <td key={cellKey} className="h-24 align-top border-b border-gray-50">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setSelectedDate(cell)}
+                                                            className={`w-full h-full rounded-xl text-left p-2 transition-all ${isSelected ? 'bg-blue-50 ring-2 ring-fpt-blue/20 shadow-sm' : 'hover:bg-gray-50'}`}
+                                                        >
+                                                            <div className="flex items-start justify-between">
+                                                                <span className={`text-sm font-black ${isSelected ? 'text-fpt-blue' : 'text-gray-700'}`}>
+                                                                    {cell.getDate()}
+                                                                </span>
+                                                                {hasEvents && (
+                                                                    <span className="inline-flex items-center justify-center min-w-6 h-6 px-1 rounded-full bg-fpt-orange text-white text-[10px] font-black">
+                                                                        {eventMap[cellKey].length}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            {hasEvents && (
+                                                                <p className="mt-2 text-[10px] text-gray-500 font-bold uppercase tracking-widest truncate">
+                                                                    {eventMap[cellKey][0].title}
+                                                                </p>
+                                                            )}
+                                                        </button>
+                                                    </td>
+                                                )
+                                            })}
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div className="mt-6 p-4 rounded-2xl bg-gray-50 border border-gray-100">
+                            <p className="text-xs font-black uppercase tracking-widest text-gray-500 mb-3">
+                                {selectedDate ? `Sự kiện ngày ${new Date(selectedDate).toLocaleDateString('vi-VN')}` : 'Chọn một ngày trong lịch'}
+                            </p>
+                            {selectedDate && selectedDateEvents.length > 0 ? (
+                                <ul className="space-y-2">
+                                    {selectedDateEvents.map((ev) => (
+                                        <li key={ev.id} className="text-sm text-gray-700 font-semibold">• {ev.title}</li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <p className="text-sm text-gray-400 font-semibold">Không có sự kiện trong ngày này.</p>
+                            )}
+                        </div>
+                    </Card>
+                </section>
+
                 <div className="space-y-12">
                     {loading && (
                         <div className="grid grid-cols-1 gap-8">
@@ -74,32 +230,33 @@ export const EventsUpcoming = () => {
                             transition={{ delay: i * 0.1 }}
                             viewport={{ once: true }}
                         >
-                            <Card className="p-0 border-none bg-white shadow-2xl rounded-[40px] overflow-hidden group flex flex-col lg:flex-row gap-0 hover:shadow-fpt-orange/10 transition-all duration-500">
+                            <Card className="p-0 border border-white/60 bg-white/95 backdrop-blur shadow-[0_24px_70px_-35px_rgba(15,23,42,0.35)] rounded-[36px] overflow-hidden group flex flex-col lg:flex-row gap-0 transition-all duration-500 hover:-translate-y-1">
                                 <div className="lg:w-2/5 relative overflow-hidden aspect-video lg:aspect-auto">
                                     <img src={event.image_url} alt={event.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                                     <div className="absolute top-6 left-6">
-                                        <span className="bg-fpt-orange text-white text-[10px] font-black px-4 py-2 rounded-full uppercase tracking-widest shadow-lg">
+                                        <span className="bg-black/65 backdrop-blur text-white text-[10px] font-black px-4 py-2 rounded-full uppercase tracking-widest border border-white/20">
                                             {event.status === 'registration' ? 'Mở đăng ký' : 'Sắp diễn ra'}
                                         </span>
                                     </div>
                                 </div>
-                                <div className="lg:w-3/5 p-10 lg:p-14 space-y-8 flex flex-col justify-center">
+                                <div className="lg:w-3/5 p-10 lg:p-12 space-y-6 flex flex-col justify-center">
                                     <div className="space-y-4">
-                                        <h3 className="text-3xl lg:text-4xl font-black text-gray-800 tracking-tight group-hover:text-fpt-orange transition-colors duration-300 italic">{event.title}</h3>
-                                        <div className="flex flex-wrap gap-8 text-gray-400">
-                                            <div className="flex items-center gap-2 font-black text-xs uppercase tracking-widest">
+                                        <h3 className="text-3xl lg:text-[2rem] font-black text-gray-800 tracking-tight group-hover:text-fpt-orange transition-colors duration-300">{event.title}</h3>
+                                        <p className="text-gray-500 leading-relaxed font-medium line-clamp-3">{event.description}</p>
+                                        <div className="flex flex-wrap gap-6 text-gray-400">
+                                            <div className="flex items-center gap-2 font-black text-[11px] uppercase tracking-widest">
                                                 <Calendar size={18} className="text-fpt-blue" />
                                                 {new Date(event.event_date).toLocaleDateString('vi-VN')}
                                             </div>
-                                            <div className="flex items-center gap-2 font-black text-xs uppercase tracking-widest">
+                                            <div className="flex items-center gap-2 font-black text-[11px] uppercase tracking-widest">
                                                 <MapPin size={18} className="text-fpt-blue" />
                                                 {event.location}
                                             </div>
                                         </div>
                                     </div>
                                     <div className="pt-4 border-t border-gray-100 flex items-center justify-between">
-                                        <p className="text-gray-500 font-medium max-w-md italic">Tham gia cùng chúng tôi để kết nối tri thức và mở rộng mạng lưới quan hệ học thuật của bạn.</p>
-                                        <button className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center group-hover:bg-fpt-orange group-hover:text-white text-fpt-blue transition-all duration-300 shadow-inner group-hover:translate-x-2">
+                                        <span className="inline-flex items-center rounded-full bg-gray-100 text-gray-600 px-3 py-1 text-[10px] font-black uppercase tracking-widest">Tổ xã hội</span>
+                                        <button className="w-14 h-14 rounded-full bg-gray-50 flex items-center justify-center group-hover:bg-fpt-orange group-hover:text-white text-fpt-blue transition-all duration-300 shadow-inner group-hover:translate-x-2">
                                             <ArrowRight size={24} />
                                         </button>
                                     </div>

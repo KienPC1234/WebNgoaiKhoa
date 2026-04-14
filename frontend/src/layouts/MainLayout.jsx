@@ -1,7 +1,7 @@
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { AiChatWidget } from '@/components/AiChatWidget'
 import { Home, Compass, GraduationCap, Sparkles, ChevronDown, ArrowUp, Bell, X, UserCircle, Users, Calendar, BookOpen, Award, Heart } from 'lucide-react'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 export const MainLayout = () => {
@@ -11,6 +11,8 @@ export const MainLayout = () => {
   const [showNhanVatDropdown, setShowNhanVatDropdown] = useState(false)
   const [showBackToTop, setShowBackToTop] = useState(false)
   const [notifications, setNotifications] = useState([])
+
+  const token = localStorage.getItem('token')
 
   const isActive = (path) => location.pathname === path
 
@@ -27,10 +29,13 @@ export const MainLayout = () => {
   useEffect(() => {
     let ws;
     let reconnectTimeout;
+    const wsBase = import.meta.env.VITE_WS_URL || ''
 
     const connectWS = () => {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-      const wsUrl = `${protocol}//${window.location.host}/ws/notifications`
+      const wsUrl = wsBase
+        ? `${wsBase.replace(/\/$/, '')}/notifications`
+        : `${protocol}//${window.location.host}/ws/notifications`
 
       try {
         ws = new WebSocket(wsUrl)
@@ -81,12 +86,13 @@ export const MainLayout = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-transparent">
+    <div className="min-h-screen flex flex-col bg-transparent relative overflow-x-hidden">
+      <div className="pointer-events-none absolute inset-0 -z-10 opacity-70 bg-[radial-gradient(circle_at_10%_10%,rgba(29,42,87,0.12),transparent_40%),radial-gradient(circle_at_90%_0%,rgba(242,112,36,0.12),transparent_35%),linear-gradient(180deg,#f8fbff_0%,#fffaf5_100%)]"></div>
       {/* Navigation Header */}
-      <header className="glass-nav border-b border-gray-100 shadow-sm transition-all duration-300">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+      <header className="glass-nav border-b border-white/70 shadow-[0_14px_40px_-28px_rgba(29,42,87,0.35)] transition-all duration-300">
+        <div className="container mx-auto px-4 py-4 flex justify-between items-center gap-4">
           {/* Logo Section */}
-          <Link to="/" className="flex items-center gap-2 group">
+          <Link to="/" className="flex items-center gap-2 group shrink-0">
             <motion.div
               whileHover={{ rotate: 12, scale: 1.1 }}
               className="bg-fpt-orange p-2 rounded-xl shadow-lg shadow-orange-200"
@@ -94,13 +100,13 @@ export const MainLayout = () => {
               <Sparkles className="text-white" size={24} />
             </motion.div>
             <div className="flex flex-col">
-              <span className="text-2xl font-black text-fpt-blue leading-none italic tracking-tighter">TỔ XÃ HỘI</span>
-              <span className="text-[10px] font-black text-fpt-orange tracking-[0.3em] uppercase ml-0.5">Deep learning with love</span>
+              <span className="text-2xl font-black text-fpt-blue leading-none italic tracking-tighter whitespace-nowrap">TỔ XÃ HỘI</span>
+              <span className="hidden xl:block text-[10px] font-black text-fpt-orange tracking-[0.3em] uppercase ml-0.5 whitespace-nowrap">Deep learning with love</span>
             </div>
           </Link>
 
           {/* Menu Items */}
-          <nav className="hidden lg:flex items-center gap-10">
+          <nav className="hidden lg:flex items-center gap-5 xl:gap-8 flex-nowrap whitespace-nowrap bg-white/70 backdrop-blur px-4 xl:px-6 py-3 rounded-2xl border border-white/70 shadow-sm overflow-x-auto no-scrollbar">
             <NavLink to="/" icon={Home} label="Trang chủ" active={isActive('/')} />
 
             {/* Giới thiệu */}
@@ -110,7 +116,7 @@ export const MainLayout = () => {
               onMouseLeave={() => setShowPhanMonDropdown(false)}
             >
               <button className={cn(
-                "flex items-center gap-2 font-black text-xs uppercase tracking-widest transition-all",
+                "flex items-center gap-2 font-black text-xs uppercase tracking-widest transition-all whitespace-nowrap",
                 location.pathname.startsWith('/gioithieu') ? 'text-fpt-orange' : 'text-gray-500 hover:text-fpt-orange'
               )}>
                 <Sparkles size={18} />
@@ -161,7 +167,7 @@ export const MainLayout = () => {
               onMouseLeave={() => setShowChuyenMonDropdown(false)}
             >
               <button className={cn(
-                "flex items-center gap-2 font-black text-xs uppercase tracking-widest transition-all",
+                "flex items-center gap-2 font-black text-xs uppercase tracking-widest transition-all whitespace-nowrap",
                 location.pathname.startsWith('/phanmon') ? 'text-fpt-orange' : 'text-gray-500 hover:text-fpt-orange'
               )}>
                 <GraduationCap size={18} />
@@ -220,7 +226,7 @@ export const MainLayout = () => {
               onMouseLeave={() => setShowNhanVatDropdown(false)}
             >
               <button className={cn(
-                "flex items-center gap-2 font-black text-xs uppercase tracking-widest transition-all",
+                "flex items-center gap-2 font-black text-xs uppercase tracking-widest transition-all whitespace-nowrap",
                 (location.pathname.startsWith('/nhanvat') || location.pathname.startsWith('/events') || location.pathname.startsWith('/stories'))
                   ? 'text-fpt-orange'
                   : 'text-gray-500 hover:text-fpt-orange'
@@ -279,15 +285,41 @@ export const MainLayout = () => {
 
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-4">
-            <Link to="/admin/login" className="hidden xl:flex items-center gap-2 text-[10px] font-black text-gray-400 hover:text-fpt-blue transition-colors uppercase tracking-widest border-r border-gray-200 pr-4">
-              <UserCircle size={16} />
-              Quản trị
-            </Link>
+          <div className="flex items-center gap-3">
+            {token ? (
+              <Link to="/profile" className="hidden lg:flex items-center gap-2 text-[10px] font-black text-gray-400 hover:text-fpt-blue transition-colors uppercase tracking-widest border-r border-gray-200 pr-4 whitespace-nowrap">
+                <UserCircle size={16} />
+                Hồ sơ
+              </Link>
+            ) : (
+              <div className="hidden lg:flex items-center gap-3 border-r border-gray-200 pr-4">
+                <Link to="/login" className="flex items-center gap-2 text-[10px] font-black text-gray-500 hover:text-fpt-blue transition-colors uppercase tracking-widest whitespace-nowrap">
+                  <UserCircle size={16} />
+                  Đăng nhập
+                </Link>
+                <Link to="/register" className="text-[10px] font-black text-fpt-orange hover:text-orange-600 transition-colors uppercase tracking-widest whitespace-nowrap">
+                  Đăng ký
+                </Link>
+              </div>
+            )}
+            {!token ? (
+              <div className="flex lg:hidden items-center gap-2">
+                <Link to="/login" className="px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-white text-fpt-blue border border-blue-100 whitespace-nowrap">
+                  Đăng nhập
+                </Link>
+                <Link to="/register" className="px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-fpt-orange text-white whitespace-nowrap">
+                  Đăng ký
+                </Link>
+              </div>
+            ) : (
+              <Link to="/profile" className="flex lg:hidden px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-white text-fpt-blue border border-blue-100 whitespace-nowrap">
+                Hồ sơ
+              </Link>
+            )}
             <motion.button
               whileHover={{ scale: 1.05, boxShadow: '0 10px 20px -5px rgba(242,112,36,0.4)' }}
               whileTap={{ scale: 0.95 }}
-              className="flex items-center gap-2 bg-fpt-orange text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-orange-100 border-none"
+              className="flex items-center gap-2 bg-fpt-orange text-white px-4 xl:px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-orange-100 border-none whitespace-nowrap"
               onClick={() => window.dispatchEvent(new CustomEvent('toggle-ai-chat'))}
             >
               <Sparkles size={18} className="animate-pulse" />
@@ -326,7 +358,7 @@ export const MainLayout = () => {
             <div className="space-y-6">
               <h4 className="font-black text-sm text-fpt-blue uppercase tracking-widest">Hệ thống</h4>
               <ul className="space-y-4 text-sm font-bold text-gray-400">
-                <li><Link to="/admin/login" className="hover:text-fpt-orange transition-colors uppercase tracking-widest text-[10px]">Đăng nhập Quản trị</Link></li>
+                <li><Link to={token ? "/profile" : "/login"} className="hover:text-fpt-orange transition-colors uppercase tracking-widest text-[10px]">{token ? 'Hồ sơ' : 'Đăng nhập'}</Link></li>
                 <li><a href="#" className="hover:text-fpt-orange transition-colors uppercase tracking-widest text-[10px]">Điều khoản sử dụng</a></li>
                 <li><a href="#" className="hover:text-fpt-orange transition-colors uppercase tracking-widest text-[10px]">Chính sách bảo mật</a></li>
               </ul>
@@ -396,7 +428,7 @@ const NavLink = ({ to, icon: Icon, label, active }) => (
   <Link
     to={to}
     className={cn(
-      "flex items-center gap-2 font-black text-xs uppercase tracking-widest transition-all relative group",
+      "flex items-center gap-2 font-black text-xs uppercase tracking-widest transition-all relative group whitespace-nowrap",
       active ? 'text-fpt-orange' : 'text-gray-500 hover:text-fpt-orange'
     )}
   >

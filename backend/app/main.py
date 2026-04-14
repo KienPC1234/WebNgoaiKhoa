@@ -1,5 +1,6 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 from app.api import ai, auth, admin, public
 from app.db.notifications import manager
 import uvicorn
@@ -15,13 +16,31 @@ app = FastAPI(
     version="2.0.0"
 )
 
+def parse_csv_env(name: str, default: str = ""):
+    raw = os.getenv(name, default)
+    return [item.strip() for item in raw.split(",") if item.strip()]
+
+
+# Cloudflare Tunnel / reverse proxy settings
+cors_origins = parse_csv_env("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
+trusted_hosts = parse_csv_env("TRUSTED_HOSTS", "localhost,127.0.0.1")
+forwarded_allow_ips = os.getenv("FORWARDED_ALLOW_IPS", "*")
+
+if "testserver" not in trusted_hosts:
+    trusted_hosts.append("testserver")
+
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+)
+
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=trusted_hosts,
 )
 
 # Include Routers
@@ -53,4 +72,11 @@ async def websocket_endpoint(websocket: WebSocket):
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 3002))
-    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=port,
+        reload=True,
+        proxy_headers=True,
+        forwarded_allow_ips=forwarded_allow_ips,
+    )

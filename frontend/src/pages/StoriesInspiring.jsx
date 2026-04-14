@@ -67,7 +67,7 @@ export const StoriesInspiring = () => {
                     </div>
                 )}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                     {!loading && stories.map((story, i) => (
                         <motion.div
                             key={story.id}
@@ -76,7 +76,7 @@ export const StoriesInspiring = () => {
                             transition={{ delay: i * 0.1 }}
                             viewport={{ once: true }}
                         >
-                            <Card className="p-0 border-none bg-white shadow-xl rounded-[40px] overflow-hidden group hover:-translate-y-4 transition-all duration-500 flex flex-col h-full">
+                            <Card className="p-0 border border-white/60 bg-white/95 backdrop-blur shadow-[0_22px_60px_-35px_rgba(15,23,42,0.35)] rounded-[32px] overflow-hidden group hover:-translate-y-2 transition-all duration-500 flex flex-col h-full">
                                 <div className="relative aspect-video overflow-hidden">
                                     <img src={story.image_url} alt={story.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                                     <div className="absolute top-6 right-6">
@@ -85,8 +85,8 @@ export const StoriesInspiring = () => {
                                         </span>
                                     </div>
                                 </div>
-                                <div className="p-10 space-y-6 flex-1 flex flex-col justify-between">
-                                    <div className="space-y-4">
+                                <div className="p-8 space-y-5 flex-1 flex flex-col justify-between">
+                                    <div className="space-y-3">
                                         <div className="flex items-center gap-4 text-gray-400 font-black text-[10px] uppercase tracking-widest">
                                             <div className="flex items-center gap-1.5">
                                                 <User size={14} className="text-red-400" />
@@ -97,11 +97,11 @@ export const StoriesInspiring = () => {
                                                 {story.read_time_minutes} phút đọc
                                             </div>
                                         </div>
-                                        <h3 className="text-2xl font-black text-gray-800 leading-tight group-hover:text-red-500 transition-colors duration-300">{story.title}</h3>
-                                        <p className="text-gray-500 font-medium leading-relaxed italic line-clamp-3">"{story.snippet}"</p>
+                                        <h3 className="text-[1.35rem] font-black text-gray-800 leading-tight group-hover:text-red-500 transition-colors duration-300">{story.title}</h3>
+                                        <p className="text-gray-500 font-medium leading-relaxed line-clamp-3">{story.snippet}</p>
                                     </div>
-                                    <div className="pt-8 border-t border-gray-50 flex items-center justify-between">
-                                        <button className="text-xs font-black uppercase tracking-widest text-red-500 flex items-center gap-2 group-hover:gap-4 transition-all">
+                                    <div className="pt-6 border-t border-gray-100 flex items-center justify-between">
+                                        <button className="text-[11px] font-black uppercase tracking-widest text-red-500 flex items-center gap-2 group-hover:gap-3 transition-all">
                                             Đọc câu chuyện <ArrowRight size={16} />
                                         </button>
                                         <Heart size={20} className="text-gray-200 group-hover:text-red-400 group-hover:fill-red-400 transition-all cursor-pointer" />

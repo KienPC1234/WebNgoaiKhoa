@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, Enum
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum
 from app.db.session import Base
 import enum
 
@@ -16,3 +16,8 @@ class User(Base):
     full_name = Column(String(255))
     role = Column(String(50), default=UserRole.STUDENT)
     is_active = Column(Boolean, default=True)
+    is_subscribed = Column(Boolean, default=True)
+    email_verified = Column(Boolean, default=False)
+    verification_token = Column(String(255), nullable=True)
+    verification_token_expires_at = Column(DateTime(timezone=True), nullable=True)
+    last_verification_sent_at = Column(DateTime(timezone=True), nullable=True)

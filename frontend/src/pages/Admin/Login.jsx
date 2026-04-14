@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { Card, Button } from '../../components/UI'
+import { showApiError, toastError, toastSuccess } from '@/lib/notify'
 
 const Input = ({ label, ...props }) => (
   <div className="space-y-1">
@@ -36,14 +37,18 @@ export const AdminLogin = () => {
       
       if (response.data.user.role !== 'admin') {
         setError('Bạn không có quyền truy cập trang quản trị.')
+        toastError('Bạn không có quyền truy cập trang quản trị.')
         return
       }
 
       localStorage.setItem('token', response.data.access_token)
       localStorage.setItem('user', JSON.stringify(response.data.user))
+      toastSuccess('Đăng nhập quản trị thành công.')
       navigate('/admin/dashboard')
     } catch (err) {
-      setError(err.response?.data?.detail || 'Đăng nhập thất bại. Vui lòng thử lại.')
+      const message = err.response?.data?.detail || 'Đăng nhập thất bại. Vui lòng thử lại.'
+      setError(message)
+      showApiError(err, message)
     } finally {
       setLoading(false)
     }

@@ -62,6 +62,7 @@ def db_session():
             full_name="Admin",
             role=UserRole.ADMIN.value,
             is_active=True,
+            email_verified=True,
         )
         student = User(
             email="student@webngoaikhoa.edu.vn",
@@ -69,6 +70,7 @@ def db_session():
             full_name=None,
             role=UserRole.STUDENT.value,
             is_active=True,
+            email_verified=True,
         )
 
         db.add_all([admin, student])

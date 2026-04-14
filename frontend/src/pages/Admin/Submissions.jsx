@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { Card, Button, cn } from '../../components/UI'
 import { CheckCircle, XCircle, Clock, Eye, Search, Filter, User, Mail, Calendar, Trash2, ArrowUpRight, MessageSquare, Sparkles } from 'lucide-react'
+import { showApiError, toastSuccess } from '@/lib/notify'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 
@@ -38,11 +39,12 @@ export const AdminSubmissions = () => {
         headers: { Authorization: `Bearer ${token}` }
       })
       fetchSubs()
+      toastSuccess(status === 'approved' ? 'Đã phê duyệt bài dự thi.' : 'Đã từ chối bài dự thi.')
       if (selectedSub?.id === id) {
         setSelectedSub({...selectedSub, status})
       }
     } catch (err) {
-      alert('Lỗi khi cập nhật trạng thái')
+      showApiError(err, 'Lỗi khi cập nhật trạng thái.')
     }
   }
 

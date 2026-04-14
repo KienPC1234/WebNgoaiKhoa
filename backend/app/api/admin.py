@@ -1,13 +1,18 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from datetime import datetime, timezone
 from app.db.session import get_db
 from app.models.user import User
-from app.models.publication import ContentType, Event, Publication, Story, Submission
+from app.models.publication import ContentType, Event, Publication, SocialScale, StaffProfile, Story, Submission
 from app.api.auth import get_current_admin
 from app.db.notifications import manager
 from app.schemas.schemas import (
     EventCreate,
     EventOut,
+    SocialScaleCreate,
+    SocialScaleOut,
+    StaffProfileCreate,
+    StaffProfileOut,
     StoryCreate,
     StoryOut,
     UserOut, UserUpdate, 
@@ -54,6 +59,14 @@ async def update_user(user_id: int, user_update: UserUpdate, db: Session = Depen
 async def get_publications(db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
     return db.query(Publication).order_by(Publication.created_at.desc()).all()
 
+
+@router.get("/publications/{pub_id}", response_model=PublicationOut)
+async def get_publication_by_id(pub_id: int, db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
+    pub = db.query(Publication).filter(Publication.id == pub_id).first()
+    if not pub:
+        raise HTTPException(status_code=404, detail="Publication not found")
+    return pub
+
 @router.post("/publications", response_model=PublicationOut)
 async def create_publication(pub: PublicationCreate, db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
     payload = normalize_publication_payload(pub)
@@ -92,6 +105,18 @@ async def delete_publication(pub_id: int, db: Session = Depends(get_db), admin: 
 @router.get("/events", response_model=List[EventOut])
 async def get_events(db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
     return db.query(Event).order_by(Event.event_date.asc()).all()
+
+
+@router.get("/events/upcoming", response_model=List[EventOut])
+async def get_upcoming_events_for_admin(db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
+    now = datetime.now(timezone.utc)
+    return (
+        db.query(Event)
+        .filter(Event.is_active == True)
+        .filter((Event.event_date >= now) | (Event.status.in_(["upcoming", "registration"])))
+        .order_by(Event.event_date.asc())
+        .all()
+    )
 
 
 @router.post("/events", response_model=EventOut)
@@ -165,6 +190,78 @@ async def delete_story(story_id: int, db: Session = Depends(get_db), admin: User
     db.delete(story)
     db.commit()
     return {"message": "Story deleted"}
+
+
+# --- Social Scale CMS ---
+
+@router.get("/social-scale", response_model=SocialScaleOut)
+async def get_social_scale(db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
+    item = db.query(SocialScale).order_by(SocialScale.updated_at.desc(), SocialScale.id.desc()).first()
+    if not item:
+        item = SocialScale(
+            hero_title="Tổ xã hội - Quy mô & phát triển",
+            hero_subtitle="Cập nhật dữ liệu quy mô theo từng năm học.",
+            vision="Deep learning with love",
+            subjects_overview="Ngữ văn, KTPL, Lịch sử, Địa lí, Vovinam",
+            roadmap="Cấu trúc tổ chức; chỉ tiêu học thuật; học liệu; báo cáo theo học kỳ",
+            is_active=True,
+        )
+        db.add(item)
+        db.commit()
+        db.refresh(item)
+    return item
+
+
+@router.put("/social-scale", response_model=SocialScaleOut)
+async def update_social_scale(payload: SocialScaleCreate, db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
+    item = db.query(SocialScale).order_by(SocialScale.updated_at.desc(), SocialScale.id.desc()).first()
+    if not item:
+        item = SocialScale(**payload.model_dump())
+        db.add(item)
+    else:
+        for key, value in payload.model_dump().items():
+            setattr(item, key, value)
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+# --- Staff Profile CMS ---
+
+@router.get("/staff", response_model=List[StaffProfileOut])
+async def get_staff(db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
+    return db.query(StaffProfile).order_by(StaffProfile.display_order.asc(), StaffProfile.created_at.desc()).all()
+
+
+@router.post("/staff", response_model=StaffProfileOut)
+async def create_staff(payload: StaffProfileCreate, db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
+    item = StaffProfile(**payload.model_dump())
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+@router.put("/staff/{staff_id}", response_model=StaffProfileOut)
+async def update_staff(staff_id: int, payload: StaffProfileCreate, db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
+    item = db.query(StaffProfile).filter(StaffProfile.id == staff_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Staff profile not found")
+    for key, value in payload.model_dump().items():
+        setattr(item, key, value)
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+@router.delete("/staff/{staff_id}")
+async def delete_staff(staff_id: int, db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
+    item = db.query(StaffProfile).filter(StaffProfile.id == staff_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Staff profile not found")
+    db.delete(item)
+    db.commit()
+    return {"message": "Staff profile deleted"}
 
 # --- Submission Management ---
 

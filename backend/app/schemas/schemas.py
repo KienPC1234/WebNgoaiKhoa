@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict
-from typing import Optional, Literal
+from typing import Any, Dict, Literal, Optional
 from datetime import datetime
 
 # --- User Schemas ---
@@ -28,6 +28,7 @@ class PublicationBase(BaseModel):
     content_type: Optional[str] = None
     featured_year: Optional[str] = None
     image_url: Optional[str] = None
+    layout_metadata: Optional[Dict[str, Any]] = None
 
 class PublicationCreate(PublicationBase):
     pass
@@ -103,6 +104,54 @@ class StoryCreate(StoryBase):
 
 
 class StoryOut(StoryBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    created_at: datetime
+
+
+# --- Social Scale Schemas ---
+class SocialScaleBase(BaseModel):
+    hero_title: str
+    hero_subtitle: Optional[str] = None
+    vision: Optional[str] = None
+    subjects_overview: Optional[str] = None
+    staff_count: int = 20
+    student_count: int = 5000
+    projects_count: int = 100
+    awards_count: int = 25
+    roadmap: Optional[str] = None
+    is_active: Optional[bool] = True
+
+
+class SocialScaleCreate(SocialScaleBase):
+    pass
+
+
+class SocialScaleOut(SocialScaleBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    created_at: datetime
+
+
+# --- Staff Profile Schemas ---
+class StaffProfileBase(BaseModel):
+    full_name: str
+    title: str
+    bio: Optional[str] = None
+    email: Optional[str] = None
+    image_url: Optional[str] = None
+    expertise: Optional[str] = None
+    display_order: Optional[int] = 0
+    is_active: Optional[bool] = True
+
+
+class StaffProfileCreate(StaffProfileBase):
+    pass
+
+
+class StaffProfileOut(StaffProfileBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int

@@ -1,0 +1,14 @@
+tunnel: REPLACE_WITH_TUNNEL_ID
+credentials-file: /home/your-user/.cloudflared/REPLACE_WITH_TUNNEL_ID.json
+
+ingress:
+  # Frontend public HTTPS
+  - hostname: ngoaikhoa.fptoj.com
+    service: http://localhost:5173
+
+  # If you want a dedicated API subdomain instead of same hostname, use this and set VITE_API_URL accordingly.
+  # - hostname: api.ngoaikhoa.fptoj.com
+  #   service: http://localhost:3002
+
+  # Catch-all
+  - service: http_status:404

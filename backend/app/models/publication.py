@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.sql import func
 from app.db.session import Base
 import enum
@@ -31,6 +31,7 @@ class Publication(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     image_url = Column(String(500), nullable=True)
+    layout_metadata = Column(JSON, nullable=True)
 
 
 class Event(Base):
@@ -59,6 +60,39 @@ class Story(Base):
     image_url = Column(String(500), nullable=True)
     read_time_minutes = Column(Integer, nullable=False, default=5)
     is_published = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class SocialScale(Base):
+    __tablename__ = "social_scale"
+
+    id = Column(Integer, primary_key=True, index=True)
+    hero_title = Column(String(255), nullable=False, default="Tổ xã hội - Quy mô & phát triển")
+    hero_subtitle = Column(Text, nullable=True)
+    vision = Column(Text, nullable=True)
+    subjects_overview = Column(String(500), nullable=True)
+    staff_count = Column(Integer, nullable=False, default=20)
+    student_count = Column(Integer, nullable=False, default=5000)
+    projects_count = Column(Integer, nullable=False, default=100)
+    awards_count = Column(Integer, nullable=False, default=25)
+    roadmap = Column(Text, nullable=True)
+    is_active = Column(Boolean, nullable=False, default=True)
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class StaffProfile(Base):
+    __tablename__ = "staff_profiles"
+
+    id = Column(Integer, primary_key=True, index=True)
+    full_name = Column(String(255), nullable=False)
+    title = Column(String(255), nullable=False)
+    bio = Column(Text, nullable=True)
+    email = Column(String(255), nullable=True)
+    image_url = Column(String(500), nullable=True)
+    expertise = Column(String(255), nullable=True)
+    display_order = Column(Integer, nullable=False, default=0)
+    is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 class Submission(Base):

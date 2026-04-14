@@ -1,20 +1,35 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.db.session import get_db
-from app.models.publication import Publication, Submission, Category, ContentType, Event, Story
+from app.models.publication import Publication, Submission, Category, ContentType, Event, Story, SocialScale, StaffProfile
 from app.models.user import User
 from app.db.notifications import manager
-from app.api.auth import get_current_contestant
+from app.api.auth import get_current_contestant, verify_recaptcha_or_raise
 from app.schemas.schemas import (
     EventOut,
     PublicationOut,
+    SocialScaleOut,
+    StaffProfileOut,
     StoryOut,
     SubmissionOut,
     SubmissionCreate,
 )
 from typing import List, Optional
+from pydantic import BaseModel
 
 router = APIRouter()
+
+
+class SubmissionIn(BaseModel):
+    title: str
+    content: str
+    student_name: Optional[str] = None
+    student_email: Optional[str] = None
+    recaptcha_token: Optional[str] = None
+
+
+class VoteIn(BaseModel):
+    recaptcha_token: Optional[str] = None
 
 # --- Public Endpoints ---
 
@@ -85,14 +100,50 @@ async def get_inspiring_stories(db: Session = Depends(get_db)):
         .all()
     )
 
+
+@router.get("/nhanvat/scale", response_model=SocialScaleOut)
+async def get_social_scale(db: Session = Depends(get_db)):
+    item = (
+        db.query(SocialScale)
+        .filter(SocialScale.is_active == True)
+        .order_by(SocialScale.updated_at.desc(), SocialScale.id.desc())
+        .first()
+    )
+    if not item:
+        raise HTTPException(status_code=404, detail="Social scale data not found")
+    return item
+
+
+@router.get("/nhanvat/staff", response_model=List[StaffProfileOut])
+async def get_staff_profiles(db: Session = Depends(get_db)):
+    return (
+        db.query(StaffProfile)
+        .filter(StaffProfile.is_active == True)
+        .order_by(StaffProfile.display_order.asc(), StaffProfile.created_at.desc())
+        .all()
+    )
+
 @router.get("/submissions", response_model=List[SubmissionOut])
 async def get_public_submissions(db: Session = Depends(get_db)):
     # Only show approved submissions to the public
     return db.query(Submission).filter(Submission.status == "approved").order_by(Submission.created_at.desc()).all()
 
 @router.post("/submissions", response_model=SubmissionOut)
-async def create_public_submission(sub: SubmissionCreate, db: Session = Depends(get_db)):
-    new_sub = Submission(**sub.model_dump(), status="pending", votes=0)
+async def create_public_submission(
+    sub: SubmissionIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_contestant),
+):
+    verify_recaptcha_or_raise(sub.recaptcha_token, action="submission_create")
+
+    new_sub = Submission(
+        title=sub.title,
+        content=sub.content,
+        student_name=current_user.full_name or sub.student_name,
+        student_email=current_user.email,
+        status="pending",
+        votes=0,
+    )
     db.add(new_sub)
     db.commit()
     db.refresh(new_sub)
@@ -110,10 +161,12 @@ async def create_public_submission(sub: SubmissionCreate, db: Session = Depends(
 
 @router.post("/submissions/contestant", response_model=SubmissionOut)
 async def create_contestant_submission(
-    sub: SubmissionCreate,
+    sub: SubmissionIn,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_contestant),
 ):
+    verify_recaptcha_or_raise(sub.recaptcha_token, action="submission_create")
+
     new_sub = Submission(
         title=sub.title,
         content=sub.content,
@@ -149,7 +202,14 @@ async def get_my_submissions(
     )
 
 @router.post("/submissions/{sub_id}/vote")
-async def vote_submission(sub_id: int, db: Session = Depends(get_db)):
+async def vote_submission(
+    sub_id: int,
+    payload: VoteIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_contestant),
+):
+    verify_recaptcha_or_raise(payload.recaptcha_token, action="submission_vote")
+
     submission = db.query(Submission).filter(Submission.id == sub_id, Submission.status == "approved").first()
     if not submission:
         raise HTTPException(status_code=404, detail="Submission not found or not approved")

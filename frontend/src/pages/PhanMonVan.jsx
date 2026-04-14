@@ -2,8 +2,13 @@ import { useState, useEffect } from 'react'
 import { Card, Button, cn } from '../components/UI'
 import { Send, ThumbsUp, MessageCircle, Edit3, ShieldCheck, PenTool, BookOpen, User, Calendar, X, Sparkles } from 'lucide-react'
 import axios from 'axios'
+import { useNavigate } from 'react-router-dom'
+import ReCAPTCHA from 'react-google-recaptcha'
+import { useRef } from 'react'
+import { showApiError, toastError, toastInfo, toastSuccess } from '@/lib/notify'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
+const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY || ''
 
 export const PhanMonVan = () => {
   const [activeTab, setActiveTab] = useState('sang-tac')
@@ -16,6 +21,10 @@ export const PhanMonVan = () => {
   const [content, setContent] = useState('')
   const [studentName, setStudentName] = useState('')
   const [studentEmail, setStudentEmail] = useState('')
+  const navigate = useNavigate()
+  const recaptchaRef = useRef(null)
+
+  const token = localStorage.getItem('token')
 
   useEffect(() => {
     if (activeTab === 'bai-thi') {
@@ -36,34 +45,69 @@ export const PhanMonVan = () => {
   }
 
   const handleSendToBGK = async () => {
+    if (!token) {
+      toastInfo('Vui lòng đăng nhập để gửi bài thi.')
+      navigate('/login')
+      return
+    }
+
     if (!title || !content || !studentName || !studentEmail) {
-      alert('Vui lòng điền đầy đủ thông tin!')
+      toastError('Vui lòng điền đầy đủ thông tin.')
       return
     }
 
     setSubmissionStatus('loading')
     try {
+      let recaptchaToken = null
+      if (RECAPTCHA_SITE_KEY && recaptchaRef.current) {
+        recaptchaToken = await recaptchaRef.current.executeAsync()
+        recaptchaRef.current.reset()
+      }
+
       await axios.post(`${API_URL}/public/submissions`, {
         title,
         content,
         student_name: studentName,
-        student_email: studentEmail
+        student_email: studentEmail,
+        recaptcha_token: recaptchaToken,
+      }, {
+        headers: { Authorization: `Bearer ${token}` },
       })
       setSubmissionStatus('success')
       setTitle('')
       setContent('')
+      toastSuccess('Đã gửi bài thi thành công.')
     } catch (error) {
       console.error('Submission error:', error)
       setSubmissionStatus('error')
+      showApiError(error, 'Gửi bài thi thất bại.')
     }
   }
 
   const handleVote = async (id) => {
+    if (!token) {
+      toastInfo('Vui lòng đăng nhập để bình chọn bài thi.')
+      navigate('/login')
+      return
+    }
+
     try {
-      const response = await axios.post(`${API_URL}/public/submissions/${id}/vote`)
+      let recaptchaToken = null
+      if (RECAPTCHA_SITE_KEY && recaptchaRef.current) {
+        recaptchaToken = await recaptchaRef.current.executeAsync()
+        recaptchaRef.current.reset()
+      }
+
+      const response = await axios.post(`${API_URL}/public/submissions/${id}/vote`, {
+        recaptcha_token: recaptchaToken,
+      }, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
       setApprovedSubmissions(prev => prev.map(s => s.id === id ? { ...s, votes: response.data.votes } : s))
+      toastSuccess('Đã bình chọn thành công.')
     } catch (error) {
       console.error('Vote error:', error)
+      showApiError(error, 'Bình chọn thất bại.')
     }
   }
 
@@ -204,6 +248,7 @@ export const PhanMonVan = () => {
                     Ối! Có lỗi xảy ra trong quá trình gửi. Vui lòng kiểm tra lại kết nối mạng.
                   </div>
                 )}
+                {RECAPTCHA_SITE_KEY && <ReCAPTCHA ref={recaptchaRef} size="invisible" sitekey={RECAPTCHA_SITE_KEY} />}
               </Card>
             </div>
           )}

@@ -17,9 +17,15 @@ import { EventsUpcoming } from '@/pages/EventsUpcoming'
 import { StoriesInspiring } from '@/pages/StoriesInspiring'
 import { SubjectContentHub } from '@/pages/SubjectContentHub'
 import { HonorsYearly } from '@/pages/HonorsYearly'
-import { AdminLogin } from '@/pages/Admin/Login'
+import { Login } from '@/pages/Login'
+import { Register } from '@/pages/Register'
+import { Profile } from '@/pages/Profile'
+import { VerifyEmail } from '@/pages/VerifyEmail'
 import { AdminDashboard } from '@/pages/Admin/Dashboard'
+import { AdminNhanVatCMS } from '@/pages/Admin/NhanVatCMS'
 import { AdminPublications } from '@/pages/Admin/Publications'
+import { AdminEvents } from '@/pages/Admin/Events'
+import { AdminStories } from '@/pages/Admin/Stories'
 import { AdminSubmissions } from '@/pages/Admin/Submissions'
 import { AdminUsers } from '@/pages/Admin/Users'
 
@@ -70,8 +76,13 @@ const AnimatedRoutes = () => {
           <Route path="lienhe" element={<PageWrapper><EventsUpcoming /></PageWrapper>} />
         </Route>
         
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/verify-email" element={<VerifyEmail />} />
+        <Route path="/profile" element={<UserProtectedRoute><Profile /></UserProtectedRoute>} />
+
         {/* Admin Routes */}
-        <Route path="/admin/login" element={<AdminLogin />} />
+        <Route path="/admin/login" element={<Navigate to="/login" replace />} />
         <Route path="/admin" element={
           <ProtectedRoute>
             <AdminLayout />
@@ -79,7 +90,14 @@ const AnimatedRoutes = () => {
         }>
           <Route path="dashboard" element={<PageWrapper><AdminDashboard /></PageWrapper>} />
           <Route path="publications" element={<PageWrapper><AdminPublications /></PageWrapper>} />
-          <Route path="submissions" element={<PageWrapper><AdminSubmissions /></PageWrapper>} />
+          <Route path="events" element={<PageWrapper><AdminEvents /></PageWrapper>} />
+          <Route path="cms" element={<Navigate to="/admin/cms/stories" replace />} />
+          <Route path="cms/stories" element={<PageWrapper><AdminStories /></PageWrapper>} />
+          <Route path="cms/nhanvat" element={<PageWrapper><AdminNhanVatCMS /></PageWrapper>} />
+          <Route path="cms/submissions" element={<PageWrapper><AdminSubmissions /></PageWrapper>} />
+          <Route path="stories" element={<Navigate to="/admin/cms/stories" replace />} />
+          <Route path="nhanvat" element={<Navigate to="/admin/cms/nhanvat" replace />} />
+          <Route path="submissions" element={<Navigate to="/admin/cms/submissions" replace />} />
           <Route path="users" element={<PageWrapper><AdminUsers /></PageWrapper>} />
           <Route path="ai-knowledge" element={<div className="text-center py-20 text-gray-500 font-black italic">Tính năng AI Knowledge đang phát triển...</div>} />
           <Route index element={<Navigate to="/admin/dashboard" replace />} />
@@ -100,7 +118,13 @@ const ProtectedRoute = ({ children }) => {
     role = null
   }
 
-  if (!token || role !== 'admin') return <Navigate to="/admin/login" replace />
+  if (!token || role !== 'admin') return <Navigate to="/login" replace />
+  return children
+}
+
+const UserProtectedRoute = ({ children }) => {
+  const token = localStorage.getItem('token')
+  if (!token) return <Navigate to="/login" replace />
   return children
 }
 

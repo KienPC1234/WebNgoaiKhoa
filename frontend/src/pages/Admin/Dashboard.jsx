@@ -1,15 +1,13 @@
 import { useEffect, useState } from 'react'
-import axios from 'axios'
 import { cn } from '../../components/UI'
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table"
 import { Users, FileText, Send, PieChart, Clock, AlertCircle, ArrowUpRight, TrendingUp, Calendar, Zap } from 'lucide-react'
+import { cmsService } from '@/lib/cmsService'
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar, Cell, Pie, Pie as RePie, Legend
 } from 'recharts'
-
-const API_URL = import.meta.env.VITE_API_URL || '/api'
 
 const data = [
   { name: 'T2', views: 400, submissions: 24 },
@@ -28,14 +26,13 @@ export const AdminDashboard = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      const token = localStorage.getItem('token')
       try {
         const [statsRes, subsRes] = await Promise.all([
-          axios.get(`${API_URL}/admin/stats`, { headers: { Authorization: `Bearer ${token}` } }),
-          axios.get(`${API_URL}/admin/submissions`, { headers: { Authorization: `Bearer ${token}` } })
+          cmsService.getStats(),
+          cmsService.getRecentSubmissions(),
         ])
-        setStats(statsRes.data)
-        setRecentSubmissions(subsRes.data.slice(0, 5))
+        setStats(statsRes)
+        setRecentSubmissions((subsRes || []).slice(0, 5))
       } catch (err) {
         console.error('Error fetching dashboard data:', err)
       } finally {

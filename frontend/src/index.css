@@ -1,10 +1,11 @@
 @import 'katex/dist/katex.min.css';
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700;800;900&display=swap');
 @import "tailwindcss";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-sans: "Be Vietnam Pro", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 
   --color-fpt-orange: #F27024;
@@ -149,8 +150,13 @@
   }
   body {
     @apply bg-background text-foreground;
-    background-image: radial-gradient(at 0% 0%, hsla(20, 90%, 95%, 1) 0, transparent 50%),
-                      radial-gradient(at 100% 0%, hsla(210, 90%, 95%, 1) 0, transparent 50%);
+    background-image:
+      linear-gradient(to right, rgba(29, 42, 87, 0.04) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(29, 42, 87, 0.04) 1px, transparent 1px),
+      radial-gradient(at 0% 0%, hsla(20, 90%, 95%, 1) 0, transparent 55%),
+      radial-gradient(at 100% 0%, hsla(210, 90%, 95%, 1) 0, transparent 55%),
+      linear-gradient(180deg, #f8fbff 0%, #fffaf4 100%);
+    background-size: 24px 24px, 24px 24px, auto, auto, auto;
     background-attachment: fixed;
   }
 }

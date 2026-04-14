@@ -1,3 +1,13 @@
+from app.models.publication import (
+    Comment,
+    ContentType,
+    Event,
+    Publication,
+    SocialScale,
+    StaffProfile,
+    Story,
+    Submission,
+)
 import pymysql
 import os
 from dotenv import load_dotenv
@@ -5,7 +15,6 @@ from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import sessionmaker
 from app.db.session import Base
 from app.models.user import User, UserRole
-from app.models.publication import ContentType, Event, Publication, Story, Submission, Comment
 from passlib.context import CryptContext
 from datetime import datetime, timezone, timedelta
 
@@ -57,6 +66,7 @@ def init_database():
     try:
         inspector = inspect(engine)
         pub_columns = {c["name"] for c in inspector.get_columns("publications")}
+        user_columns = {c["name"] for c in inspector.get_columns("users")}
         statements = []
 
         if "subject" not in pub_columns:
@@ -65,6 +75,19 @@ def init_database():
             statements.append("ALTER TABLE publications ADD COLUMN content_type VARCHAR(50) NOT NULL DEFAULT 'an-pham'")
         if "featured_year" not in pub_columns:
             statements.append("ALTER TABLE publications ADD COLUMN featured_year VARCHAR(20) NULL")
+        if "layout_metadata" not in pub_columns:
+            statements.append("ALTER TABLE publications ADD COLUMN layout_metadata JSON NULL")
+
+        if "email_verified" not in user_columns:
+            statements.append("ALTER TABLE users ADD COLUMN email_verified TINYINT(1) NOT NULL DEFAULT 0")
+        if "verification_token" not in user_columns:
+            statements.append("ALTER TABLE users ADD COLUMN verification_token VARCHAR(255) NULL")
+        if "verification_token_expires_at" not in user_columns:
+            statements.append("ALTER TABLE users ADD COLUMN verification_token_expires_at DATETIME NULL")
+        if "last_verification_sent_at" not in user_columns:
+            statements.append("ALTER TABLE users ADD COLUMN last_verification_sent_at DATETIME NULL")
+        if "is_subscribed" not in user_columns:
+            statements.append("ALTER TABLE users ADD COLUMN is_subscribed BOOLEAN NOT NULL DEFAULT 1")
 
         if statements:
             with engine.begin() as conn:
@@ -76,6 +99,7 @@ def init_database():
             conn.execute(text("UPDATE publications SET subject = category WHERE subject IS NULL OR subject = ''"))
             conn.execute(text("UPDATE publications SET category = subject WHERE category IS NULL OR category = ''"))
             conn.execute(text("UPDATE publications SET content_type = 'an-pham' WHERE content_type IS NULL OR content_type = ''"))
+            conn.execute(text("UPDATE users SET is_subscribed = 1 WHERE is_subscribed IS NULL"))
     except Exception as e:
         print(f"Warning: schema upgrade skipped due to: {e}")
 
@@ -92,7 +116,8 @@ def init_database():
                 hashed_password=get_password_hash("admin123"),
                 full_name="Ban Tổ Chức (Admin)",
                 role=UserRole.ADMIN,
-                is_active=True
+                is_active=True,
+                email_verified=True,
             )
             db.add(new_admin)
             db.commit()
@@ -108,6 +133,9 @@ def init_database():
                 print("Admin password reset to demo credentials.")
             else:
                 print("Admin user already exists with compatible password hash.")
+            admin.email_verified = True
+            db.add(admin)
+            db.commit()
     except Exception as e:
         print(f"Error seeding database: {e}")
     # 4. Seed Demo Data
@@ -219,6 +247,69 @@ def init_database():
             db.add_all(demo_stories)
             db.commit()
             print("Demo stories seeded.")
+
+        if db.query(SocialScale).count() == 0:
+            print("Seeding social scale profile...")
+            scale = SocialScale(
+                hero_title="Tổ xã hội - Quy mô & phát triển",
+                hero_subtitle="Deep learning with love - Kết nối tri thức xã hội trong môi trường số.",
+                vision="Phát triển năng lực công dân toàn cầu cho học sinh sinh viên thông qua các phân môn xã hội và hoạt động liên ngành.",
+                subjects_overview="Ngữ Văn, Kinh tế pháp luật, Lịch sử, Địa lí, Vovinam",
+                staff_count=50,
+                student_count=5000,
+                projects_count=100,
+                awards_count=25,
+                roadmap="2026-2028: mở rộng học liệu số, hệ sinh thái sự kiện liên môn và mạng lưới cố vấn học thuật.",
+                is_active=True,
+            )
+            db.add(scale)
+            db.commit()
+            print("Social scale seeded.")
+
+        if db.query(StaffProfile).count() == 0:
+            print("Seeding staff profiles...")
+            staff_items = [
+                StaffProfile(
+                    full_name="ThS. Nguyễn Văn A",
+                    title="Trưởng bộ môn Ngữ Văn",
+                    bio="Hơn 15 năm kinh nghiệm giảng dạy và nghiên cứu văn học hiện đại.",
+                    expertise="Văn học hiện đại",
+                    image_url="https://i.pravatar.cc/300?u=staff-a",
+                    display_order=1,
+                    is_active=True,
+                ),
+                StaffProfile(
+                    full_name="TS. Trần Thị B",
+                    title="Giảng viên Lịch sử",
+                    bio="Chuyên gia về lịch sử bang giao quốc tế và văn hóa Việt Nam.",
+                    expertise="Lịch sử và văn hóa",
+                    image_url="https://i.pravatar.cc/300?u=staff-b",
+                    display_order=2,
+                    is_active=True,
+                ),
+                StaffProfile(
+                    full_name="ThS. Lê Văn C",
+                    title="Huấn luyện viên Vovinam",
+                    bio="Võ sư trung đẳng, tâm huyết với sự nghiệp phát triển võ thuật học đường.",
+                    expertise="Vovinam",
+                    image_url="https://i.pravatar.cc/300?u=staff-c",
+                    display_order=3,
+                    is_active=True,
+                ),
+                StaffProfile(
+                    full_name="ThS. Phạm Thị D",
+                    title="Giảng viên Địa lí",
+                    bio="Nghiên cứu sâu về biến đổi khí hậu và quy hoạch vùng.",
+                    expertise="Địa lí ứng dụng",
+                    image_url="https://i.pravatar.cc/300?u=staff-d",
+                    display_order=4,
+                    is_active=True,
+                ),
+            ]
+            db.add_all(staff_items)
+            db.commit()
+            print("Staff profiles seeded.")
+
     except Exception as e:
         print(f"Error seeding publications: {e}")
     finally:

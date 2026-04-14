@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { Card, Button, cn } from '../../components/UI'
 import { User, Mail, Shield, Check, X, Search, Trash2, Edit, MoreVertical } from 'lucide-react'
+import { showApiError, toastSuccess } from '@/lib/notify'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 
@@ -37,8 +38,9 @@ export const AdminUsers = () => {
         headers: { Authorization: `Bearer ${token}` }
       })
       fetchUsers()
+      toastSuccess(!user.is_active ? 'Đã kích hoạt tài khoản.' : 'Đã khóa tài khoản.')
     } catch (err) {
-      alert('Lỗi khi cập nhật trạng thái người dùng')
+      showApiError(err, 'Lỗi khi cập nhật trạng thái người dùng.')
     }
   }
 
