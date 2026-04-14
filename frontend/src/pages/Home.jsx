@@ -1,22 +1,49 @@
 import { useState, useEffect } from 'react'
-import { ArrowRight, BookOpen, ShieldCheck, Sparkles, Calendar, ChevronRight, CheckCircle, Activity, Globe, Send } from 'lucide-react'
-import { Button, Card, cn } from '../components/UI'
+import {
+  ArrowRight,
+  BookOpen,
+  Calendar,
+  ChevronRight,
+  Compass,
+  Lightbulb,
+  Rocket,
+  Send,
+  Sparkles,
+  Users,
+} from 'lucide-react'
+import { Button, Card, cn, GridBackground, ShimmerButton, Spotlight } from '../components/UI'
 import { Link } from 'react-router-dom'
 import axios from 'axios'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
+const toPlainText = (value) => (value || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
 
-const FeatureCard = ({ icon: Icon, title, description, colorClass, aosDelay }) => (
-  <Card data-aos="fade-up" data-aos-delay={aosDelay} className={cn("hover:shadow-2xl transition-all hover:-translate-y-3 border-gray-100 group p-8 rounded-[32px] overflow-hidden relative", colorClass)}>
-    <div className="absolute -top-10 -right-10 opacity-10 group-hover:scale-150 transition-transform duration-700">
-      <Icon size={150} />
-    </div>
-    <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mb-6 transition-all group-hover:rotate-6 shadow-md relative z-10">
-      <Icon size={32} className="text-gray-800" />
-    </div>
-    <h3 className="text-2xl font-black mb-3 text-white relative z-10">{title}</h3>
-    <p className="text-white/80 text-sm font-medium leading-relaxed relative z-10">{description}</p>
-  </Card>
+const featureCards = [
+  {
+    icon: Lightbulb,
+    title: 'Sáng tạo học thuật',
+    description: 'Không gian để các ý tưởng thành bài viết, dự án và thảo luận có chiều sâu.',
+    colorClass: 'from-[#f7f3ea] to-white border-amber-100 text-amber-700',
+  },
+  {
+    icon: Compass,
+    title: 'Định hướng rõ ràng',
+    description: 'Hệ sinh thái nội dung theo từng phân môn, dễ theo dõi và triển khai học tập cá nhân.',
+    colorClass: 'from-[#eef5ff] to-white border-blue-100 text-fpt-blue',
+  },
+  {
+    icon: Rocket,
+    title: 'Bứt tốc cùng AI',
+    description: 'Trợ lý thông minh hỗ trợ tra cứu nhanh, tóm tắt kiến thức và gợi ý ý tưởng mới.',
+    colorClass: 'from-[#edf9f1] to-white border-emerald-100 text-emerald-700',
+  },
+]
+
+const HeroStat = ({ value, label }) => (
+  <div className="rounded-2xl border border-white/70 bg-white/80 px-4 py-3 shadow-[0_12px_28px_-20px_rgba(15,23,42,0.5)] backdrop-blur">
+    <p className="text-2xl font-black text-fpt-blue md:text-3xl">{value}</p>
+    <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-400">{label}</p>
+  </div>
 )
 
 export const Home = () => {
@@ -39,124 +66,168 @@ export const Home = () => {
   }, [])
 
   return (
-    <div className="space-y-32 pb-32">
-      {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-white via-orange-50/30 to-blue-50/30 px-4 pt-20 pb-20 border-b border-gray-100">
-        <div className="container mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-          <div className="relative z-10 space-y-8" data-aos="fade-right">
-            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-orange-400 to-fpt-orange text-white px-5 py-2 rounded-full text-xs font-black uppercase tracking-widest shadow-lg shadow-orange-200">
-              <Sparkles size={16} className="animate-pulse" />
-              <span>Sức mạnh AI tại FPT Education</span>
+    <div className="space-y-28 pb-28">
+      <section className="relative min-h-[92vh] overflow-hidden border-b border-slate-100 bg-white px-4 pb-16 pt-20 md:pt-24">
+        <div className="pointer-events-none absolute inset-0 z-0">
+          <div className="absolute -right-44 -top-56 h-[780px] w-[780px] rounded-full bg-fpt-orange/15 blur-[130px]" />
+          <div className="absolute -bottom-44 -left-32 h-[560px] w-[560px] rounded-full bg-fpt-blue/10 blur-[120px]" />
+          <div className="absolute inset-0 opacity-40" style={{ backgroundImage: 'radial-gradient(circle at 1.6px 1.6px, rgba(148,163,184,0.4) 1px, transparent 0)', backgroundSize: '34px 34px' }} />
+        </div>
+
+        <GridBackground className="opacity-25" />
+        <Spotlight className="opacity-80" />
+
+        <div className="container relative z-10 mx-auto grid grid-cols-1 items-center gap-14 lg:grid-cols-12">
+          <div className="lg:col-span-7" data-aos="fade-right">
+            <div className="mb-10 inline-flex items-center gap-3 rounded-full border border-slate-200 bg-white/95 px-5 py-2 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500 shadow-lg shadow-slate-200/50">
+              <Sparkles size={14} className="text-fpt-orange" />
+              FPT Extracurricular 2026
             </div>
-            <h1 className="text-6xl md:text-8xl font-black leading-tight text-fpt-blue italic drop-shadow-sm">
-              TỔ <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-fpt-orange to-orange-400 not-italic">XÃ HỘI</span>
+
+            <div className="mb-8 flex items-center gap-4">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-orange-100 bg-white shadow-[0_14px_34px_-22px_rgba(242,112,36,0.9)]">
+                <img src="/favicon.svg" alt="Logo Tổ xã hội" className="h-8 w-8 object-contain" />
+              </div>
+              <div>
+                <p className="font-display text-2xl font-black uppercase tracking-tight text-fpt-blue sm:text-3xl">Tổ xã hội</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-fpt-orange sm:text-[11px]">Deep learning with love</p>
+              </div>
+            </div>
+
+            <h1 className="text-balance text-[52px] font-black uppercase leading-[0.84] text-fpt-blue sm:text-[72px] lg:text-[108px]">
+              Nhịp đập
+              <br />
+              <span className="relative inline-block italic text-fpt-orange">
+                Sáng tạo
+                <svg className="absolute -bottom-5 left-0 h-7 w-full text-fpt-green/20" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">
+                  <path d="M0 6 Q 25 0 50 6 T 100 6" stroke="currentColor" strokeWidth="10" fill="none" />
+                </svg>
+              </span>
             </h1>
-            <p className="text-xl text-gray-600 font-medium leading-relaxed max-w-xl">
-              Deep learning with love — Nơi khơi nguồn sáng tạo và kết nối tri thức. Trải nghiệm không gian ngoại khóa đầy màu sắc, năng động cùng trợ lý AI thông minh 24/7.
+
+            <p className="mt-8 max-w-2xl text-lg font-medium leading-relaxed text-slate-500 md:text-2xl">
+              Nền tảng kết nối đam mê, khơi nguồn tri thức và lan tỏa tinh thần học tập chủ động cho cộng đồng học sinh FPT.
             </p>
-            <div className="flex flex-wrap gap-4 pt-4">
-              <Link to="/phanmon/van">
-                <Button className="bg-fpt-orange text-white px-10 py-5 text-lg font-black rounded-2xl shadow-xl shadow-orange-200 hover:-translate-y-1 transition-all flex items-center gap-2">
-                  KHÁM PHÁ NHÁI BÉN <ArrowRight size={20} />
-                </Button>
+
+            <div className="mt-10 flex flex-wrap gap-4">
+              <Link to="/phanmon/van/an-pham">
+                <ShimmerButton className="rounded-2xl px-8 py-4 text-sm md:px-10 md:py-5 md:text-base">
+                  Khám phá ngay <ArrowRight size={18} />
+                </ShimmerButton>
               </Link>
-              <Link to="/phanmon/ktpl">
-                <Button className="bg-fpt-blue text-white px-10 py-5 text-lg font-black rounded-2xl shadow-xl shadow-blue-200 hover:-translate-y-1 transition-all">
-                  GÓC KTPL
+              <Link to="/stories/inspiring">
+                <Button className="rounded-2xl bg-fpt-blue px-8 py-4 text-sm font-black text-white shadow-xl shadow-blue-200 transition-all hover:-translate-y-1 md:px-10 md:py-5 md:text-base">
+                  Câu chuyện truyền cảm hứng
                 </Button>
               </Link>
             </div>
-            
-            <div className="flex gap-8 pt-8 border-t border-gray-200/60 mt-8">
-              <div className="space-y-1">
-                <h4 className="font-black text-3xl text-fpt-blue">500+</h4>
-                <p className="text-xs text-gray-500 uppercase tracking-widest font-bold">Thành viên</p>
-              </div>
-              <div className="space-y-1">
-                <h4 className="font-black text-3xl text-fpt-orange">3+</h4>
-                <p className="text-xs text-gray-500 uppercase tracking-widest font-bold">Phân môn</p>
-              </div>
-              <div className="space-y-1">
-                <h4 className="font-black text-3xl text-fpt-green">24/7</h4>
-                <p className="text-xs text-gray-500 uppercase tracking-widest font-bold">AI Support</p>
-              </div>
+
+            <div className="mt-12 grid max-w-xl grid-cols-3 gap-3 border-t border-slate-200/70 pt-6">
+              <HeroStat value="1,200+" label="Học sinh tham gia" />
+              <HeroStat value="50+" label="Nội dung chọn lọc" />
+              <HeroStat value="24/7" label="AI đồng hành" />
             </div>
           </div>
-          
-          <div className="relative hidden lg:block" data-aos="fade-left">
-            <div className="bg-gradient-to-br from-fpt-orange to-fpt-blue w-full aspect-square rounded-[80px] rotate-6 opacity-10 absolute inset-0 mix-blend-multiply"></div>
-            <div className="bg-white/80 backdrop-blur-xl border border-white/50 rounded-[60px] shadow-2xl p-12 relative overflow-hidden transform -rotate-2 hover:rotate-0 transition-transform duration-500">
-              <div className="space-y-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-gradient-to-r from-fpt-orange to-orange-400 rounded-full flex items-center justify-center text-white shadow-lg"><Activity size={24} /></div>
-                  <div className="space-y-2">
-                    <div className="h-4 w-48 bg-gray-200 rounded-full"></div>
-                    <div className="h-3 w-32 bg-gray-100 rounded-full"></div>
+
+          <div className="relative lg:col-span-5" data-aos="fade-left" data-aos-delay="120">
+            <div className="relative mx-auto aspect-[4/5] w-full max-w-[500px]">
+              <div className="absolute right-0 top-10 h-full w-[88%] -rotate-3 rounded-[2.6rem] border border-slate-200 bg-slate-50" />
+              <div className="group absolute right-4 top-5 h-full w-[88%] rotate-2 overflow-hidden rounded-[2.6rem] border border-slate-100 bg-white p-4 shadow-[0_34px_60px_-45px_rgba(15,23,42,0.65)] transition-transform duration-700 hover:rotate-0">
+                <div className="h-full w-full overflow-hidden rounded-[2.2rem] bg-gradient-to-br from-slate-900 via-fpt-blue to-slate-800 p-8 text-white">
+                  <div className="mb-8 inline-flex items-center gap-2 rounded-full bg-white/12 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em]">
+                    <BookOpen size={14} /> Editorial insight
                   </div>
-                </div>
-                <div className="h-4 w-full bg-gradient-to-r from-gray-100 to-gray-50 rounded-full"></div>
-                <div className="h-4 w-3/4 bg-gray-100 rounded-full"></div>
-                <div className="grid grid-cols-2 gap-4 pt-8">
-                  <div className="h-32 bg-orange-50/50 rounded-3xl border-2 border-orange-100 border-dashed flex items-center justify-center group hover:bg-orange-100 transition-colors">
-                    <BookOpen className="text-fpt-orange/40 group-hover:text-fpt-orange transition-colors" size={48} />
-                  </div>
-                  <div className="h-32 bg-blue-50/50 rounded-3xl border-2 border-blue-100 border-dashed flex items-center justify-center group hover:bg-blue-100 transition-colors">
-                    <Globe className="text-fpt-blue/40 group-hover:text-fpt-blue transition-colors" size={48} />
+                  <h3 className="text-3xl font-black leading-tight">Sáng tạo là hành trình tự do nhất của học sinh FPT.</h3>
+                  <p className="mt-5 text-sm leading-relaxed text-white/80">
+                    Mỗi bài viết là một góc nhìn độc đáo, mỗi dự án là một bước tiến của tinh thần học chủ động.
+                  </p>
+
+                  <div className="mt-8 space-y-3 rounded-2xl border border-white/20 bg-white/10 p-4 backdrop-blur">
+                    <div className="flex items-center justify-between text-xs font-bold uppercase tracking-widest text-white/80">
+                      <span>Creative ranking</span>
+                      <span>#01</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-white/20">
+                      <div className="h-full w-[84%] rounded-full bg-fpt-orange" />
+                    </div>
                   </div>
                 </div>
               </div>
-              <div className="absolute -bottom-10 -right-10 w-64 h-64 bg-fpt-orange opacity-10 blur-3xl"></div>
+
+              <div className="absolute -left-7 -top-8 flex h-24 w-24 flex-col items-center justify-center rounded-[1.6rem] bg-fpt-green text-white shadow-2xl shadow-fpt-green/35">
+                <p className="text-3xl font-black leading-none">01</p>
+                <p className="text-[8px] font-black uppercase tracking-widest">Ranking</p>
+              </div>
+
+              <div className="absolute -bottom-8 -right-8 flex h-32 w-32 flex-col items-center justify-center rounded-full bg-fpt-orange text-white shadow-2xl shadow-fpt-orange/35">
+                <p className="text-3xl font-black italic leading-none">HOT</p>
+                <p className="text-[8px] font-black uppercase tracking-widest">Sáng tác 2026</p>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Latest Publications Section */}
       <section className="container mx-auto px-4">
-        <div className="flex justify-between items-end mb-16" data-aos="fade-up">
-          <div className="space-y-4">
-            <h2 className="text-4xl md:text-5xl font-black text-fpt-blue italic uppercase tracking-tighter">Bản tin mới nhất</h2>
-            <div className="w-24 h-2 bg-gradient-to-r from-fpt-orange to-orange-400 rounded-full"></div>
+        <div className="mb-14 flex flex-col items-start justify-between gap-8 md:flex-row md:items-end" data-aos="fade-up">
+          <div>
+            <p className="mb-4 inline-flex items-center gap-2 rounded-full bg-orange-50 px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-fpt-orange">
+              <Sparkles size={14} /> Editorial selection
+            </p>
+            <h2 className="text-4xl font-black uppercase tracking-tight text-fpt-blue md:text-6xl">
+              Ấn phẩm <span className="italic text-fpt-orange">Nhái Bén</span>
+            </h2>
+            <p className="mt-4 max-w-2xl text-base font-medium text-slate-500 md:text-lg">
+              Khám phá thế giới quan đa chiều qua những trang viết đầy cảm hứng và trải nghiệm học thuật cập nhật.
+            </p>
           </div>
-          <Link to="/ngoaikhoa" className="hidden sm:flex text-fpt-blue font-black items-center gap-2 hover:gap-4 transition-all bg-blue-50 px-6 py-3 rounded-full hover:bg-blue-100">
-            XEM TẤT CẢ <ChevronRight size={20} />
+
+          <Link to="/phanmon/van/an-pham" className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-6 py-3 text-xs font-black uppercase tracking-widest text-fpt-blue transition-all hover:gap-4 hover:bg-blue-100">
+            Xem tất cả <ChevronRight size={16} />
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
           {loading ? (
-            [1, 2, 3].map(i => <div key={i} className="h-96 bg-gray-100 rounded-[40px] animate-pulse"></div>)
+            [1, 2, 3].map((i) => <div key={i} className="h-[440px] animate-pulse rounded-[2.2rem] bg-slate-100" />)
           ) : latestPubs.length === 0 ? (
-            <div className="col-span-1 md:col-span-2 lg:col-span-3 py-20 bg-gray-50 rounded-[40px] text-center border-2 border-dashed border-gray-200" data-aos="zoom-in">
-              <Calendar size={64} className="mx-auto text-gray-300 mb-6" />
-              <p className="text-gray-400 font-black uppercase tracking-widest text-lg">Chưa có bản tin nào được cập nhật.</p>
+            <div className="col-span-1 rounded-[2.2rem] border-2 border-dashed border-slate-200 bg-slate-50 py-20 text-center md:col-span-2 lg:col-span-3" data-aos="zoom-in">
+              <Calendar size={58} className="mx-auto mb-5 text-slate-300" />
+              <p className="text-lg font-black uppercase tracking-widest text-slate-400">Chưa có bản tin nào được cập nhật.</p>
             </div>
           ) : (
             latestPubs.map((pub, idx) => (
-              <Card key={pub.id} data-aos="fade-up" data-aos-delay={idx * 100} className="group p-0 overflow-hidden border border-gray-100 shadow-xl hover:shadow-2xl transition-all rounded-[40px] flex flex-col h-full bg-white hover:-translate-y-2">
-                <div className="h-56 bg-gray-100 overflow-hidden relative">
+              <Card key={pub.id} data-aos="fade-up" data-aos-delay={idx * 100} className="group flex h-full flex-col overflow-hidden rounded-[2.2rem] border border-slate-100 p-0 shadow-lg transition-all hover:-translate-y-2 hover:shadow-2xl">
+                <div className="relative h-56 overflow-hidden bg-slate-100">
                   {pub.image_url ? (
-                    <img src={pub.image_url} alt={pub.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                    <img src={pub.image_url} alt={pub.title} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 text-gray-400">
-                      <BookOpen size={80} className="opacity-20" />
+                    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 text-slate-400">
+                      <BookOpen size={78} className="opacity-25" />
                     </div>
                   )}
-                  <div className="absolute top-6 left-6 bg-white/90 backdrop-blur-sm text-fpt-blue text-[10px] font-black px-4 py-2 rounded-xl uppercase tracking-widest shadow-lg">
-                    {pub.category === 'van' ? 'Văn học' : pub.category === 'ktpl' ? 'KT-PL' : 'Khác'}
+
+                  <div className="absolute left-5 top-5 rounded-xl bg-white/90 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-fpt-blue shadow-md backdrop-blur">
+                    {pub.category === 'van' ? 'Văn học' : pub.category === 'ktpl' ? 'KTPL' : 'Nội dung mới'}
                   </div>
                 </div>
-                <div className="p-8 space-y-4 flex-1 flex flex-col">
-                  <h3 className="text-2xl font-black text-gray-800 group-hover:text-fpt-orange transition-colors line-clamp-2 leading-snug">{pub.title}</h3>
-                  <div className="text-gray-500 text-sm font-medium line-clamp-3 flex-1 leading-relaxed prose-sm" dangerouslySetInnerHTML={{__html: pub.content.substring(0, 150) + '...'}}></div>
-                  <div className="pt-6 border-t border-gray-100 flex justify-between items-center">
-                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+
+                <div className="flex flex-1 flex-col p-7">
+                  <h3 className="line-clamp-2 text-2xl font-black leading-tight text-slate-800 transition-colors group-hover:text-fpt-orange">
+                    {pub.title}
+                  </h3>
+
+                  <p className="mt-4 flex-1 text-sm font-medium leading-relaxed text-slate-500">
+                    {`${toPlainText(pub.content).slice(0, 155)}...`}
+                  </p>
+
+                  <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-5">
+                    <span className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
                       <Calendar size={14} /> {new Date(pub.created_at).toLocaleDateString('vi-VN')}
                     </span>
-                    <button className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-fpt-blue group-hover:bg-fpt-orange group-hover:text-white transition-colors">
-                      <ArrowRight size={18} />
-                    </button>
+                    <Link to={`/posts/${pub.id}`} className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-50 text-fpt-blue transition-colors group-hover:bg-fpt-orange group-hover:text-white">
+                      <ArrowRight size={17} />
+                    </Link>
                   </div>
                 </div>
               </Card>
@@ -165,57 +236,78 @@ export const Home = () => {
         </div>
       </section>
 
-      {/* Features Section */}
       <section className="container mx-auto px-4">
-        <div className="text-center max-w-3xl mx-auto mb-20 space-y-6" data-aos="fade-up">
-          <h2 className="text-4xl md:text-5xl font-black text-fpt-blue italic">GIÁ TRỊ CỐT LÕI</h2>
-          <div className="w-24 h-2 bg-gradient-to-r from-fpt-orange to-fpt-blue mx-auto rounded-full"></div>
-          <p className="text-gray-500 font-medium text-lg italic">"Cùng học sinh, sinh viên FPT kiến tạo tương lai số bằng sự thấu hiểu và công nghệ."</p>
+        <div className="mb-12 max-w-3xl" data-aos="fade-up">
+          <h2 className="text-4xl font-black uppercase tracking-tight text-fpt-blue md:text-5xl">Giá trị cốt lõi</h2>
+          <p className="mt-4 text-lg font-medium text-slate-500">
+            Từ học thuật đến hoạt động cộng đồng, mọi trải nghiệm đều hướng tới năng lực thật và tinh thần trách nhiệm xã hội.
+          </p>
         </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          <FeatureCard 
-            icon={BookOpen}
-            title="Nhái Bén"
-            colorClass="bg-gradient-to-br from-orange-400 to-fpt-orange shadow-orange-200"
-            description="Ấn phẩm văn chương chuyên sâu, nơi lưu giữ những tâm hồn mộng mơ và nét bút trẻ rực cháy đam mê."
-            aosDelay={0}
-          />
-          <FeatureCard 
-            icon={Sparkles}
-            title="FPT AI Live"
-            colorClass="bg-gradient-to-br from-blue-400 to-fpt-blue shadow-blue-200"
-            description="Trợ lý AI hỗ trợ giải đáp mọi thắc mắc 24/7, tối ưu hóa việc tìm kiếm thông tin và học liệu."
-            aosDelay={100}
-          />
-          <FeatureCard 
-            icon={ShieldCheck}
-            title="Minh bạch & Uy tín"
-            colorClass="bg-gradient-to-br from-emerald-400 to-green-600 shadow-green-200"
-            description="Quy trình nộp bài trực tiếp tới Ban giám khảo, chấm điểm công bằng và hiển thị công khai các tác phẩm đạt giải."
-            aosDelay={200}
-          />
+
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+          {featureCards.map((feature, idx) => (
+            <Card
+              key={feature.title}
+              data-aos="fade-up"
+              data-aos-delay={idx * 100}
+              className={cn(
+                'rounded-[1.8rem] border bg-gradient-to-br p-7 transition-all hover:-translate-y-1 hover:shadow-xl',
+                feature.colorClass
+              )}
+            >
+              <div className="mb-5 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-white shadow-sm">
+                <feature.icon size={20} />
+              </div>
+              <h3 className="text-2xl font-black leading-tight">{feature.title}</h3>
+              <p className="mt-3 text-sm font-semibold leading-relaxed text-slate-500">{feature.description}</p>
+            </Card>
+          ))}
         </div>
       </section>
 
-      {/* Call to Action */}
       <section className="container mx-auto px-4" data-aos="zoom-in">
-        <div className="bg-gradient-to-r from-fpt-blue via-[#1a2d6c] to-fpt-blue rounded-[60px] p-12 md:p-24 text-center space-y-10 relative overflow-hidden shadow-2xl">
-          <div className="relative z-10 space-y-8">
-            <h2 className="text-4xl md:text-6xl font-black text-white italic drop-shadow-lg">BẮT ĐẦU HÀNH TRÌNH CỦA BẠN</h2>
-            <p className="text-blue-100 max-w-2xl mx-auto font-medium text-xl leading-relaxed">
-              Trở thành một phần của cộng đồng năng động, đăng bài sáng tác đầu tay hoặc theo dõi các tin tức mới nhất ngay hôm nay!
-            </p>
-            <div className="flex flex-wrap justify-center gap-6 pt-4">
-              <Link to="/phanmon/van">
-                <Button className="bg-fpt-orange text-white px-12 py-5 text-xl font-black rounded-full shadow-[0_10px_40px_-10px_rgba(242,112,36,0.5)] hover:scale-105 transition-all border-4 border-orange-400 flex items-center gap-3">
-                  <Send size={24} /> GỬI BÀI NGAY
+        <div className="relative overflow-hidden rounded-[3rem] bg-fpt-blue p-10 shadow-2xl md:p-16">
+          <div className="absolute -right-16 -top-16 h-72 w-72 rounded-full bg-fpt-orange/30 blur-3xl" />
+          <div className="absolute -bottom-24 -left-20 h-72 w-72 rounded-full bg-cyan-400/20 blur-3xl" />
+
+          <div className="relative z-10 grid grid-cols-1 items-center gap-10 lg:grid-cols-2">
+            <div>
+              <p className="mb-4 inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-white">
+                <Users size={14} /> Community board
+              </p>
+              <h2 className="text-4xl font-black uppercase leading-tight text-white md:text-6xl">
+                Bảng tin
+                <br />
+                <span className="text-fpt-orange">Sáng tác</span>
+              </h2>
+              <p className="mt-6 max-w-lg text-base font-medium leading-relaxed text-white/80 md:text-lg">
+                Gửi tác phẩm, theo dõi bài nổi bật và kết nối với cộng đồng học sinh cùng tinh thần học thật, làm thật.
+              </p>
+            </div>
+
+            <div className="rounded-[2rem] border border-white/20 bg-white/10 p-6 backdrop-blur md:p-8">
+              <div className="space-y-4">
+                <Link to="/phanmon/van/an-pham" className="flex items-center justify-between rounded-2xl bg-white/10 px-4 py-4 text-sm font-black uppercase tracking-widest text-white transition-colors hover:bg-white/20">
+                  Khám phá ấn phẩm mới
+                  <ChevronRight size={16} />
+                </Link>
+                <Link to="/stories/inspiring" className="flex items-center justify-between rounded-2xl bg-white/10 px-4 py-4 text-sm font-black uppercase tracking-widest text-white transition-colors hover:bg-white/20">
+                  Xem câu chuyện nổi bật
+                  <ChevronRight size={16} />
+                </Link>
+                <Link to="/events/upcoming" className="flex items-center justify-between rounded-2xl bg-white/10 px-4 py-4 text-sm font-black uppercase tracking-widest text-white transition-colors hover:bg-white/20">
+                  Lịch sự kiện sắp tới
+                  <ChevronRight size={16} />
+                </Link>
+              </div>
+
+              <Link to="/phanmon/van/an-pham" className="mt-6 block">
+                <Button className="w-full rounded-2xl border-none bg-fpt-orange py-4 text-sm font-black uppercase tracking-widest text-white shadow-[0_18px_40px_-24px_rgba(242,112,36,0.95)] hover:bg-[#de631d]">
+                  <Send size={17} /> Gửi bài ngay
                 </Button>
               </Link>
             </div>
           </div>
-          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-fpt-orange opacity-20 blur-[120px] rounded-full mix-blend-screen"></div>
-          <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-blue-400 opacity-20 blur-[120px] rounded-full mix-blend-screen"></div>
         </div>
       </section>
     </div>

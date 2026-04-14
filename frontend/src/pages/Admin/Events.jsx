@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Card, Button } from '@/components/UI'
+import { Card, Button, RichTextEditor } from '@/components/UI'
 import { CalendarDays, Plus, Save, Trash2 } from 'lucide-react'
 import { cmsService } from '@/lib/cmsService'
 import { confirmAction, showApiError, toastError, toastSuccess } from '@/lib/notify'
@@ -119,7 +119,13 @@ export const AdminEvents = () => {
             <option value="registration">Mo dang ky</option>
           </select>
           <input className="px-4 py-3 rounded-xl bg-gray-50 font-bold md:col-span-2" placeholder="Image URL" value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} />
-          <textarea rows={3} className="px-4 py-3 rounded-xl bg-gray-50 font-medium md:col-span-2" placeholder="Mo ta" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+          <RichTextEditor
+            className="md:col-span-2"
+            size="compact"
+            placeholder="Mô tả"
+            value={form.description}
+            onChange={(value) => setForm({ ...form, description: value })}
+          />
         </div>
 
         <div className="mt-6 flex justify-end">
@@ -147,7 +153,12 @@ export const AdminEvents = () => {
                   <Button onClick={() => saveEvent(item)} className="bg-fpt-blue text-white px-3 py-2 rounded-lg font-black border-none inline-flex items-center gap-1"><Save size={14} />Luu</Button>
                   <Button onClick={() => removeEvent(item.id)} className="bg-red-500 text-white px-3 py-2 rounded-lg font-black border-none inline-flex items-center gap-1"><Trash2 size={14} />Xoa</Button>
                 </div>
-                <textarea rows={2} className="md:col-span-12 px-3 py-2 rounded-lg bg-gray-50 font-medium" value={item.description || ''} onChange={(e) => patchEvent(item.id, 'description', e.target.value)} />
+                <RichTextEditor
+                  className="md:col-span-12"
+                  size="compact"
+                  value={item.description || ''}
+                  onChange={(value) => patchEvent(item.id, 'description', value)}
+                />
               </div>
             ))}
             {events.length === 0 && <div className="py-12 text-center text-gray-400 font-black uppercase tracking-widest">Chua co su kien.</div>}

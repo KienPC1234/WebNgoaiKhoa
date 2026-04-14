@@ -5,6 +5,7 @@ import { Calendar, MapPin, ArrowRight, Bell, Sparkles } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
+const toPlainText = (value) => (value || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
 
 export const EventsUpcoming = () => {
     const [events, setEvents] = useState([])
@@ -242,7 +243,7 @@ export const EventsUpcoming = () => {
                                 <div className="lg:w-3/5 p-10 lg:p-12 space-y-6 flex flex-col justify-center">
                                     <div className="space-y-4">
                                         <h3 className="text-3xl lg:text-[2rem] font-black text-gray-800 tracking-tight group-hover:text-fpt-orange transition-colors duration-300">{event.title}</h3>
-                                        <p className="text-gray-500 leading-relaxed font-medium line-clamp-3">{event.description}</p>
+                                        <p className="text-gray-500 leading-relaxed font-medium line-clamp-3">{toPlainText(event.description)}</p>
                                         <div className="flex flex-wrap gap-6 text-gray-400">
                                             <div className="flex items-center gap-2 font-black text-[11px] uppercase tracking-widest">
                                                 <Calendar size={18} className="text-fpt-blue" />

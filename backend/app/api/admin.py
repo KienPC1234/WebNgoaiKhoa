@@ -159,6 +159,14 @@ async def get_stories(db: Session = Depends(get_db), admin: User = Depends(get_c
     return db.query(Story).order_by(Story.created_at.desc()).all()
 
 
+@router.get("/stories/{story_id}", response_model=StoryOut)
+async def get_story_by_id(story_id: int, db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
+    story = db.query(Story).filter(Story.id == story_id).first()
+    if not story:
+        raise HTTPException(status_code=404, detail="Story not found")
+    return story
+
+
 @router.post("/stories", response_model=StoryOut)
 async def create_story(payload: StoryCreate, db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
     story = Story(**payload.model_dump())

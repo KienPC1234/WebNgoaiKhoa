@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import axios from 'axios'
 import { Award, BookOpen, Compass, ExternalLink, RefreshCw } from 'lucide-react'
 import { Card } from '@/components/UI'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
+const toPlainText = (value) => (value || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
 
 const SUBJECT_LABELS = {
   van: 'Ngữ Văn',
@@ -116,14 +118,14 @@ export const SubjectContentHub = () => {
                 </div>
                 <div className="p-6 space-y-3">
                   <h3 className="font-black text-lg text-fpt-blue line-clamp-2">{item.title}</h3>
-                  <p className="text-sm text-gray-500 font-medium line-clamp-4">{item.content}</p>
+                  <p className="text-sm text-gray-500 font-medium line-clamp-4">{toPlainText(item.content)}</p>
                   <div className="flex items-center justify-between pt-2 border-t border-gray-100">
                     <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
                       {new Date(item.created_at).toLocaleDateString('vi-VN')}
                     </span>
-                    <span className="w-8 h-8 rounded-full bg-gray-50 text-gray-400 flex items-center justify-center">
+                    <Link to={`/posts/${item.id}`} className="w-8 h-8 rounded-full bg-gray-50 text-gray-400 hover:text-fpt-orange flex items-center justify-center">
                       <ExternalLink size={14} />
-                    </span>
+                    </Link>
                   </div>
                 </div>
               </Card>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Card, Button } from '@/components/UI'
+import { Card, Button, RichTextEditor } from '@/components/UI'
 import { BookHeart, Plus, Save, Trash2 } from 'lucide-react'
 import { cmsService } from '@/lib/cmsService'
 import { confirmAction, showApiError, toastError, toastSuccess } from '@/lib/notify'
@@ -99,8 +99,19 @@ export const AdminStories = () => {
           <input className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="Chuyen muc" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
           <input type="number" className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="Phut doc" value={form.read_time_minutes} onChange={(e) => setForm({ ...form, read_time_minutes: Number(e.target.value) || 5 })} />
           <input className="px-4 py-3 rounded-xl bg-gray-50 font-bold md:col-span-2" placeholder="Image URL" value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} />
-          <textarea rows={2} className="px-4 py-3 rounded-xl bg-gray-50 font-medium md:col-span-2" placeholder="Tom tat" value={form.snippet} onChange={(e) => setForm({ ...form, snippet: e.target.value })} />
-          <textarea rows={4} className="px-4 py-3 rounded-xl bg-gray-50 font-medium md:col-span-2" placeholder="Noi dung" value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} />
+          <RichTextEditor
+            className="md:col-span-2"
+            size="compact"
+            placeholder="Tóm tắt"
+            value={form.snippet}
+            onChange={(value) => setForm({ ...form, snippet: value })}
+          />
+          <RichTextEditor
+            className="md:col-span-2"
+            placeholder="Nội dung"
+            value={form.content}
+            onChange={(value) => setForm({ ...form, content: value })}
+          />
         </div>
 
         <div className="mt-6 flex justify-end">
@@ -125,8 +136,17 @@ export const AdminStories = () => {
                   <Button onClick={() => saveStory(item)} className="bg-fpt-blue text-white px-3 py-2 rounded-lg font-black border-none inline-flex items-center gap-1"><Save size={14} />Luu</Button>
                   <Button onClick={() => removeStory(item.id)} className="bg-red-500 text-white px-3 py-2 rounded-lg font-black border-none inline-flex items-center gap-1"><Trash2 size={14} />Xoa</Button>
                 </div>
-                <textarea rows={2} className="md:col-span-12 px-3 py-2 rounded-lg bg-gray-50 font-medium" value={item.snippet || ''} onChange={(e) => patchStory(item.id, 'snippet', e.target.value)} />
-                <textarea rows={3} className="md:col-span-12 px-3 py-2 rounded-lg bg-gray-50 font-medium" value={item.content || ''} onChange={(e) => patchStory(item.id, 'content', e.target.value)} />
+                <RichTextEditor
+                  className="md:col-span-12"
+                  size="compact"
+                  value={item.snippet || ''}
+                  onChange={(value) => patchStory(item.id, 'snippet', value)}
+                />
+                <RichTextEditor
+                  className="md:col-span-12"
+                  value={item.content || ''}
+                  onChange={(value) => patchStory(item.id, 'content', value)}
+                />
               </div>
             ))}
             {stories.length === 0 && <div className="py-12 text-center text-gray-400 font-black uppercase tracking-widest">Chua co cau chuyen.</div>}

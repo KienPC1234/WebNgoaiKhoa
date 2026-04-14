@@ -95,6 +95,7 @@ class StoryBase(BaseModel):
     author: str
     category: Optional[str] = None
     image_url: Optional[str] = None
+    layout_metadata: Optional[Dict[str, Any]] = None
     read_time_minutes: Optional[int] = 5
     is_published: Optional[bool] = True
 

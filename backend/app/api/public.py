@@ -101,6 +101,18 @@ async def get_inspiring_stories(db: Session = Depends(get_db)):
     )
 
 
+@router.get("/stories/inspiring/{story_id}", response_model=StoryOut)
+async def get_inspiring_story_by_id(story_id: int, db: Session = Depends(get_db)):
+    story = (
+        db.query(Story)
+        .filter(Story.id == story_id, Story.is_published == True)
+        .first()
+    )
+    if not story:
+        raise HTTPException(status_code=404, detail="Story not found")
+    return story
+
+
 @router.get("/nhanvat/scale", response_model=SocialScaleOut)
 async def get_social_scale(db: Session = Depends(get_db)):
     item = (

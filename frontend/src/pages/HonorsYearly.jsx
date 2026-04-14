@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react'
 import axios from 'axios'
 import { Award } from 'lucide-react'
 import { Card } from '@/components/UI'
+import { Link } from 'react-router-dom'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
+const toPlainText = (value) => (value || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
 
 export const HonorsYearly = () => {
   const [items, setItems] = useState([])
@@ -64,7 +66,12 @@ export const HonorsYearly = () => {
                   <Award size={12} /> {item.subject}
                 </div>
                 <h3 className="text-lg font-black text-fpt-blue line-clamp-2">{item.title}</h3>
-                <p className="text-sm text-gray-500 font-medium line-clamp-3">{item.content}</p>
+                <p className="text-sm text-gray-500 font-medium line-clamp-3">{toPlainText(item.content)}</p>
+                <div className="pt-2">
+                  <Link to={`/posts/${item.id}`} className="text-xs font-black uppercase tracking-widest text-fpt-orange hover:text-orange-600">
+                    Đọc toàn văn
+                  </Link>
+                </div>
               </Card>
             ))}
           </div>

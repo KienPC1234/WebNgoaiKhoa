@@ -1,11 +1,12 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 @import 'katex/dist/katex.min.css';
-@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;700;800;900&display=swap');
 @import "tailwindcss";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme {
-  --font-sans: "Be Vietnam Pro", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 
   --color-fpt-orange: #F27024;
@@ -89,26 +90,26 @@
 
 @layer base {
   :root {
-    --background: hsl(210 40% 98.5%);
-    --foreground: hsl(222.2 84% 4.9%);
+    --background: hsl(36 100% 99%);
+    --foreground: hsl(223 37% 17%);
     --card: hsl(0 0% 100%);
-    --card-foreground: hsl(222.2 84% 4.9%);
+    --card-foreground: hsl(223 37% 17%);
     --popover: hsl(0 0% 100%);
-    --popover-foreground: hsl(222.2 84% 4.9%);
-    --primary: hsl(221.2 83.2% 53.3%);
-    --primary-foreground: hsl(210 40% 98%);
-    --secondary: hsl(210 40% 96.1%);
-    --secondary-foreground: hsl(222.2 47.4% 11.2%);
-    --muted: hsl(210 40% 96.1%);
-    --muted-foreground: hsl(215.4 16.3% 46.9%);
-    --accent: hsl(210 40% 96.1%);
-    --accent-foreground: hsl(222.2 47.4% 11.2%);
+    --popover-foreground: hsl(223 37% 17%);
+    --primary: hsl(223 52% 22%);
+    --primary-foreground: hsl(44 100% 99%);
+    --secondary: hsl(35 79% 96%);
+    --secondary-foreground: hsl(223 52% 22%);
+    --muted: hsl(34 53% 96%);
+    --muted-foreground: hsl(218 11% 42%);
+    --accent: hsl(24 93% 54%);
+    --accent-foreground: hsl(0 0% 100%);
     --destructive: hsl(0 84.2% 60.2%);
-    --destructive-foreground: hsl(210 40% 98%);
-    --border: hsl(214.3 31.8% 91.4%);
-    --input: hsl(214.3 31.8% 91.4%);
-    --ring: hsl(222.2 84% 4.9%);
-    --radius: 1rem;
+    --destructive-foreground: hsl(0 0% 100%);
+    --border: hsl(36 28% 88%);
+    --input: hsl(36 28% 88%);
+    --ring: hsl(24 93% 54%);
+    --radius: 1.125rem;
     --chart-1: hsl(12 76% 61%);
     --chart-2: hsl(173 58% 39%);
     --chart-3: hsl(197 37% 24%);
@@ -148,31 +149,103 @@
   * {
     @apply border-border;
   }
+
+  html,
+  body,
+  #root {
+    min-height: 100%;
+  }
+
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+    text-rendering: optimizeLegibility;
     background-image:
-      linear-gradient(to right, rgba(29, 42, 87, 0.04) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(29, 42, 87, 0.04) 1px, transparent 1px),
-      radial-gradient(at 0% 0%, hsla(20, 90%, 95%, 1) 0, transparent 55%),
-      radial-gradient(at 100% 0%, hsla(210, 90%, 95%, 1) 0, transparent 55%),
-      linear-gradient(180deg, #f8fbff 0%, #fffaf4 100%);
-    background-size: 24px 24px, 24px 24px, auto, auto, auto;
+      radial-gradient(circle at 8% 10%, rgba(242, 112, 36, 0.18) 0, rgba(242, 112, 36, 0) 35%),
+      radial-gradient(circle at 88% -4%, rgba(29, 42, 87, 0.2) 0, rgba(29, 42, 87, 0) 40%),
+      linear-gradient(180deg, #fffdf8 0%, #f9fbff 100%);
+    background-size: auto, auto, auto;
     background-attachment: fixed;
+    line-height: 1.5;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
   }
 }
 
-/* Glassmorphism Classes */
-.glass-card {
-  @apply bg-white/70 backdrop-blur-xl border border-white/20 shadow-xl;
+@layer components {
+  .app-shell {
+    @apply min-h-screen flex flex-col;
+  }
+
+  .surface {
+    @apply rounded-3xl border border-white/60 bg-white/90 backdrop-blur-xl shadow-[0_22px_60px_-36px_rgba(31,41,55,0.45)];
+  }
+
+  .surface-strong {
+    @apply rounded-3xl border border-slate-200/70 bg-white shadow-[0_30px_80px_-45px_rgba(15,23,42,0.45)];
+  }
+
+  .app-section {
+    @apply container mx-auto px-4 md:px-6;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/80 px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-[0.2em] text-slate-500;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-2xl bg-fpt-orange px-5 py-3 text-xs font-black uppercase tracking-widest text-white shadow-[0_16px_36px_-18px_rgba(242,112,36,0.8)] transition-all hover:-translate-y-0.5 hover:bg-[#de631d] active:translate-y-0;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white/90 px-4 py-2.5 text-xs font-black uppercase tracking-widest text-slate-600 transition-colors hover:border-slate-300 hover:text-fpt-blue;
+  }
+
+  .glass-card {
+    @apply bg-white/72 backdrop-blur-xl border border-white/50 shadow-[0_20px_60px_-40px_rgba(29,42,87,0.55)];
+  }
+
+  .glass-nav {
+    @apply sticky top-0 z-50 border-b border-slate-200/60 bg-white/78 backdrop-blur-xl;
+  }
 }
 
-.glass-nav {
-  @apply bg-white/80 backdrop-blur-md border-b border-gray-100 sticky top-0 z-50;
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.6) transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    border-radius: 9999px;
+    background: rgba(148, 163, 184, 0.55);
+  }
 }
 
 /* Custom styles for CKEditor */
 .ck-editor__editable {
-    min-height: 300px;
+  min-height: 220px;
     border-radius: 0 0 1rem 1rem !important;
     border: 2px solid #f3f4f6 !important;
 }
@@ -185,6 +258,10 @@
 .ck-focused {
     border-color: #F27024 !important;
     outline: none !important;
+}
+
+.rich-editor-compact .ck-editor__editable {
+  min-height: 120px;
 }
 
 /* Hide scrollbar but keep functionality */

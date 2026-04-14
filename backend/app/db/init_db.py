@@ -66,6 +66,7 @@ def init_database():
     try:
         inspector = inspect(engine)
         pub_columns = {c["name"] for c in inspector.get_columns("publications")}
+        story_columns = {c["name"] for c in inspector.get_columns("stories")}
         user_columns = {c["name"] for c in inspector.get_columns("users")}
         statements = []
 
@@ -77,6 +78,8 @@ def init_database():
             statements.append("ALTER TABLE publications ADD COLUMN featured_year VARCHAR(20) NULL")
         if "layout_metadata" not in pub_columns:
             statements.append("ALTER TABLE publications ADD COLUMN layout_metadata JSON NULL")
+        if "layout_metadata" not in story_columns:
+            statements.append("ALTER TABLE stories ADD COLUMN layout_metadata JSON NULL")
 
         if "email_verified" not in user_columns:
             statements.append("ALTER TABLE users ADD COLUMN email_verified TINYINT(1) NOT NULL DEFAULT 0")

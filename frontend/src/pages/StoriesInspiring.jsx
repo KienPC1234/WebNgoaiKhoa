@@ -3,8 +3,10 @@ import axios from 'axios'
 import { Card } from '@/components/UI'
 import { Heart, User, Clock, ArrowRight, Quote, Sparkles } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { Link } from 'react-router-dom'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
+const toPlainText = (value) => (value || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
 
 export const StoriesInspiring = () => {
     const [stories, setStories] = useState([])
@@ -98,12 +100,12 @@ export const StoriesInspiring = () => {
                                             </div>
                                         </div>
                                         <h3 className="text-[1.35rem] font-black text-gray-800 leading-tight group-hover:text-red-500 transition-colors duration-300">{story.title}</h3>
-                                        <p className="text-gray-500 font-medium leading-relaxed line-clamp-3">{story.snippet}</p>
+                                        <p className="text-gray-500 font-medium leading-relaxed line-clamp-3">{toPlainText(story.snippet)}</p>
                                     </div>
                                     <div className="pt-6 border-t border-gray-100 flex items-center justify-between">
-                                        <button className="text-[11px] font-black uppercase tracking-widest text-red-500 flex items-center gap-2 group-hover:gap-3 transition-all">
+                                        <Link to={`/stories/inspiring/${story.id}`} className="text-[11px] font-black uppercase tracking-widest text-red-500 flex items-center gap-2 group-hover:gap-3 transition-all">
                                             Đọc câu chuyện <ArrowRight size={16} />
-                                        </button>
+                                        </Link>
                                         <Heart size={20} className="text-gray-200 group-hover:text-red-400 group-hover:fill-red-400 transition-all cursor-pointer" />
                                     </div>
                                 </div>

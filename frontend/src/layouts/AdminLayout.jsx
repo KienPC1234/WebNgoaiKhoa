@@ -1,5 +1,21 @@
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, FileText, Send, Database, LogOut, Bell, User, Sparkles, Users2, CalendarDays, BookHeart, ChevronDown, FolderKanban } from 'lucide-react'
+import {
+  LayoutDashboard,
+  FileText,
+  Send,
+  Database,
+  LogOut,
+  Bell,
+  User,
+  Sparkles,
+  Users2,
+  CalendarDays,
+  BookHeart,
+  ChevronDown,
+  FolderKanban,
+  Menu,
+  X,
+} from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/components/UI'
 
@@ -12,11 +28,13 @@ export const AdminLayout = () => {
     location.pathname.startsWith('/admin/nhanvat') ||
     location.pathname.startsWith('/admin/submissions')
   const [cmsOpen, setCmsOpen] = useState(isCmsRoute)
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
 
   const menuItems = [
     { title: 'Bảng điều khiển', path: '/admin/dashboard', icon: LayoutDashboard },
     { title: 'Bài viết', path: '/admin/publications', icon: FileText },
     { title: 'Sự kiện', path: '/admin/events', icon: CalendarDays },
+    { title: 'CMS Editor', path: '/admin/cms-editor', icon: Sparkles },
     { title: 'Người dùng', path: '/admin/users', icon: User },
     { title: 'Kho tri thức AI', path: '/admin/ai-knowledge', icon: Database },
   ]
@@ -30,6 +48,7 @@ export const AdminLayout = () => {
   const isActive = (path) => location.pathname === path
 
   const activeTitle = () => {
+    if (location.pathname.startsWith('/admin/publications')) return 'Bài viết'
     if (location.pathname.startsWith('/admin/cms/stories')) return 'Câu chuyện'
     if (location.pathname.startsWith('/admin/cms/nhanvat')) return 'Nhân vật CMS'
     if (location.pathname.startsWith('/admin/cms/submissions')) return 'Duyệt bài'
@@ -46,34 +65,39 @@ export const AdminLayout = () => {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50/50">
-      {/* Sidebar */}
-      <aside className="w-72 bg-white border-r border-gray-100 flex flex-col shadow-sm">
-        <div className="p-8">
+    <div className="flex min-h-screen bg-gradient-to-b from-white/50 to-slate-50/70">
+      <aside
+        className={cn(
+          'fixed inset-y-0 left-0 z-40 w-72 border-r border-slate-200/70 bg-white/95 backdrop-blur-xl shadow-[0_30px_80px_-45px_rgba(15,23,42,0.45)] transition-transform lg:static lg:translate-x-0',
+          mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        )}
+      >
+        <div className="p-6">
           <Link to="/" className="flex items-center gap-2 group">
-            <div className="bg-fpt-orange p-1.5 rounded-lg">
+            <div className="rounded-lg bg-fpt-orange p-1.5">
               <Sparkles className="text-white" size={20} />
             </div>
             <div className="flex flex-col">
-              <span className="text-lg font-black text-fpt-blue leading-none tracking-tight">BẢNG QUẢN TRỊ</span>
-              <span className="text-[10px] font-bold text-fpt-orange uppercase tracking-widest">Tổ xã hội</span>
+              <span className="font-display text-lg font-black leading-none tracking-tight text-fpt-blue">BẢNG QUẢN TRỊ</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-fpt-orange">Tổ xã hội</span>
             </div>
           </Link>
         </div>
 
-        <nav className="flex-1 px-4 space-y-2">
+        <nav className="flex-1 space-y-2 px-4">
           {menuItems.map((item) => (
             <Link
               key={item.path}
               to={item.path}
+              onClick={() => setMobileSidebarOpen(false)}
               className={cn(
-                "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-black transition-all group",
+                'group flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-black transition-all',
                 isActive(item.path)
-                  ? "bg-fpt-blue text-white shadow-lg shadow-blue-100"
-                  : "text-gray-500 hover:bg-blue-50 hover:text-fpt-blue"
+                  ? 'bg-fpt-blue text-white shadow-lg shadow-blue-100'
+                  : 'text-slate-500 hover:bg-blue-50 hover:text-fpt-blue'
               )}
             >
-              <item.icon size={20} className={cn("transition-colors", isActive(item.path) ? "text-white" : "text-gray-400 group-hover:text-fpt-blue")} />
+              <item.icon size={20} className={cn('transition-colors', isActive(item.path) ? 'text-white' : 'text-slate-400 group-hover:text-fpt-blue')} />
               {item.title}
             </Link>
           ))}
@@ -81,14 +105,14 @@ export const AdminLayout = () => {
           <div className="pt-2">
             <div
               className={cn(
-                'flex items-center justify-between w-full px-4 py-3 rounded-xl text-sm font-black transition-all group',
+                'group flex w-full items-center justify-between rounded-xl px-4 py-3 text-sm font-black transition-all',
                 isCmsRoute
                   ? 'bg-fpt-blue text-white shadow-lg shadow-blue-100'
-                  : 'text-gray-500 hover:bg-blue-50 hover:text-fpt-blue'
+                  : 'text-slate-500 hover:bg-blue-50 hover:text-fpt-blue'
               )}
             >
-              <Link to="/admin/cms" className="flex items-center gap-3 flex-1">
-                <FolderKanban size={20} className={cn('transition-colors', isCmsRoute ? 'text-white' : 'text-gray-400 group-hover:text-fpt-blue')} />
+              <Link to="/admin/cms" onClick={() => setMobileSidebarOpen(false)} className="flex flex-1 items-center gap-3">
+                <FolderKanban size={20} className={cn('transition-colors', isCmsRoute ? 'text-white' : 'text-slate-400 group-hover:text-fpt-blue')} />
                 CMS nội dung
               </Link>
               <button
@@ -101,18 +125,19 @@ export const AdminLayout = () => {
             </div>
 
             {cmsOpen && (
-              <div className="mt-2 ml-3 border-l border-blue-100 pl-2 space-y-1">
+              <div className="mt-2 ml-3 space-y-1 border-l border-blue-100 pl-2">
                 {cmsItems.map((item) => {
                   const active = location.pathname === item.path
                   return (
                     <Link
                       key={item.path}
                       to={item.path}
+                      onClick={() => setMobileSidebarOpen(false)}
                       className={cn(
                         'flex items-center gap-3 px-4 py-2.5 rounded-lg text-xs font-black transition-all',
                         active
                           ? 'bg-blue-50 text-fpt-blue'
-                          : 'text-gray-500 hover:bg-blue-50 hover:text-fpt-blue'
+                          : 'text-slate-500 hover:bg-blue-50 hover:text-fpt-blue'
                       )}
                     >
                       <item.icon size={16} />
@@ -125,10 +150,10 @@ export const AdminLayout = () => {
           </div>
         </nav>
 
-        <div className="p-4 border-t border-gray-50">
-          <button 
+        <div className="border-t border-slate-100 p-4">
+          <button
             onClick={handleLogout}
-            className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-black text-red-500 hover:bg-red-50 transition-all"
+            className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-black text-red-500 transition-all hover:bg-red-50"
           >
             <LogOut size={20} />
             Đăng xuất
@@ -136,34 +161,53 @@ export const AdminLayout = () => {
         </div>
       </aside>
 
-      {/* Main Content Area */}
+      {mobileSidebarOpen && (
+        <button
+          type="button"
+          className="fixed inset-0 z-30 bg-slate-900/35 backdrop-blur-[1px] lg:hidden"
+          onClick={() => setMobileSidebarOpen(false)}
+          aria-label="Đóng menu"
+        />
+      )}
+
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Topbar */}
-        <header className="h-20 bg-white border-b border-gray-100 flex items-center justify-between px-8 shadow-sm relative z-10">
-          <h2 className="text-xl font-black text-fpt-blue italic uppercase tracking-tight">
-            {activeTitle()}
-          </h2>
-          
-          <div className="flex items-center gap-6">
-            <button className="text-gray-400 hover:text-fpt-blue transition-colors relative">
-              <Bell size={20} />
-              <span className="absolute -top-1 -right-1 w-2 h-2 bg-fpt-orange rounded-full"></span>
+        <header className="relative z-10 flex h-20 items-center justify-between border-b border-slate-200/70 bg-white/80 px-5 shadow-sm backdrop-blur md:px-8">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setMobileSidebarOpen((prev) => !prev)}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 lg:hidden"
+            >
+              {mobileSidebarOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
-            <div className="flex items-center gap-3 pl-6 border-l border-gray-100">
-              <div className="text-right hidden sm:block">
-                <p className="text-sm font-black text-gray-800">Ban Tổ Chức</p>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Quản trị viên</p>
+
+            <h2 className="font-display text-lg font-black uppercase tracking-tight text-fpt-blue md:text-xl">
+              {activeTitle()}
+            </h2>
+          </div>
+
+          <div className="flex items-center gap-4 md:gap-6">
+            <button className="relative text-slate-400 transition-colors hover:text-fpt-blue">
+              <Bell size={20} />
+              <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-fpt-orange"></span>
+            </button>
+
+            <div className="flex items-center gap-3 border-l border-slate-200 pl-4 md:pl-6">
+              <div className="hidden text-right sm:block">
+                <p className="text-sm font-black text-slate-800">Ban Tổ Chức</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Quản trị viên</p>
               </div>
-              <div className="w-10 h-10 bg-fpt-blue/5 rounded-full flex items-center justify-center text-fpt-blue">
-                <User size={24} />
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-fpt-blue/5 text-fpt-blue">
+                <User size={22} />
               </div>
             </div>
           </div>
         </header>
 
-        {/* Content View */}
-        <main className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-          <Outlet />
+        <main className="custom-scrollbar flex-1 overflow-y-auto p-4 md:p-8">
+          <div className="mx-auto w-full max-w-[1440px]">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>

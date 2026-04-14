@@ -17,6 +17,7 @@ export const cmsService = {
   deleteEvent: async (id) => (await apiClient.delete(`/admin/events/${id}`)).data,
 
   getStories: async () => (await apiClient.get('/admin/stories')).data,
+  getStoryById: async (id) => (await apiClient.get(`/admin/stories/${id}`)).data,
   createStory: async (payload) => (await apiClient.post('/admin/stories', payload)).data,
   updateStory: async (id, payload) => (await apiClient.put(`/admin/stories/${id}`, payload)).data,
   deleteStory: async (id) => (await apiClient.delete(`/admin/stories/${id}`)).data,

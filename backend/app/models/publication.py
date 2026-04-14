@@ -58,6 +58,7 @@ class Story(Base):
     author = Column(String(255), nullable=False)
     category = Column(String(100), nullable=True)
     image_url = Column(String(500), nullable=True)
+    layout_metadata = Column(JSON, nullable=True)
     read_time_minutes = Column(Integer, nullable=False, default=5)
     is_published = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

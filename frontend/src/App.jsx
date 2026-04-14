@@ -1,33 +1,43 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import AOS from 'aos'
 import 'aos/dist/aos.css'
-import { MainLayout } from '@/layouts/MainLayout'
-import { AdminLayout } from '@/layouts/AdminLayout'
-import { Home } from '@/pages/Home'
-import { PhanMonVan } from '@/pages/PhanMonVan'
-import { PhanMonKTPL } from '@/pages/PhanMonKTPL'
-import { PhanMonLichSu } from '@/pages/PhanMonLichSu'
-import { PhanMonDiaLi } from '@/pages/PhanMonDiaLi'
-import { PhanMonVovinam } from '@/pages/PhanMonVovinam'
-import { GioiThieuQuyMo } from '@/pages/GioiThieuQuyMo'
-import { GioiThieuDoiNgu } from '@/pages/GioiThieuDoiNgu'
-import { EventsUpcoming } from '@/pages/EventsUpcoming'
-import { StoriesInspiring } from '@/pages/StoriesInspiring'
-import { SubjectContentHub } from '@/pages/SubjectContentHub'
-import { HonorsYearly } from '@/pages/HonorsYearly'
-import { Login } from '@/pages/Login'
-import { Register } from '@/pages/Register'
-import { Profile } from '@/pages/Profile'
-import { VerifyEmail } from '@/pages/VerifyEmail'
-import { AdminDashboard } from '@/pages/Admin/Dashboard'
-import { AdminNhanVatCMS } from '@/pages/Admin/NhanVatCMS'
-import { AdminPublications } from '@/pages/Admin/Publications'
-import { AdminEvents } from '@/pages/Admin/Events'
-import { AdminStories } from '@/pages/Admin/Stories'
-import { AdminSubmissions } from '@/pages/Admin/Submissions'
-import { AdminUsers } from '@/pages/Admin/Users'
+import { AdminPostDesigner } from '@/pages/Admin/PostDesigner'
+
+const lazyNamed = (importer, name) =>
+  lazy(() => importer().then((module) => ({ default: module[name] })))
+
+const MainLayout = lazyNamed(() => import('@/layouts/MainLayout'), 'MainLayout')
+const AdminLayout = lazyNamed(() => import('@/layouts/AdminLayout'), 'AdminLayout')
+
+const Home = lazyNamed(() => import('@/pages/Home'), 'Home')
+const PhanMonVan = lazyNamed(() => import('@/pages/PhanMonVan'), 'PhanMonVan')
+const PhanMonKTPL = lazyNamed(() => import('@/pages/PhanMonKTPL'), 'PhanMonKTPL')
+const PhanMonLichSu = lazyNamed(() => import('@/pages/PhanMonLichSu'), 'PhanMonLichSu')
+const PhanMonDiaLi = lazyNamed(() => import('@/pages/PhanMonDiaLi'), 'PhanMonDiaLi')
+const PhanMonVovinam = lazyNamed(() => import('@/pages/PhanMonVovinam'), 'PhanMonVovinam')
+const GioiThieuQuyMo = lazyNamed(() => import('@/pages/GioiThieuQuyMo'), 'GioiThieuQuyMo')
+const GioiThieuDoiNgu = lazyNamed(() => import('@/pages/GioiThieuDoiNgu'), 'GioiThieuDoiNgu')
+const EventsUpcoming = lazyNamed(() => import('@/pages/EventsUpcoming'), 'EventsUpcoming')
+const StoriesInspiring = lazyNamed(() => import('@/pages/StoriesInspiring'), 'StoriesInspiring')
+const StoryDetail = lazyNamed(() => import('@/pages/StoryDetail'), 'StoryDetail')
+const SubjectContentHub = lazyNamed(() => import('@/pages/SubjectContentHub'), 'SubjectContentHub')
+const HonorsYearly = lazyNamed(() => import('@/pages/HonorsYearly'), 'HonorsYearly')
+const PublicPostDetail = lazyNamed(() => import('@/pages/PublicPostDetail'), 'PublicPostDetail')
+const Login = lazyNamed(() => import('@/pages/Login'), 'Login')
+const Register = lazyNamed(() => import('@/pages/Register'), 'Register')
+const Profile = lazyNamed(() => import('@/pages/Profile'), 'Profile')
+const VerifyEmail = lazyNamed(() => import('@/pages/VerifyEmail'), 'VerifyEmail')
+
+const AdminDashboard = lazyNamed(() => import('@/pages/Admin/Dashboard'), 'AdminDashboard')
+const AdminNhanVatCMS = lazyNamed(() => import('@/pages/Admin/NhanVatCMS'), 'AdminNhanVatCMS')
+const AdminPublications = lazyNamed(() => import('@/pages/Admin/Publications'), 'AdminPublications')
+const AdminEvents = lazyNamed(() => import('@/pages/Admin/Events'), 'AdminEvents')
+const AdminStories = lazyNamed(() => import('@/pages/Admin/Stories'), 'AdminStories')
+const AdminSubmissions = lazyNamed(() => import('@/pages/Admin/Submissions'), 'AdminSubmissions')
+const AdminUsers = lazyNamed(() => import('@/pages/Admin/Users'), 'AdminUsers')
+const AdminCMSEditorFramework = lazyNamed(() => import('@/pages/Admin/CMSEditorFramework'), 'AdminCMSEditorFramework')
 
 const PageWrapper = ({ children }) => (
   <motion.div
@@ -38,6 +48,14 @@ const PageWrapper = ({ children }) => (
   >
     {children}
   </motion.div>
+)
+
+const RouteLoading = () => (
+  <div className="min-h-[45vh] flex items-center justify-center">
+    <div className="surface px-6 py-4 text-xs font-black uppercase tracking-widest text-fpt-blue">
+      Đang tải trang...
+    </div>
+  </div>
 )
 
 const AnimatedRoutes = () => {
@@ -53,6 +71,8 @@ const AnimatedRoutes = () => {
           <Route path="nhanvat/staff" element={<PageWrapper><GioiThieuDoiNgu /></PageWrapper>} />
           <Route path="events/upcoming" element={<PageWrapper><EventsUpcoming /></PageWrapper>} />
           <Route path="stories/inspiring" element={<PageWrapper><StoriesInspiring /></PageWrapper>} />
+          <Route path="stories/inspiring/:storyId" element={<PageWrapper><StoryDetail /></PageWrapper>} />
+          <Route path="posts/:postId" element={<PageWrapper><PublicPostDetail /></PageWrapper>} />
           <Route path="nhanvat/honors" element={<PageWrapper><HonorsYearly /></PageWrapper>} />
 
           <Route path="phanmon/van" element={<PageWrapper><PhanMonVan /></PageWrapper>} />
@@ -90,6 +110,8 @@ const AnimatedRoutes = () => {
         }>
           <Route path="dashboard" element={<PageWrapper><AdminDashboard /></PageWrapper>} />
           <Route path="publications" element={<PageWrapper><AdminPublications /></PageWrapper>} />
+          <Route path="publications/new" element={<PageWrapper><AdminPostDesigner /></PageWrapper>} />
+          <Route path="publications/:publicationId/edit" element={<PageWrapper><AdminPostDesigner /></PageWrapper>} />
           <Route path="events" element={<PageWrapper><AdminEvents /></PageWrapper>} />
           <Route path="cms" element={<Navigate to="/admin/cms/stories" replace />} />
           <Route path="cms/stories" element={<PageWrapper><AdminStories /></PageWrapper>} />
@@ -99,6 +121,7 @@ const AnimatedRoutes = () => {
           <Route path="nhanvat" element={<Navigate to="/admin/cms/nhanvat" replace />} />
           <Route path="submissions" element={<Navigate to="/admin/cms/submissions" replace />} />
           <Route path="users" element={<PageWrapper><AdminUsers /></PageWrapper>} />
+          <Route path="cms-editor" element={<PageWrapper><AdminCMSEditorFramework /></PageWrapper>} />
           <Route path="ai-knowledge" element={<div className="text-center py-20 text-gray-500 font-black italic">Tính năng AI Knowledge đang phát triển...</div>} />
           <Route index element={<Navigate to="/admin/dashboard" replace />} />
         </Route>
@@ -139,7 +162,9 @@ function App() {
 
   return (
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <AnimatedRoutes />
+      <Suspense fallback={<RouteLoading />}>
+        <AnimatedRoutes />
+      </Suspense>
     </BrowserRouter>
   )
 }

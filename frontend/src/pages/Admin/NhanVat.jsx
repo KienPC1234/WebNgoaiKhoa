@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import axios from 'axios'
-import { Card, Button } from '@/components/UI'
+import { Card, Button, RichTextEditor } from '@/components/UI'
 import { Plus, Save, Trash2, Users, Building2 } from 'lucide-react'
 import { confirmAction, showApiError, toastSuccess } from '@/lib/notify'
 
@@ -139,13 +139,31 @@ export const AdminNhanVat = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <input className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="Tieu de" value={scale.hero_title || ''} onChange={(e) => setScale({ ...scale, hero_title: e.target.value })} />
           <input className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="Tong quan chuyen mon" value={scale.subjects_overview || ''} onChange={(e) => setScale({ ...scale, subjects_overview: e.target.value })} />
-          <textarea className="px-4 py-3 rounded-xl bg-gray-50 font-medium md:col-span-2" rows={3} placeholder="Hero subtitle" value={scale.hero_subtitle || ''} onChange={(e) => setScale({ ...scale, hero_subtitle: e.target.value })} />
-          <textarea className="px-4 py-3 rounded-xl bg-gray-50 font-medium md:col-span-2" rows={4} placeholder="Vision" value={scale.vision || ''} onChange={(e) => setScale({ ...scale, vision: e.target.value })} />
+          <RichTextEditor
+            className="md:col-span-2"
+            size="compact"
+            placeholder="Hero subtitle"
+            value={scale.hero_subtitle || ''}
+            onChange={(value) => setScale({ ...scale, hero_subtitle: value })}
+          />
+          <RichTextEditor
+            className="md:col-span-2"
+            size="compact"
+            placeholder="Vision"
+            value={scale.vision || ''}
+            onChange={(value) => setScale({ ...scale, vision: value })}
+          />
           <input type="number" className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="So giao vien" value={scale.staff_count ?? 0} onChange={(e) => setScale({ ...scale, staff_count: Number(e.target.value) || 0 })} />
           <input type="number" className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="So sinh vien" value={scale.student_count ?? 0} onChange={(e) => setScale({ ...scale, student_count: Number(e.target.value) || 0 })} />
           <input type="number" className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="So du an" value={scale.projects_count ?? 0} onChange={(e) => setScale({ ...scale, projects_count: Number(e.target.value) || 0 })} />
           <input type="number" className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="So giai thuong" value={scale.awards_count ?? 0} onChange={(e) => setScale({ ...scale, awards_count: Number(e.target.value) || 0 })} />
-          <textarea className="px-4 py-3 rounded-xl bg-gray-50 font-medium md:col-span-2" rows={3} placeholder="Roadmap" value={scale.roadmap || ''} onChange={(e) => setScale({ ...scale, roadmap: e.target.value })} />
+          <RichTextEditor
+            className="md:col-span-2"
+            size="compact"
+            placeholder="Roadmap"
+            value={scale.roadmap || ''}
+            onChange={(value) => setScale({ ...scale, roadmap: value })}
+          />
         </div>
 
         <div className="mt-6 flex justify-end">
@@ -172,7 +190,13 @@ export const AdminNhanVat = () => {
           <input className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="Email" value={staffForm.email} onChange={(e) => setStaffForm({ ...staffForm, email: e.target.value })} />
           <input className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="Chuyen mon" value={staffForm.expertise} onChange={(e) => setStaffForm({ ...staffForm, expertise: e.target.value })} />
           <input className="px-4 py-3 rounded-xl bg-gray-50 font-bold md:col-span-2" placeholder="Image URL" value={staffForm.image_url} onChange={(e) => setStaffForm({ ...staffForm, image_url: e.target.value })} />
-          <textarea className="px-4 py-3 rounded-xl bg-gray-50 font-medium md:col-span-2" rows={3} placeholder="Bio" value={staffForm.bio} onChange={(e) => setStaffForm({ ...staffForm, bio: e.target.value })} />
+          <RichTextEditor
+            className="md:col-span-2"
+            size="compact"
+            placeholder="Bio"
+            value={staffForm.bio}
+            onChange={(value) => setStaffForm({ ...staffForm, bio: value })}
+          />
           <input type="number" className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="Thu tu hien thi" value={staffForm.display_order} onChange={(e) => setStaffForm({ ...staffForm, display_order: Number(e.target.value) || 0 })} />
           <select className="px-4 py-3 rounded-xl bg-gray-50 font-bold" value={staffForm.is_active ? '1' : '0'} onChange={(e) => setStaffForm({ ...staffForm, is_active: e.target.value === '1' })}>
             <option value="1">Dang hien thi</option>

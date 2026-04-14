@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Button, Card } from '@/components/UI'
+import { Button, Card, RichTextEditor } from '@/components/UI'
 import { Plus, Save, Trash2, Users, Building2 } from 'lucide-react'
 import { cmsService } from '@/lib/cmsService'
 import { confirmAction, showApiError, toastError, toastSuccess } from '@/lib/notify'
@@ -162,7 +162,13 @@ export const AdminNhanVatCMS = () => {
           <input type="number" className="px-4 py-3 rounded-xl bg-gray-50" placeholder="Số sinh viên" value={scale.student_count ?? 0} onChange={(e) => setScale({ ...scale, student_count: e.target.value })} />
           <input type="number" className="px-4 py-3 rounded-xl bg-gray-50" placeholder="Số dự án" value={scale.projects_count ?? 0} onChange={(e) => setScale({ ...scale, projects_count: e.target.value })} />
           <input type="number" className="px-4 py-3 rounded-xl bg-gray-50" placeholder="Số giải thưởng" value={scale.awards_count ?? 0} onChange={(e) => setScale({ ...scale, awards_count: e.target.value })} />
-          <textarea className="px-4 py-3 rounded-xl bg-gray-50 md:col-span-2 min-h-[100px]" placeholder="Roadmap" value={scale.roadmap || ''} onChange={(e) => setScale({ ...scale, roadmap: e.target.value })} />
+          <RichTextEditor
+            className="md:col-span-2"
+            size="compact"
+            placeholder="Roadmap"
+            value={scale.roadmap || ''}
+            onChange={(value) => setScale({ ...scale, roadmap: value })}
+          />
         </div>
 
         <div className="mt-6 flex justify-end">
@@ -184,7 +190,13 @@ export const AdminNhanVatCMS = () => {
           <input className="px-4 py-3 rounded-xl bg-gray-50" placeholder="Email" value={newStaff.email} onChange={(e) => setNewStaff({ ...newStaff, email: e.target.value })} />
           <input className="px-4 py-3 rounded-xl bg-gray-50" placeholder="Chuyên môn" value={newStaff.expertise} onChange={(e) => setNewStaff({ ...newStaff, expertise: e.target.value })} />
           <input className="px-4 py-3 rounded-xl bg-gray-50 md:col-span-2" placeholder="Ảnh URL" value={newStaff.image_url} onChange={(e) => setNewStaff({ ...newStaff, image_url: e.target.value })} />
-          <textarea className="px-4 py-3 rounded-xl bg-gray-50 md:col-span-2 min-h-[80px]" placeholder="Tiểu sử" value={newStaff.bio} onChange={(e) => setNewStaff({ ...newStaff, bio: e.target.value })} />
+          <RichTextEditor
+            className="md:col-span-2"
+            size="compact"
+            placeholder="Tiểu sử"
+            value={newStaff.bio}
+            onChange={(value) => setNewStaff({ ...newStaff, bio: value })}
+          />
         </div>
         <div className="flex justify-end mb-8">
           <Button onClick={addStaff} className="bg-fpt-orange text-white rounded-xl px-6 py-3 font-black" disabled={staffLoading}>
