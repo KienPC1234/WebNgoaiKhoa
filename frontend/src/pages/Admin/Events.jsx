@@ -90,7 +90,7 @@ export const AdminEvents = () => {
       <Card className="p-8 rounded-[32px] border-none shadow-xl bg-white">
         <div className="flex items-center gap-3 mb-6">
           <div className="p-2 rounded-xl bg-blue-50 text-fpt-blue"><CalendarDays size={20} /></div>
-          <h2 className="text-2xl font-black text-fpt-blue uppercase tracking-tight">CMS Su kien sap toi</h2>
+          <h2 className="text-2xl font-black text-fpt-blue uppercase tracking-tight">CMS Sự kiện sắp tới</h2>
         </div>
 
         <div className="mb-5 inline-flex rounded-xl bg-gray-100 p-1">
@@ -111,12 +111,12 @@ export const AdminEvents = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <input className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="Tieu de" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-          <input className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="Dia diem" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
+          <input className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="Tiêu đề" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+          <input className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="Địa điểm" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
           <input type="datetime-local" className="px-4 py-3 rounded-xl bg-gray-50 font-bold" value={form.event_date} onChange={(e) => setForm({ ...form, event_date: e.target.value })} />
           <select className="px-4 py-3 rounded-xl bg-gray-50 font-bold" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
-            <option value="upcoming">Sap dien ra</option>
-            <option value="registration">Mo dang ky</option>
+            <option value="upcoming">Sắp diễn ra</option>
+            <option value="registration">Mở đăng ký</option>
           </select>
           <input className="px-4 py-3 rounded-xl bg-gray-50 font-bold md:col-span-2" placeholder="Image URL" value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} />
           <RichTextEditor
@@ -130,14 +130,14 @@ export const AdminEvents = () => {
 
         <div className="mt-6 flex justify-end">
           <Button onClick={createEvent} className="bg-fpt-orange text-white px-6 py-3 rounded-xl font-black inline-flex items-center gap-2 border-none">
-            <Plus size={16} /> Them su kien
+            <Plus size={16} /> Thêm sự kiện
           </Button>
         </div>
       </Card>
 
       <Card className="p-8 rounded-[32px] border-none shadow-xl bg-white">
         {loading ? (
-          <div className="py-16 text-center text-gray-400 font-black uppercase tracking-widest">Dang tai...</div>
+          <div className="py-16 text-center text-gray-400 font-black uppercase tracking-widest">Đang tải...</div>
         ) : (
           <div className="space-y-4">
             {events.map((item) => (
@@ -146,12 +146,12 @@ export const AdminEvents = () => {
                 <input className="md:col-span-2 px-3 py-2 rounded-lg bg-gray-50 font-bold" value={item.location || ''} onChange={(e) => patchEvent(item.id, 'location', e.target.value)} />
                 <input type="datetime-local" className="md:col-span-2 px-3 py-2 rounded-lg bg-gray-50 font-bold" value={item.event_date ? new Date(item.event_date).toISOString().slice(0, 16) : ''} onChange={(e) => patchEvent(item.id, 'event_date', e.target.value)} />
                 <select className="md:col-span-2 px-3 py-2 rounded-lg bg-gray-50 font-bold" value={item.status || 'upcoming'} onChange={(e) => patchEvent(item.id, 'status', e.target.value)}>
-                  <option value="upcoming">Sap dien ra</option>
-                  <option value="registration">Mo dang ky</option>
+                  <option value="upcoming">Sắp diễn ra</option>
+                  <option value="registration">Mở đăng ký</option>
                 </select>
                 <div className="md:col-span-3 flex justify-end gap-2">
-                  <Button onClick={() => saveEvent(item)} className="bg-fpt-blue text-white px-3 py-2 rounded-lg font-black border-none inline-flex items-center gap-1"><Save size={14} />Luu</Button>
-                  <Button onClick={() => removeEvent(item.id)} className="bg-red-500 text-white px-3 py-2 rounded-lg font-black border-none inline-flex items-center gap-1"><Trash2 size={14} />Xoa</Button>
+                  <Button onClick={() => saveEvent(item)} className="bg-fpt-blue text-white px-3 py-2 rounded-lg font-black border-none inline-flex items-center gap-1"><Save size={14} />Lưu</Button>
+                  <Button onClick={() => removeEvent(item.id)} className="bg-red-500 text-white px-3 py-2 rounded-lg font-black border-none inline-flex items-center gap-1"><Trash2 size={14} />Xóa</Button>
                 </div>
                 <RichTextEditor
                   className="md:col-span-12"
@@ -161,7 +161,7 @@ export const AdminEvents = () => {
                 />
               </div>
             ))}
-            {events.length === 0 && <div className="py-12 text-center text-gray-400 font-black uppercase tracking-widest">Chua co su kien.</div>}
+            {events.length === 0 && <div className="py-12 text-center text-gray-400 font-black uppercase tracking-widest">Chưa có sự kiện.</div>}
           </div>
         )}
       </Card>

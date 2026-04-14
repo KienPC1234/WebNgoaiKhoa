@@ -9,7 +9,6 @@ import {
   ArrowUp,
   Bell,
   X,
-  UserCircle,
   Users,
   Calendar,
   BookOpen,
@@ -18,9 +17,9 @@ import {
   Menu,
   PanelRightClose,
 } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { cn, GridBackground, ShimmerButton, Spotlight } from '@/components/UI'
+import { cn, ShimmerButton } from '@/components/UI'
 
 const introMenu = [
   {
@@ -72,17 +71,33 @@ const subjectContent = [
   { label: 'Vinh danh năm học', slug: 'vinh-danh', icon: Award },
 ]
 
+const overflowMenu = [
+  { to: '/events/upcoming', title: 'Sự kiện sắp tới', subtitle: 'Lịch workshop và hoạt động mới', icon: Calendar },
+  { to: '/stories/inspiring', title: 'Truyền cảm hứng', subtitle: 'Câu chuyện và chia sẻ nổi bật', icon: Heart },
+  { to: '/nhanvat/honors', title: 'Vinh danh năm học', subtitle: 'Danh sách cá nhân, tập thể tiêu biểu', icon: Award },
+]
+
 export const MainLayout = () => {
   const location = useLocation()
-  const [showIntroDropdown, setShowIntroDropdown] = useState(false)
-  const [showSubjectDropdown, setShowSubjectDropdown] = useState(false)
-  const [showStoriesDropdown, setShowStoriesDropdown] = useState(false)
+  // Single menu state: null | 'intro' | 'subjects' | 'more'
+  const [openMenu, setOpenMenu] = useState(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [mobileSectionOpen, setMobileSectionOpen] = useState('intro')
   const [showBackToTop, setShowBackToTop] = useState(false)
   const [notifications, setNotifications] = useState([])
+  const navRef = useRef(null)
 
   const token = localStorage.getItem('token')
+  let isAdmin = false
+  try {
+    const rawUser = localStorage.getItem('user')
+    if (rawUser) {
+      const parsedUser = JSON.parse(rawUser)
+      isAdmin = parsedUser?.role === 'admin'
+    }
+  } catch {
+    isAdmin = false
+  }
 
   const isActive = (path) => location.pathname === path
   const activeSubject = location.pathname.startsWith('/phanmon')
@@ -93,11 +108,18 @@ export const MainLayout = () => {
     location.pathname.startsWith('/stories')
 
   useEffect(() => {
-    const handleScroll = () => {
-      setShowBackToTop(window.scrollY > 400)
-    }
+    const handleScroll = () => setShowBackToTop(window.scrollY > 400)
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  // Close dropdown when clicking outside the nav pill
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (navRef.current && !navRef.current.contains(e.target)) setOpenMenu(null)
+    }
+    document.addEventListener('mousedown', handleOutsideClick)
+    return () => document.removeEventListener('mousedown', handleOutsideClick)
   }, [])
 
   useEffect(() => {
@@ -178,6 +200,7 @@ export const MainLayout = () => {
 
   useEffect(() => {
     setMobileMenuOpen(false)
+    setOpenMenu(null)
   }, [location.pathname])
 
   const scrollToTop = () => {
@@ -191,14 +214,12 @@ export const MainLayout = () => {
   return (
     <div className="app-shell relative overflow-x-clip">
       <header className="glass-nav sticky top-0 z-[100] overflow-visible">
-        <GridBackground className="opacity-30" />
-        <Spotlight className="opacity-90" />
-        <div className="app-section py-4">
-          <div className="surface relative z-[101] flex items-center justify-between gap-3 px-4 py-3 md:px-5 lg:px-6">
+        <div className="app-section px-3 py-4 md:px-6 lg:px-8">
+          <div ref={navRef} className="relative z-[101] flex items-center justify-between gap-3 rounded-3xl border border-orange-100/90 bg-gradient-to-r from-[#fff3e2] via-[#fff7ee] to-[#fff3e2] px-5 py-3.5 shadow-[0_20px_52px_-38px_rgba(15,23,42,0.35)] md:px-6 lg:px-8">
             <Link to="/" className="group flex items-center gap-3">
               <motion.div
                 whileHover={{ scale: 1.06 }}
-                className="flex h-12 w-12 items-center justify-center rounded-xl border border-orange-100 bg-white shadow-[0_14px_28px_-18px_rgba(242,112,36,0.85)]"
+                className="flex h-12 w-12 items-center justify-center rounded-xl border border-orange-100 bg-[#fff9f1] shadow-[0_14px_28px_-18px_rgba(242,112,36,0.85)]"
               >
                 <img src="/favicon.svg" alt="Logo Tổ xã hội" className="h-7 w-7 object-contain" />
               </motion.div>
@@ -208,18 +229,19 @@ export const MainLayout = () => {
               </div>
             </Link>
 
-            <nav className="hidden items-center gap-3 xl:flex">
+            <nav className="hidden min-w-0 flex-1 items-center gap-2 whitespace-nowrap px-2 xl:flex">
               <NavItem to="/" label="Trang chủ" icon={Home} active={isActive('/')} />
 
               <DesktopMenu
                 label="Giới thiệu"
                 icon={Sparkles}
-                open={showIntroDropdown}
-                onOpen={() => setShowIntroDropdown(true)}
-                onClose={() => setShowIntroDropdown(false)}
+                menuKey="intro"
+                openMenu={openMenu}
+                onOpen={setOpenMenu}
+                onClose={() => setOpenMenu(null)}
                 active={activeIntro}
               >
-                <div className="min-w-[340px] space-y-2 p-2">
+                <div className="w-[min(360px,calc(100vw-2.5rem))] space-y-2 p-2">
                   <DropdownHeading
                     title="Khối giới thiệu"
                     subtitle="Thông tin tổng quan về đội ngũ và định hướng phát triển"
@@ -233,17 +255,18 @@ export const MainLayout = () => {
               <DesktopMenu
                 label="Chuyên môn"
                 icon={GraduationCap}
-                open={showSubjectDropdown}
-                onOpen={() => setShowSubjectDropdown(true)}
-                onClose={() => setShowSubjectDropdown(false)}
+                menuKey="subjects"
+                openMenu={openMenu}
+                onOpen={setOpenMenu}
+                onClose={() => setOpenMenu(null)}
                 active={activeSubject}
               >
-                <div className="min-w-[900px] p-3">
+                <div className="w-[min(860px,calc(100vw-2.5rem))] p-3">
                   <DropdownHeading
                     title="Bản đồ chuyên môn"
                     subtitle="Chọn phân môn và loại nội dung để đi nhanh tới tài nguyên cần học"
                   />
-                  <div className="mt-3 grid grid-cols-5 gap-3">
+                  <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {subjects.map((subject) => (
                       <div key={subject.slug} className="rounded-2xl border border-slate-200/80 bg-gradient-to-b from-slate-50 to-white p-3 shadow-[0_14px_30px_-24px_rgba(15,23,42,0.5)]">
                         <h5 className="mb-3 text-[11px] font-black uppercase tracking-widest text-fpt-blue">{subject.name}</h5>
@@ -266,36 +289,44 @@ export const MainLayout = () => {
               </DesktopMenu>
 
               <DesktopMenu
-                label="Nhân vật & sự kiện"
-                icon={UserCircle}
-                open={showStoriesDropdown}
-                onOpen={() => setShowStoriesDropdown(true)}
-                onClose={() => setShowStoriesDropdown(false)}
+                label="Thêm"
+                icon={Menu}
+                menuKey="more"
+                openMenu={openMenu}
+                onOpen={setOpenMenu}
+                onClose={() => setOpenMenu(null)}
                 active={activeStories}
+                align="right"
               >
-                <div className="min-w-[380px] space-y-2 p-2">
+                <div className="w-[min(380px,calc(100vw-2.5rem))] space-y-2 p-2">
                   <DropdownHeading
-                    title="Nhân vật và sự kiện"
-                    subtitle="Những câu chuyện, mốc hoạt động và gương mặt tiêu biểu"
+                    title="Liên kết nhanh"
+                    subtitle="Nhóm các mục mở rộng để thanh điều hướng luôn gọn"
                   />
-                  {storiesMenu.map((item) => (
+                  {overflowMenu.map((item) => (
                     <SubMenuCard key={item.to} item={item} />
                   ))}
                 </div>
               </DesktopMenu>
             </nav>
 
-            <div className="flex items-center gap-2 md:gap-3">
+            <div className="flex shrink-0 items-center gap-2 md:gap-2.5">
+              {token && isAdmin && (
+                <Link to="/admin/dashboard" className="btn-ghost hidden xl:inline-flex">
+                  Admin
+                </Link>
+              )}
+
               {token ? (
-                <Link to="/profile" className="btn-ghost hidden lg:inline-flex">
+                <Link to="/profile" className="btn-ghost hidden xl:inline-flex">
                   Hồ sơ
                 </Link>
               ) : (
                 <>
-                  <Link to="/login" className="btn-ghost hidden lg:inline-flex">
+                  <Link to="/login" className="btn-ghost hidden xl:inline-flex">
                     Đăng nhập
                   </Link>
-                  <Link to="/register" className="btn-primary hidden lg:inline-flex">
+                  <Link to="/register" className="btn-primary hidden xl:inline-flex">
                     Đăng ký
                   </Link>
                 </>
@@ -304,7 +335,7 @@ export const MainLayout = () => {
               <ShimmerButton
                 type="button"
                 onClick={() => window.dispatchEvent(new CustomEvent('toggle-ai-chat'))}
-                className="hidden md:inline-flex"
+                className="hidden 2xl:inline-flex"
               >
                 <Sparkles size={16} />
                 AI Chat
@@ -312,7 +343,7 @@ export const MainLayout = () => {
 
               <button
                 type="button"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 xl:hidden"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-orange-100 bg-[#fff9f1] text-slate-700 2xl:hidden"
                 onClick={() => setMobileMenuOpen((prev) => !prev)}
               >
                 {mobileMenuOpen ? <PanelRightClose size={18} /> : <Menu size={18} />}
@@ -327,7 +358,7 @@ export const MainLayout = () => {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="app-section xl:hidden"
+              className="app-section 2xl:hidden"
             >
               <div className="surface mb-4 p-3">
                 <div className="mb-2 flex items-center gap-3 rounded-xl border border-orange-100 bg-orange-50/60 p-3">
@@ -387,12 +418,18 @@ export const MainLayout = () => {
                   openSection={mobileSectionOpen}
                   onToggle={setMobileSectionOpen}
                 >
-                  {storiesMenu.map((item) => (
+                  {overflowMenu.map((item) => (
                     <MobileLink key={item.to} to={item.to} label={item.title} />
                   ))}
                 </MobileSection>
 
                 <div className="mt-3 flex gap-2">
+                  {token && isAdmin && (
+                    <Link to="/admin/dashboard" className="btn-ghost flex-1">
+                      Admin Panel
+                    </Link>
+                  )}
+
                   {token ? (
                     <Link to="/profile" className="btn-ghost flex-1">
                       Hồ sơ
@@ -511,8 +548,10 @@ const NavItem = ({ to, icon: Icon, label, active }) => (
   <Link
     to={to}
     className={cn(
-      'relative flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-black uppercase tracking-widest transition-colors',
-      active ? 'bg-orange-50 text-fpt-orange' : 'text-slate-500 hover:text-fpt-orange'
+      'relative shrink-0 flex items-center gap-2 rounded-full border px-3.5 py-2 text-[11px] font-black uppercase tracking-[0.11em] transition-colors',
+      active
+        ? 'border-orange-200 bg-orange-100/80 text-fpt-orange'
+        : 'border-orange-100/80 bg-transparent text-slate-600 hover:border-orange-200 hover:bg-orange-50/70 hover:text-fpt-orange'
     )}
   >
     <Icon size={16} />
@@ -520,29 +559,38 @@ const NavItem = ({ to, icon: Icon, label, active }) => (
   </Link>
 )
 
-const DesktopMenu = ({ label, icon: Icon, open, onOpen, onClose, active, children }) => (
-  <div className="relative" onMouseEnter={onOpen} onMouseLeave={onClose}>
+const DesktopMenu = ({ label, icon: Icon, menuKey, openMenu, onOpen, onClose, active, children, align = 'left' }) => (
+  <div className="relative shrink-0" onMouseEnter={() => onOpen(menuKey)} onMouseLeave={onClose}>
     <button
       type="button"
       className={cn(
-        'flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-black uppercase tracking-widest transition-colors',
-        active ? 'bg-orange-50 text-fpt-orange' : 'text-slate-500 hover:text-fpt-orange'
+        'flex items-center gap-2 rounded-full border px-3.5 py-2 text-[11px] font-black uppercase tracking-[0.11em] transition-colors',
+        (active || openMenu === menuKey)
+          ? 'border-orange-200 bg-orange-100/80 text-fpt-orange'
+          : 'border-orange-100/80 bg-transparent text-slate-600 hover:border-orange-200 hover:bg-orange-50/70 hover:text-fpt-orange'
       )}
     >
       <Icon size={16} />
       {label}
-      <ChevronDown size={14} className={cn('transition-transform', open && 'rotate-180')} />
+      <ChevronDown size={14} className={cn('transition-transform', openMenu === menuKey && 'rotate-180')} />
     </button>
 
     <AnimatePresence>
-      {open && (
+      {openMenu === menuKey && (
         <motion.div
           initial={{ opacity: 0, y: 8, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 6, scale: 0.98 }}
-          className="absolute left-0 top-[calc(100%+10px)] z-50 rounded-3xl border border-slate-200/80 bg-white/96 p-1.5 shadow-[0_28px_70px_-40px_rgba(15,23,42,0.65)] backdrop-blur-xl"
+          className={cn(
+            'custom-scrollbar absolute top-[calc(100%+12px)] z-50 max-h-[78vh] max-w-[calc(100vw-2rem)] overflow-x-auto overflow-y-auto rounded-[1.4rem] border border-orange-100/90 bg-[#fffaf3] p-2 shadow-[0_32px_72px_-42px_rgba(15,23,42,0.7)] origin-top',
+            align === 'right' ? 'right-0' : 'left-0'
+          )}
         >
-          <div className="absolute left-8 top-0 h-3 w-3 -translate-y-1/2 rotate-45 border-l border-t border-slate-200/80 bg-white" />
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-fpt-orange via-orange-300 to-fpt-blue" />
+          <div className={cn(
+            'absolute top-0 h-3 w-3 -translate-y-1/2 rotate-45 border-l border-t border-orange-100/90 bg-[#fffaf3]',
+            align === 'right' ? 'right-8' : 'left-8'
+          )} />
           {children}
         </motion.div>
       )}
@@ -553,9 +601,9 @@ const DesktopMenu = ({ label, icon: Icon, open, onOpen, onClose, active, childre
 const SubMenuCard = ({ item }) => (
   <Link
     to={item.to}
-    className="group flex items-center gap-3 rounded-2xl border border-transparent p-3 transition-all hover:-translate-y-0.5 hover:border-orange-100 hover:bg-orange-50/60"
+    className="group flex items-center gap-3 rounded-xl border border-transparent p-3 transition-all hover:-translate-y-0.5 hover:border-slate-200 hover:bg-slate-50"
   >
-    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-slate-400 shadow-sm transition-colors group-hover:text-fpt-orange">
+    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white text-slate-400 shadow-[0_10px_20px_-14px_rgba(15,23,42,0.6)] transition-colors group-hover:text-fpt-orange">
       <item.icon size={18} />
     </div>
     <div>
@@ -566,9 +614,9 @@ const SubMenuCard = ({ item }) => (
 )
 
 const DropdownHeading = ({ title, subtitle }) => (
-  <div className="rounded-2xl border border-slate-100 bg-gradient-to-r from-slate-50 to-white px-3 py-3">
+  <div className="rounded-xl border border-slate-200 bg-gradient-to-r from-slate-50 to-white px-3 py-2.5">
     <p className="text-[10px] font-black uppercase tracking-[0.22em] text-fpt-orange">{title}</p>
-    <p className="mt-1 text-xs font-semibold leading-relaxed text-slate-500">{subtitle}</p>
+    <p className="mt-1 text-[11px] font-semibold leading-relaxed text-slate-500">{subtitle}</p>
   </div>
 )
 

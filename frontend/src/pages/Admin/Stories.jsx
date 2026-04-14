@@ -90,14 +90,14 @@ export const AdminStories = () => {
       <Card className="p-8 rounded-[32px] border-none shadow-xl bg-white">
         <div className="flex items-center gap-3 mb-6">
           <div className="p-2 rounded-xl bg-rose-50 text-rose-600"><BookHeart size={20} /></div>
-          <h2 className="text-2xl font-black text-fpt-blue uppercase tracking-tight">CMS Cau chuyen truyen cam hung</h2>
+          <h2 className="text-2xl font-black text-fpt-blue uppercase tracking-tight">CMS Câu chuyện truyền cảm hứng</h2>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <input className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="Tieu de" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-          <input className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="Tac gia" value={form.author} onChange={(e) => setForm({ ...form, author: e.target.value })} />
-          <input className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="Chuyen muc" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
-          <input type="number" className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="Phut doc" value={form.read_time_minutes} onChange={(e) => setForm({ ...form, read_time_minutes: Number(e.target.value) || 5 })} />
+          <input className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="Tiêu đề" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+          <input className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="Tác giả" value={form.author} onChange={(e) => setForm({ ...form, author: e.target.value })} />
+          <input className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="Chuyên mục" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
+          <input type="number" className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="Phút đọc" value={form.read_time_minutes} onChange={(e) => setForm({ ...form, read_time_minutes: Number(e.target.value) || 5 })} />
           <input className="px-4 py-3 rounded-xl bg-gray-50 font-bold md:col-span-2" placeholder="Image URL" value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} />
           <RichTextEditor
             className="md:col-span-2"
@@ -116,14 +116,14 @@ export const AdminStories = () => {
 
         <div className="mt-6 flex justify-end">
           <Button onClick={createStory} className="bg-fpt-orange text-white px-6 py-3 rounded-xl font-black inline-flex items-center gap-2 border-none">
-            <Plus size={16} /> Them cau chuyen
+            <Plus size={16} /> Thêm câu chuyện
           </Button>
         </div>
       </Card>
 
       <Card className="p-8 rounded-[32px] border-none shadow-xl bg-white">
         {loading ? (
-          <div className="py-16 text-center text-gray-400 font-black uppercase tracking-widest">Dang tai...</div>
+          <div className="py-16 text-center text-gray-400 font-black uppercase tracking-widest">Đang tải...</div>
         ) : (
           <div className="space-y-4">
             {stories.map((item) => (
@@ -133,8 +133,8 @@ export const AdminStories = () => {
                 <input className="md:col-span-2 px-3 py-2 rounded-lg bg-gray-50 font-bold" value={item.category || ''} onChange={(e) => patchStory(item.id, 'category', e.target.value)} />
                 <input type="number" className="md:col-span-1 px-3 py-2 rounded-lg bg-gray-50 font-bold" value={item.read_time_minutes || 5} onChange={(e) => patchStory(item.id, 'read_time_minutes', Number(e.target.value) || 5)} />
                 <div className="md:col-span-4 flex justify-end gap-2">
-                  <Button onClick={() => saveStory(item)} className="bg-fpt-blue text-white px-3 py-2 rounded-lg font-black border-none inline-flex items-center gap-1"><Save size={14} />Luu</Button>
-                  <Button onClick={() => removeStory(item.id)} className="bg-red-500 text-white px-3 py-2 rounded-lg font-black border-none inline-flex items-center gap-1"><Trash2 size={14} />Xoa</Button>
+                  <Button onClick={() => saveStory(item)} className="bg-fpt-blue text-white px-3 py-2 rounded-lg font-black border-none inline-flex items-center gap-1"><Save size={14} />Lưu</Button>
+                  <Button onClick={() => removeStory(item.id)} className="bg-red-500 text-white px-3 py-2 rounded-lg font-black border-none inline-flex items-center gap-1"><Trash2 size={14} />Xóa</Button>
                 </div>
                 <RichTextEditor
                   className="md:col-span-12"
@@ -149,7 +149,7 @@ export const AdminStories = () => {
                 />
               </div>
             ))}
-            {stories.length === 0 && <div className="py-12 text-center text-gray-400 font-black uppercase tracking-widest">Chua co cau chuyen.</div>}
+            {stories.length === 0 && <div className="py-12 text-center text-gray-400 font-black uppercase tracking-widest">Chưa có câu chuyện.</div>}
           </div>
         )}
       </Card>

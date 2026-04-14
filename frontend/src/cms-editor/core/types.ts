@@ -78,6 +78,7 @@ export interface BlockDefinition {
   type: BlockType
   label: string
   category: 'text' | 'media' | 'layout' | 'article' | 'decor' | 'table'
+  insertable?: boolean
   create: () => CMSBlock
   validate: (block: CMSBlock) => BlockValidationResult
   EditorComponent: (props: BlockEditorProps) => ReactNode
@@ -114,6 +115,7 @@ export interface EditorState {
 
 export type EditorAction =
   | { type: 'LOAD_DOCUMENT'; payload: CMSDocument }
+  | { type: 'UPDATE_DOCUMENT_TITLE'; payload: { title: string } }
   | { type: 'SET_SELECTION'; payload: EditorSelection }
   | { type: 'INSERT_BLOCK'; payload: { parentId: string | null; index: number; block: CMSBlock } }
   | { type: 'UPDATE_BLOCK'; payload: { blockId: string; updater: (prev: CMSBlock) => CMSBlock } }

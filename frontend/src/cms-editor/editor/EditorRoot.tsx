@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useReducer, useState } from 'react'
+import React, { useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { ensureDefaultBlocksRegistered } from '../blocks/defaultDefinitions'
 import { blockRegistry } from '../core/registry'
 import type { CMSDocument } from '../core/types'
@@ -25,16 +25,21 @@ export const HybridCMSEditorRoot: React.FC<HybridCMSEditorRootProps> = ({
 }) => {
   const [state, dispatch] = useReducer(editorReducer, createInitialEditorState())
   const [search, setSearch] = useState('')
+  const loadedInitialDocRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (!initialDocument) return
+    const loadKey = `${initialDocument.id}:${initialDocument.version}`
+    if (loadedInitialDocRef.current === loadKey) return
+    loadedInitialDocRef.current = loadKey
     dispatch({ type: 'LOAD_DOCUMENT', payload: initialDocument })
-  }, [initialDocument])
+  }, [initialDocument?.id, initialDocument?.version])
 
   useEffect(() => {
     if (!onDocumentChange) return
+    if (!state.dirty) return
     onDocumentChange(state.document)
-  }, [state.document, onDocumentChange])
+  }, [state.document, state.dirty, onDocumentChange])
 
   useAutosave(state.document, {
     onSave: () => {
@@ -46,7 +51,7 @@ export const HybridCMSEditorRoot: React.FC<HybridCMSEditorRootProps> = ({
   const validation = validateDocument(state.document)
 
   const commands = useMemo<EditorCommand[]>(() => {
-    const defs = blockRegistry.list()
+    const defs = blockRegistry.listInsertable()
     return defs.map((def) => createInsertCommand(def.type, null, state.document.blocks.length))
   }, [state.document.blocks.length])
 
@@ -83,8 +88,8 @@ export const HybridCMSEditorRoot: React.FC<HybridCMSEditorRootProps> = ({
             className="w-full px-3 py-2 rounded-lg bg-gray-50 text-sm font-semibold"
             value={state.document.title}
             onChange={(event) => dispatch({
-              type: 'LOAD_DOCUMENT',
-              payload: { ...state.document, title: event.target.value },
+              type: 'UPDATE_DOCUMENT_TITLE',
+              payload: { title: event.target.value },
             })}
             aria-label="Document title"
           />

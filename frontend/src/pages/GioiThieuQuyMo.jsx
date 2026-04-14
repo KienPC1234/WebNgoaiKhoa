@@ -27,10 +27,10 @@ export const GioiThieuQuyMo = () => {
   }, [])
 
   const stats = [
-    { title: 'Giao vien', count: scale?.staff_count ?? 0, icon: Users, color: 'text-blue-500', bg: 'bg-blue-50' },
-    { title: 'Sinh vien', count: scale?.student_count ?? 0, icon: Target, color: 'text-orange-500', bg: 'bg-orange-50' },
-    { title: 'Du an', count: scale?.projects_count ?? 0, icon: Shield, color: 'text-emerald-500', bg: 'bg-emerald-50' },
-    { title: 'Giai thuong', count: scale?.awards_count ?? 0, icon: Award, color: 'text-purple-500', bg: 'bg-purple-50' },
+    { title: 'Giáo viên', count: scale?.staff_count ?? 0, icon: Users, color: 'text-blue-500', bg: 'bg-blue-50' },
+    { title: 'Sinh viên', count: scale?.student_count ?? 0, icon: Target, color: 'text-orange-500', bg: 'bg-orange-50' },
+    { title: 'Dự án', count: scale?.projects_count ?? 0, icon: Shield, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+    { title: 'Giải thưởng', count: scale?.awards_count ?? 0, icon: Award, color: 'text-purple-500', bg: 'bg-purple-50' },
   ]
 
   return (
@@ -44,15 +44,15 @@ export const GioiThieuQuyMo = () => {
             className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md px-6 py-2 rounded-full text-xs font-black uppercase tracking-[0.3em] border border-white/20 shadow-xl"
           >
             <Sparkles size={16} />
-            <span>Tam nhin va Su menh</span>
+            <span>Tầm nhìn và sứ mệnh</span>
           </motion.div>
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-6xl md:text-8xl font-black italic leading-tight uppercase"
           >
-            {scale?.hero_title || 'TO XA HOI'} <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-200 to-yellow-100 not-italic">QUY MO & PHAT TRIEN</span>
+            {scale?.hero_title || 'TỔ XÃ HỘI'} <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-200 to-yellow-100 not-italic">QUY MỌ & PHÁT TRIỂN</span>
           </motion.h1>
           <motion.p
             initial={{ opacity: 0 }}
@@ -87,14 +87,14 @@ export const GioiThieuQuyMo = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div className="space-y-8">
               <h2 className="text-4xl font-black text-fpt-blue uppercase italic tracking-tighter border-l-8 border-fpt-orange pl-6">
-                Quy mo hoat dong
+                Quy mô hoạt động
               </h2>
               <p className="text-gray-600 text-lg leading-relaxed font-medium">
-                {scale?.vision || 'Thong tin dang duoc cap nhat.'}
+                {scale?.vision || 'Thông tin đang được cập nhật.'}
               </p>
               {scale?.subjects_overview && (
                 <p className="text-sm text-gray-500 font-bold uppercase tracking-widest">
-                  Chuyen mon: {scale.subjects_overview}
+                  Chuyên môn: {scale.subjects_overview}
                 </p>
               )}
             </div>

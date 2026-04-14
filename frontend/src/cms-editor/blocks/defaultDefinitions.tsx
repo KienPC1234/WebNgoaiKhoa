@@ -1,4 +1,5 @@
 import React from 'react'
+import ReactMarkdown from 'react-markdown'
 import type { BlockDefinition, CMSBlock } from '../core/types'
 import { blockRegistry } from '../core/registry'
 import { createBlock } from '../core/model'
@@ -53,6 +54,16 @@ const MinimalRenderer: React.FC<{ block: CMSBlock }> = ({ block }) => {
   const text = String(block.props.text || '')
   const url = String(block.props.url || '')
   const src = String(block.props.src || '')
+
+  if (block.type === 'paragraph') {
+    return (
+      <div className="rounded-lg bg-gray-50 px-3 py-2">
+        <div className="prose prose-sm max-w-none text-gray-700">
+          <ReactMarkdown>{text || 'Text content'}</ReactMarkdown>
+        </div>
+      </div>
+    )
+  }
 
   if (block.type === 'list') {
     const items = Array.isArray(block.props.items)
@@ -231,10 +242,12 @@ const makeDefinition = (
   category: BlockDefinition['category'],
   label: string,
   defaults: Record<string, unknown> = {},
+  options: { insertable?: boolean } = {},
 ): BlockDefinition => ({
   type,
   category,
   label,
+  insertable: options.insertable,
   create: () => createBlock(type, { colSpan: 6, rowSpan: 1, ...defaults }),
   validate: baseValidate,
   EditorComponent: ({ block, selected, onSelect }) => (
@@ -248,10 +261,10 @@ const makeDefinition = (
 export const registerDefaultBlocks = () => {
   const definitions: BlockDefinition[] = [
     makeDefinition('paragraph', 'text', 'Paragraph', { colSpan: 12, text: '' }),
-    makeDefinition('heading', 'text', 'Heading', { colSpan: 12, text: 'Heading', level: 2 }),
-    makeDefinition('list', 'text', 'List', { colSpan: 12, items: ['item 1', 'item 2'], text: 'item 1\nitem 2' }),
-    makeDefinition('quote', 'text', 'Quote', { colSpan: 12, text: 'Quote...' }),
-    makeDefinition('code', 'text', 'Code', { colSpan: 12, text: 'const x = 1;' }),
+    makeDefinition('heading', 'text', 'Heading', { colSpan: 12, text: 'Heading', level: 2 }, { insertable: false }),
+    makeDefinition('list', 'text', 'List', { colSpan: 12, items: ['item 1', 'item 2'], text: 'item 1\nitem 2' }, { insertable: false }),
+    makeDefinition('quote', 'text', 'Quote', { colSpan: 12, text: 'Quote...' }, { insertable: false }),
+    makeDefinition('code', 'text', 'Code', { colSpan: 12, text: 'const x = 1;' }, { insertable: false }),
     makeDefinition('image', 'media', 'Image', { colSpan: 6, src: '', text: '' }),
     makeDefinition('gallery', 'media', 'Gallery', { colSpan: 6, images: [] }),
     makeDefinition('video', 'media', 'Video', { colSpan: 6, url: '' }),

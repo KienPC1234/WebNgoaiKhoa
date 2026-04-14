@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
-import { MessageSquare, Send, X, Bot, Sparkles, Trash2, Maximize2, Minimize2, Square, RefreshCcw, ArrowDown } from 'lucide-react'
-import { Button, Card, cn } from '../UI'
+import { Send, X, Bot, Sparkles, Trash2, Maximize2, Minimize2, Square, ArrowDown } from 'lucide-react'
+import { Card, cn } from '../UI'
 import ReactMarkdown from 'react-markdown'
 import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
@@ -132,10 +132,10 @@ export const AiChatWidget = () => {
     <div className="fixed bottom-6 right-6 z-50">
       <button 
         onClick={() => setIsOpen(true)}
-        className="bg-fpt-orange text-white p-5 rounded-3xl shadow-2xl shadow-orange-300 hover:scale-110 active:scale-95 transition-all flex items-center justify-center border-4 border-white group relative"
+        className="group relative flex items-center justify-center rounded-2xl border border-white bg-fpt-orange p-4 text-white shadow-[0_16px_34px_-16px_rgba(242,112,36,0.85)] transition-all hover:scale-105 active:scale-95"
       >
-        <Sparkles size={28} className="animate-pulse group-hover:rotate-12" />
-        <span className="absolute -top-12 right-0 bg-white text-fpt-blue text-[10px] font-black px-3 py-1.5 rounded-xl border border-blue-50 shadow-xl opacity-0 group-hover:opacity-100 transition-all pointer-events-none whitespace-nowrap">
+        <Sparkles size={24} className="transition-transform group-hover:rotate-12" />
+        <span className="pointer-events-none absolute -top-11 right-0 whitespace-nowrap rounded-lg border border-blue-100 bg-white px-3 py-1 text-[10px] font-black text-fpt-blue opacity-0 shadow-lg transition-all group-hover:opacity-100">
           HỎI AI NHÉ?
         </span>
       </button>
@@ -144,32 +144,31 @@ export const AiChatWidget = () => {
 
   return (
     <div className={cn(
-      "fixed bottom-6 right-6 z-[70] transition-all duration-500 ease-in-out flex flex-col",
-      isMinimized ? "h-16 w-64" : "h-[650px] w-[450px] max-w-[90vw] max-h-[85vh]"
+      'fixed bottom-6 right-6 z-[70] flex flex-col transition-all duration-300 ease-out',
+      isMinimized ? 'h-16 w-72' : 'h-[600px] w-[420px] max-h-[85vh] max-w-[92vw]'
     )}>
-      <Card className="h-full flex flex-col p-0 overflow-hidden border border-gray-100 shadow-[0_30px_100px_-20px_rgba(0,0,0,0.3)] rounded-[40px] bg-white">
+      <Card className="h-full flex flex-col overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white p-0 shadow-[0_24px_56px_-28px_rgba(15,23,42,0.45)]">
         {/* Header */}
-        <div className="bg-fpt-blue p-6 flex justify-between items-center text-white shrink-0 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-full bg-white opacity-5 skew-x-12 translate-x-16"></div>
-          <div className="flex items-center gap-4 relative z-10">
-            <div className="bg-white/20 p-2.5 rounded-2xl backdrop-blur-md relative border border-white/10">
-              <Bot size={22} className="text-fpt-orange" />
-              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-green-400 border-2 border-fpt-blue rounded-full" />
+        <div className="relative flex shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 py-3 text-slate-800">
+          <div className="relative z-10 flex items-center gap-3">
+            <div className="relative rounded-xl border border-blue-100 bg-blue-50 p-2">
+              <Bot size={18} className="text-fpt-blue" />
+              <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-white bg-green-500" />
             </div>
             <div className="flex flex-col">
-              <span className="font-black text-sm tracking-tight leading-none uppercase italic">FPT AI Assistant</span>
-              <span className="text-[9px] font-bold opacity-60 uppercase tracking-[0.2em] mt-1.5">Cố vấn ngoại khóa thông minh</span>
+              <span className="text-sm font-black leading-none tracking-tight text-fpt-blue">FPT AI Assistant</span>
+              <span className="mt-1 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Cố vấn ngoại khóa</span>
             </div>
           </div>
-          <div className="flex items-center gap-1 relative z-10">
-            <button onClick={clearChat} className="p-2 hover:bg-white/10 rounded-xl transition-colors" title="Xóa hội thoại">
-              <Trash2 size={16} />
+          <div className="relative z-10 flex items-center gap-1">
+            <button onClick={clearChat} className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700" title="Xóa hội thoại">
+              <Trash2 size={15} />
             </button>
-            <button onClick={() => setIsMinimized(!isMinimized)} className="p-2 hover:bg-white/10 rounded-xl transition-colors">
-              {isMinimized ? <Maximize2 size={16} /> : <Minimize2 size={16} />}
+            <button onClick={() => setIsMinimized(!isMinimized)} className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700">
+              {isMinimized ? <Maximize2 size={15} /> : <Minimize2 size={15} />}
             </button>
-            <button onClick={() => setIsOpen(false)} className="p-2 hover:bg-white/10 rounded-xl transition-colors">
-              <X size={22} />
+            <button onClick={() => setIsOpen(false)} className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700">
+              <X size={18} />
             </button>
           </div>
         </div>
@@ -180,20 +179,20 @@ export const AiChatWidget = () => {
             <div 
               ref={scrollRef} 
               onScroll={handleScroll}
-              className="flex-1 overflow-y-auto p-8 space-y-8 bg-gray-50/30 custom-scrollbar relative"
+              className="relative flex-1 space-y-5 overflow-y-auto bg-slate-50/70 p-4 custom-scrollbar"
             >
               {messages.map((msg, i) => (
                 <div key={i} className={cn(
-                  "flex flex-col gap-2 animate-fadeIn",
+                  'animate-fadeIn flex flex-col gap-1.5',
                   msg.role === 'user' ? "items-end" : msg.role === 'system' ? "items-center" : "items-start"
                 )}>
                   <div className={cn(
-                    "max-w-[85%] px-6 py-4 text-sm leading-relaxed shadow-sm transition-all",
+                    'max-w-[86%] px-4 py-3 text-sm leading-relaxed shadow-sm transition-all',
                     msg.role === 'user' 
-                      ? "bg-fpt-orange text-white rounded-[28px_28px_4px_28px] font-bold" 
+                      ? 'rounded-2xl rounded-br-md bg-fpt-orange font-semibold text-white' 
                       : msg.role === 'system'
-                        ? "bg-gray-200 text-gray-500 text-[10px] font-black py-2 rounded-full px-5 uppercase tracking-widest"
-                        : "bg-white border border-gray-100 text-gray-800 rounded-[28px_28px_28px_4px] font-medium"
+                        ? 'rounded-full bg-slate-200 px-4 py-1.5 text-[10px] font-black uppercase tracking-widest text-slate-500'
+                        : 'rounded-2xl rounded-bl-md border border-slate-200 bg-white font-medium text-slate-700'
                   )}>
                     <div className="prose prose-sm prose-orange max-w-none break-words leading-relaxed font-medium">
                       <ReactMarkdown 
@@ -205,7 +204,7 @@ export const AiChatWidget = () => {
                     </div>
                   </div>
                   {msg.role !== 'system' && (
-                    <span className="text-[9px] font-black text-gray-300 uppercase tracking-[0.2em] mx-3">
+                    <span className="mx-2 text-[9px] font-black uppercase tracking-[0.16em] text-slate-300">
                       {msg.role === 'user' ? 'Sinh viên' : 'Hệ thống AI'}
                     </span>
                   )}
@@ -213,36 +212,38 @@ export const AiChatWidget = () => {
               ))}
               
               {isTyping && (
-                <div className="flex items-center gap-4 text-fpt-orange px-3 animate-pulse">
+                <div className="animate-pulse px-2 text-fpt-orange">
+                  <div className="flex items-center gap-3 rounded-xl border border-orange-100 bg-orange-50 px-3 py-2">
                   <div className="flex gap-2">
                     <span className="w-2 h-2 bg-fpt-orange rounded-full animate-bounce" />
                     <span className="w-2 h-2 bg-fpt-orange rounded-full animate-bounce [animation-delay:0.2s]" />
                     <span className="w-2 h-2 bg-fpt-orange rounded-full animate-bounce [animation-delay:0.4s]" />
                   </div>
-                  <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60 italic">Đang phân tích...</span>
+                  <span className="text-[10px] font-black uppercase tracking-[0.14em] opacity-70">Đang phân tích...</span>
+                  </div>
                 </div>
               )}
 
               {showScrollDown && (
                 <button 
                   onClick={scrollToBottom}
-                  className="fixed bottom-32 right-12 bg-white text-fpt-blue p-3 rounded-2xl shadow-2xl border border-gray-100 hover:scale-110 transition-all z-20"
+                  className="fixed bottom-28 right-10 z-20 rounded-xl border border-slate-200 bg-white p-2.5 text-fpt-blue shadow-lg transition-all hover:scale-105"
                 >
-                  <ArrowDown size={20} />
+                  <ArrowDown size={18} />
                 </button>
               )}
             </div>
 
             {/* Input Area */}
-            <div className="p-8 bg-white border-t border-gray-50 space-y-6">
+            <div className="space-y-3 border-t border-slate-200 bg-white p-4">
               {/* Quick Suggestions */}
               {messages.length === 1 && (
-                <div className="flex flex-wrap gap-2.5 mb-2 animate-fadeInUp">
+                <div className="mb-1 flex flex-wrap gap-2 animate-fadeInUp">
                   {quickSuggestions.map((text, i) => (
                     <button
                       key={i}
                       onClick={() => handleSend(text)}
-                      className="text-[9px] font-black text-fpt-blue bg-blue-50/50 px-4 py-2.5 rounded-xl border border-blue-100/30 hover:bg-fpt-blue hover:text-white transition-all uppercase tracking-widest shadow-sm"
+                      className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[10px] font-bold text-slate-600 transition-all hover:border-fpt-blue hover:bg-blue-50 hover:text-fpt-blue"
                     >
                       {text}
                     </button>
@@ -250,8 +251,8 @@ export const AiChatWidget = () => {
                 </div>
               )}
 
-              <div className="relative flex items-center gap-4">
-                <div className="flex-1 relative group">
+              <div className="relative flex items-end gap-2.5">
+                <div className="group relative flex-1">
                   <textarea 
                     rows="1"
                     value={input}
@@ -263,29 +264,29 @@ export const AiChatWidget = () => {
                       }
                     }}
                     placeholder="Đặt câu hỏi cho AI..."
-                    className="w-full text-sm font-bold border-2 border-gray-50 focus:border-fpt-orange/20 bg-gray-50 focus:bg-white rounded-[24px] px-6 py-5 outline-none transition-all resize-none max-h-32 custom-scrollbar shadow-inner"
+                    className="custom-scrollbar max-h-32 w-full resize-none rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium outline-none transition-all focus:border-fpt-orange/40 focus:ring-2 focus:ring-orange-100"
                   />
                 </div>
                 
                 {isTyping ? (
                   <button 
                     onClick={handleStop}
-                    className="bg-red-500 text-white p-5 rounded-[24px] hover:bg-red-600 transition-all shadow-xl shadow-red-100 flex-shrink-0"
+                    className="flex-shrink-0 rounded-xl bg-red-500 p-3 text-white transition-all hover:bg-red-600"
                   >
-                    <Square size={22} fill="currentColor" />
+                    <Square size={18} fill="currentColor" />
                   </button>
                 ) : (
                   <button 
                     onClick={() => handleSend()} 
                     disabled={!input.trim()}
-                    className="bg-fpt-blue text-white p-5 rounded-[24px] hover:bg-fpt-orange transition-all shadow-2xl shadow-blue-100 disabled:opacity-50 disabled:grayscale hover:scale-105 active:scale-95 flex-shrink-0 border-none"
+                    className="flex-shrink-0 rounded-xl bg-fpt-blue p-3 text-white transition-all hover:bg-fpt-orange disabled:opacity-50"
                   >
-                    <Send size={22} />
+                    <Send size={18} />
                   </button>
                 )}
               </div>
               <div className="text-center">
-                <span className="text-[9px] font-black text-gray-300 uppercase tracking-[0.3em]">
+                <span className="text-[9px] font-bold uppercase tracking-[0.22em] text-slate-300">
                   Mô hình gpt-oss:120b-cloud • FPT Education
                 </span>
               </div>

@@ -28,41 +28,37 @@ export const StoriesInspiring = () => {
     }, [])
 
     return (
-        <div className="min-h-screen bg-gray-50/50 pb-20">
-            {/* Hero Section */}
-            <section className="bg-gradient-to-br from-[#ff6b6b] via-[#ee5253] to-red-600 text-white py-24 px-4 relative overflow-hidden">
-                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/pinstriped-suit.png')] opacity-10 mix-blend-overlay"></div>
-                <div className="absolute -top-32 -right-32 w-96 h-96 bg-white opacity-10 blur-3xl rounded-full"></div>
-
+        <div className="page-shell-public bg-gray-50/50">
+            <section className="page-hero page-hero-caro text-slate-700">
                 <div className="max-w-6xl mx-auto relative z-10 text-center space-y-8">
                     <motion.div
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md px-6 py-2 rounded-full text-xs font-black uppercase tracking-[0.3em] border border-white/20 shadow-xl"
+                        className="inline-flex items-center gap-2 bg-white/90 px-6 py-2 rounded-full text-xs font-black uppercase tracking-[0.3em] border border-orange-200 shadow-xl"
                     >
-                        <Heart size={16} className="text-white fill-white animate-pulse" />
+                        <Heart size={16} className="text-fpt-orange fill-fpt-orange" />
                         <span>Chạm tới trái tim</span>
                     </motion.div>
                     <motion.h1
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="text-6xl md:text-8xl font-black italic leading-tight uppercase"
+                        className="text-6xl md:text-8xl font-black italic leading-tight uppercase text-fpt-blue"
                     >
                         CÂU CHUYỆN <br />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-200 to-yellow-100 not-italic">TRUYỀN CẢM HỨNG</span>
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-fpt-orange to-orange-500 not-italic">TRUYỀN CẢM HỨNG</span>
                     </motion.h1>
                     <motion.p
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: 0.2 }}
-                        className="text-xl text-red-50 max-w-3xl mx-auto font-medium leading-relaxed italic"
+                        className="text-xl text-slate-500 max-w-3xl mx-auto font-medium leading-relaxed italic"
                     >
                         Lắng nghe những chia sẻ thật chân thành về hành trình trưởng thành và khám phá bản thân tại Tổ Xã hội.
                     </motion.p>
                 </div>
             </section>
 
-            <div className="max-w-6xl mx-auto px-4 mt-20">
+            <div className="page-content-wrap">
                 {loading && (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 mb-10">
                         {[1, 2, 3].map((i) => <div key={i} className="h-96 bg-white rounded-[40px] animate-pulse" />)}

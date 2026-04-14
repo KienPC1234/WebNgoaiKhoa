@@ -36,15 +36,15 @@ export const HonorsYearly = () => {
   }, [])
 
   return (
-    <div className="min-h-screen bg-gray-50/50 pb-20">
-      <section className="bg-gradient-to-br from-fpt-orange to-fpt-blue text-white py-16 px-4">
+    <div className="page-shell-public bg-gray-50/50">
+      <section className="page-hero page-hero-caro text-slate-700">
         <div className="max-w-6xl mx-auto">
-          <h1 className="text-4xl md:text-6xl font-black italic uppercase tracking-tight">Vinh danh năm học</h1>
-          <p className="text-orange-50 mt-3 font-medium">Tổng hợp danh sách vinh danh từ các phân môn thuộc Tổ xã hội.</p>
+          <h1 className="text-4xl md:text-6xl font-black italic uppercase tracking-tight text-fpt-blue">Vinh danh năm học</h1>
+          <p className="text-slate-500 mt-3 font-medium">Tổng hợp danh sách vinh danh từ các phân môn thuộc Tổ xã hội.</p>
         </div>
       </section>
 
-      <div className="max-w-6xl mx-auto px-4 mt-10">
+      <div className="page-content-wrap">
         {loading && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3].map((i) => <div key={i} className="h-56 bg-white rounded-3xl animate-pulse" />)}

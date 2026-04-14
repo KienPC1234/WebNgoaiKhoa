@@ -52,14 +52,14 @@ export const PublicPostDetail = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50/50 pb-20">
-      <section className="bg-gradient-to-br from-fpt-blue via-[#1a2d6c] to-fpt-orange text-white py-16 px-4">
+    <div className="page-shell-public bg-gray-50/50">
+      <section className="page-hero page-hero-caro text-slate-700">
         <div className="max-w-5xl mx-auto space-y-6">
-          <Link to="/" className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest bg-white/10 border border-white/20 px-4 py-2 rounded-full">
+          <Link to="/" className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest bg-white/90 border border-orange-200 px-4 py-2 rounded-full text-fpt-blue">
             <ArrowLeft size={14} /> Quay lại
           </Link>
-          <h1 className="text-4xl md:text-6xl font-black italic leading-tight">{post.title}</h1>
-          <div className="flex flex-wrap gap-4 text-xs font-black uppercase tracking-widest text-blue-100">
+          <h1 className="text-4xl md:text-6xl font-black italic leading-tight text-fpt-blue">{post.title}</h1>
+          <div className="flex flex-wrap gap-4 text-xs font-black uppercase tracking-widest text-slate-500">
             <span className="inline-flex items-center gap-1.5"><Calendar size={14} /> {new Date(post.created_at).toLocaleDateString('vi-VN')}</span>
             <span className="inline-flex items-center gap-1.5"><Layers3 size={14} /> {post.content_type || 'an-pham'}</span>
             <span className="inline-flex items-center gap-1.5"><User size={14} /> {post.subject || 'van'}</span>
@@ -67,9 +67,9 @@ export const PublicPostDetail = () => {
         </div>
       </section>
 
-      <div className="max-w-5xl mx-auto px-4 -mt-8 space-y-8">
+      <div className="mx-auto -mt-8 w-full max-w-5xl px-4 space-y-8">
         {post.image_url && (
-          <Card className="overflow-hidden rounded-[28px] border-none shadow-xl">
+          <Card className="page-panel overflow-hidden rounded-[28px] border-none shadow-xl">
             <img src={post.image_url} alt={post.title} className="w-full h-[360px] object-cover" />
           </Card>
         )}

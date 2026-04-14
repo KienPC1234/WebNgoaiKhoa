@@ -125,7 +125,7 @@ export const AdminNhanVat = () => {
   }
 
   if (loading) {
-    return <div className="py-20 text-center font-black text-gray-400 uppercase tracking-widest">Dang tai du lieu...</div>
+    return <div className="py-20 text-center font-black text-gray-400 uppercase tracking-widest">Đang tải dữ liệu...</div>
   }
 
   return (
@@ -133,12 +133,12 @@ export const AdminNhanVat = () => {
       <Card className="p-8 rounded-[32px] border-none shadow-xl bg-white">
         <div className="flex items-center gap-3 mb-6">
           <div className="p-2 rounded-xl bg-blue-50 text-fpt-blue"><Building2 size={20} /></div>
-          <h3 className="text-xl font-black text-fpt-blue uppercase tracking-tight">CMS Quy mo To xa hoi</h3>
+          <h3 className="text-xl font-black text-fpt-blue uppercase tracking-tight">CMS Quy mô Tổ xã hội</h3>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <input className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="Tieu de" value={scale.hero_title || ''} onChange={(e) => setScale({ ...scale, hero_title: e.target.value })} />
-          <input className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="Tong quan chuyen mon" value={scale.subjects_overview || ''} onChange={(e) => setScale({ ...scale, subjects_overview: e.target.value })} />
+          <input className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="Tiêu đề" value={scale.hero_title || ''} onChange={(e) => setScale({ ...scale, hero_title: e.target.value })} />
+          <input className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="Tổng quan chuyên môn" value={scale.subjects_overview || ''} onChange={(e) => setScale({ ...scale, subjects_overview: e.target.value })} />
           <RichTextEditor
             className="md:col-span-2"
             size="compact"
@@ -153,10 +153,10 @@ export const AdminNhanVat = () => {
             value={scale.vision || ''}
             onChange={(value) => setScale({ ...scale, vision: value })}
           />
-          <input type="number" className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="So giao vien" value={scale.staff_count ?? 0} onChange={(e) => setScale({ ...scale, staff_count: Number(e.target.value) || 0 })} />
-          <input type="number" className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="So sinh vien" value={scale.student_count ?? 0} onChange={(e) => setScale({ ...scale, student_count: Number(e.target.value) || 0 })} />
-          <input type="number" className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="So du an" value={scale.projects_count ?? 0} onChange={(e) => setScale({ ...scale, projects_count: Number(e.target.value) || 0 })} />
-          <input type="number" className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="So giai thuong" value={scale.awards_count ?? 0} onChange={(e) => setScale({ ...scale, awards_count: Number(e.target.value) || 0 })} />
+          <input type="number" className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="Số giáo viên" value={scale.staff_count ?? 0} onChange={(e) => setScale({ ...scale, staff_count: Number(e.target.value) || 0 })} />
+          <input type="number" className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="Số sinh viên" value={scale.student_count ?? 0} onChange={(e) => setScale({ ...scale, student_count: Number(e.target.value) || 0 })} />
+          <input type="number" className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="Số dự án" value={scale.projects_count ?? 0} onChange={(e) => setScale({ ...scale, projects_count: Number(e.target.value) || 0 })} />
+          <input type="number" className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="Số giải thưởng" value={scale.awards_count ?? 0} onChange={(e) => setScale({ ...scale, awards_count: Number(e.target.value) || 0 })} />
           <RichTextEditor
             className="md:col-span-2"
             size="compact"
@@ -168,7 +168,7 @@ export const AdminNhanVat = () => {
 
         <div className="mt-6 flex justify-end">
           <Button onClick={saveScale} className="bg-fpt-blue text-white px-6 py-3 rounded-xl font-black inline-flex items-center gap-2 border-none">
-            <Save size={16} /> Luu quy mo
+            <Save size={16} /> Lưu quy mô
           </Button>
         </div>
       </Card>
@@ -177,18 +177,18 @@ export const AdminNhanVat = () => {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-xl bg-orange-50 text-fpt-orange"><Users size={20} /></div>
-            <h3 className="text-xl font-black text-fpt-blue uppercase tracking-tight">CMS Doi ngu giao vien</h3>
+            <h3 className="text-xl font-black text-fpt-blue uppercase tracking-tight">CMS Đội ngũ giáo viên</h3>
           </div>
           <Button onClick={resetStaffForm} className="bg-gray-100 text-gray-700 px-4 py-2 rounded-xl font-black inline-flex items-center gap-2 border-none">
-            <Plus size={14} /> Moi
+            <Plus size={14} /> Mới
           </Button>
         </div>
 
         <form onSubmit={saveStaff} className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          <input required className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="Ho ten" value={staffForm.full_name} onChange={(e) => setStaffForm({ ...staffForm, full_name: e.target.value })} />
-          <input required className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="Chuc danh" value={staffForm.title} onChange={(e) => setStaffForm({ ...staffForm, title: e.target.value })} />
+          <input required className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="Họ tên" value={staffForm.full_name} onChange={(e) => setStaffForm({ ...staffForm, full_name: e.target.value })} />
+          <input required className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="Chức danh" value={staffForm.title} onChange={(e) => setStaffForm({ ...staffForm, title: e.target.value })} />
           <input className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="Email" value={staffForm.email} onChange={(e) => setStaffForm({ ...staffForm, email: e.target.value })} />
-          <input className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="Chuyen mon" value={staffForm.expertise} onChange={(e) => setStaffForm({ ...staffForm, expertise: e.target.value })} />
+          <input className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="Chuyên môn" value={staffForm.expertise} onChange={(e) => setStaffForm({ ...staffForm, expertise: e.target.value })} />
           <input className="px-4 py-3 rounded-xl bg-gray-50 font-bold md:col-span-2" placeholder="Image URL" value={staffForm.image_url} onChange={(e) => setStaffForm({ ...staffForm, image_url: e.target.value })} />
           <RichTextEditor
             className="md:col-span-2"
@@ -197,14 +197,14 @@ export const AdminNhanVat = () => {
             value={staffForm.bio}
             onChange={(value) => setStaffForm({ ...staffForm, bio: value })}
           />
-          <input type="number" className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="Thu tu hien thi" value={staffForm.display_order} onChange={(e) => setStaffForm({ ...staffForm, display_order: Number(e.target.value) || 0 })} />
+          <input type="number" className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="Thứ tự hiển thị" value={staffForm.display_order} onChange={(e) => setStaffForm({ ...staffForm, display_order: Number(e.target.value) || 0 })} />
           <select className="px-4 py-3 rounded-xl bg-gray-50 font-bold" value={staffForm.is_active ? '1' : '0'} onChange={(e) => setStaffForm({ ...staffForm, is_active: e.target.value === '1' })}>
-            <option value="1">Dang hien thi</option>
-            <option value="0">Tam an</option>
+            <option value="1">Đang hiển thị</option>
+            <option value="0">Tạm ẩn</option>
           </select>
           <div className="md:col-span-2 flex justify-end">
             <Button type="submit" className="bg-fpt-orange text-white px-6 py-3 rounded-xl font-black inline-flex items-center gap-2 border-none">
-              <Save size={16} /> {editingId ? 'Cap nhat giao vien' : 'Them giao vien'}
+              <Save size={16} /> {editingId ? 'Cập nhật giáo viên' : 'Thêm giáo viên'}
             </Button>
           </div>
         </form>
@@ -217,15 +217,15 @@ export const AdminNhanVat = () => {
                 <div className="text-xs text-gray-500 font-bold uppercase tracking-wider">{item.title}</div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <Button onClick={() => editStaff(item)} className="bg-gray-100 text-gray-700 px-4 py-2 rounded-xl font-black border-none">Sua</Button>
+                <Button onClick={() => editStaff(item)} className="bg-gray-100 text-gray-700 px-4 py-2 rounded-xl font-black border-none">Sửa</Button>
                 <Button onClick={() => removeStaff(item.id)} className="bg-red-500 text-white px-4 py-2 rounded-xl font-black inline-flex items-center gap-1 border-none">
-                  <Trash2 size={14} /> Xoa
+                  <Trash2 size={14} /> Xóa
                 </Button>
               </div>
             </div>
           ))}
           {staff.length === 0 && (
-            <div className="p-10 text-center text-gray-400 font-black uppercase tracking-widest">Chua co ho so giao vien.</div>
+            <div className="p-10 text-center text-gray-400 font-black uppercase tracking-widest">Chưa có hồ sơ giáo viên.</div>
           )}
         </div>
       </Card>

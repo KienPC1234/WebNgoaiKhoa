@@ -82,19 +82,19 @@ export const Profile = () => {
   }
 
   if (!me) {
-    return <div className="min-h-screen flex items-center justify-center text-gray-400 font-black">Đang tải hồ sơ...</div>
+    return <div className="flex min-h-screen items-center justify-center text-gray-400 font-black">Đang tải hồ sơ...</div>
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-10">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <Card className="p-8">
-          <h1 className="text-3xl font-black text-fpt-blue italic mb-6">HỒ SƠ TÀI KHOẢN</h1>
+    <div className="min-h-screen bg-gradient-to-b from-[#fffaf3] via-[#fffefb] to-[#f8fbff] px-3 py-6 md:px-6 md:py-10">
+      <div className="mx-auto w-full max-w-6xl space-y-6">
+        <Card className="border border-orange-100/80 bg-white/95 p-6 shadow-[0_28px_64px_-40px_rgba(15,23,42,0.45)] md:p-8">
+          <h1 className="mb-6 text-3xl font-black italic leading-tight text-fpt-blue md:text-4xl">HỒ SƠ TÀI KHOẢN</h1>
 
           {error && <div className="mb-4 bg-red-50 text-red-600 p-3 rounded-lg font-bold">{error}</div>}
           {message && <div className="mb-4 bg-green-50 text-green-700 p-3 rounded-lg font-bold">{message}</div>}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <Input label="Email" value={me.email} disabled />
             <Input label="Vai trò" value={me.role} disabled />
             <Input label="Trạng thái xác minh" value={me.email_verified ? 'Đã xác minh' : 'Chưa xác minh'} disabled />
@@ -107,23 +107,23 @@ export const Profile = () => {
           </div>
         </Card>
 
-        <Card className="p-8">
-          <h2 className="text-xl font-black text-fpt-blue mb-4">ĐỔI MẬT KHẨU</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+        <Card className="border border-orange-100/80 bg-white/95 p-6 shadow-[0_24px_54px_-42px_rgba(15,23,42,0.4)] md:p-8">
+          <h2 className="mb-4 text-2xl font-black leading-tight text-fpt-blue">ĐỔI MẬT KHẨU</h2>
+          <div className="grid grid-cols-1 items-end gap-4 md:grid-cols-3">
             <Input label="Mật khẩu hiện tại" type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
             <Input label="Mật khẩu mới" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
             <Button variant="orange" onClick={handleChangePassword}>Đổi mật khẩu</Button>
           </div>
         </Card>
 
-        <Card className="p-8">
-          <h2 className="text-xl font-black text-fpt-blue mb-4">BÀI THI CỦA TÔI</h2>
+        <Card className="border border-orange-100/80 bg-white/95 p-6 shadow-[0_24px_54px_-42px_rgba(15,23,42,0.4)] md:p-8">
+          <h2 className="mb-4 text-2xl font-black leading-tight text-fpt-blue">BÀI THI CỦA TÔI</h2>
           {mySubmissions.length === 0 ? (
             <p className="text-gray-400 font-semibold">Bạn chưa có bài thi nào.</p>
           ) : (
             <div className="space-y-3">
               {mySubmissions.map((item) => (
-                <div key={item.id} className="p-4 rounded-xl border border-gray-100 bg-gray-50">
+                <div key={item.id} className="rounded-xl border border-orange-100/70 bg-[#fffaf3] p-4">
                   <div className="flex justify-between items-center gap-4">
                     <h3 className="font-black text-fpt-blue">{item.title}</h3>
                     <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-md ${

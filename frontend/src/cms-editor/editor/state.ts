@@ -77,6 +77,14 @@ export const editorReducer = (state: EditorState, action: EditorAction): EditorS
       next.dirty = false
       return next
 
+    case 'UPDATE_DOCUMENT_TITLE':
+      next.document = {
+        ...next.document,
+        title: action.payload.title,
+      }
+      next.dirty = true
+      return next
+
     case 'SET_SELECTION':
       next.selection = action.payload
       return next

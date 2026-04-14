@@ -88,41 +88,39 @@ export const EventsUpcoming = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50/50 pb-20">
-            {/* Hero Section */}
-            <section className="bg-gradient-to-br from-[#121212] via-[#1a1a1a] to-blue-900 text-white py-24 px-4 relative overflow-hidden">
-                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/dark-matter.png')] opacity-20 mix-blend-overlay"></div>
+        <div className="page-shell-public bg-gray-50/50">
+            <section className="page-hero page-hero-caro text-slate-700">
                 <div className="max-w-6xl mx-auto relative z-10 text-center space-y-8">
                     <motion.div
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md px-6 py-2 rounded-full text-xs font-black uppercase tracking-[0.3em] border border-white/20 shadow-xl"
+                        className="inline-flex items-center gap-2 bg-white/90 px-6 py-2 rounded-full text-xs font-black uppercase tracking-[0.3em] border border-orange-200 shadow-xl"
                     >
-                        <Bell size={16} className="text-fpt-orange animate-bounce" />
+                        <Bell size={16} className="text-fpt-orange" />
                         <span>Thông báo mới nhất</span>
                     </motion.div>
                     <motion.h1
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="text-6xl md:text-8xl font-black italic leading-tight uppercase"
+                        className="text-6xl md:text-8xl font-black italic leading-tight uppercase text-fpt-blue"
                     >
                         SỰ KIỆN <br />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-fpt-orange to-red-500 not-italic">SẮP DIỄN RA</span>
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-fpt-orange to-orange-500 not-italic">SẮP DIỄN RA</span>
                     </motion.h1>
                     <motion.p
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: 0.2 }}
-                        className="text-xl text-gray-400 max-w-3xl mx-auto font-medium leading-relaxed"
+                        className="text-xl text-slate-500 max-w-3xl mx-auto font-medium leading-relaxed"
                     >
                         Cập nhật những hoạt động học thuật, ngoại khóa và giao lưu văn hóa sôi nổi nhất của Tổ Xã hội.
                     </motion.p>
                 </div>
             </section>
 
-            <div className="max-w-6xl mx-auto px-4 mt-20">
+            <div className="page-content-wrap">
                 <section className="mb-16">
-                    <Card className="p-8 rounded-[32px] border border-white/60 shadow-[0_20px_60px_-30px_rgba(15,23,42,0.25)] bg-white/90 backdrop-blur">
+                    <Card className="page-panel p-8">
                         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
                             <h2 className="text-2xl md:text-3xl font-black text-fpt-blue uppercase italic">Lịch sự kiện theo tháng</h2>
                             <div className="flex items-center gap-3">

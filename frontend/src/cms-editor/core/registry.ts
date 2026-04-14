@@ -15,6 +15,10 @@ class BlockRegistry {
     return Array.from(this.definitions.values())
   }
 
+  listInsertable() {
+    return this.list().filter((d) => d.insertable !== false)
+  }
+
   listByCategory(category: BlockDefinition['category']) {
     return this.list().filter((d) => d.category === category)
   }

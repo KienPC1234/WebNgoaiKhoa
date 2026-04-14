@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Save } from 'lucide-react'
 import { Button, Card } from '@/components/UI'
@@ -42,7 +42,12 @@ export const AdminPostDesigner = () => {
   const [loading, setLoading] = useState(isEditing)
   const [saving, setSaving] = useState(false)
   const [formData, setFormData] = useState(emptyForm)
-  const [documentState, setDocumentState] = useState(createInitialDoc())
+  const [initialDocument, setInitialDocument] = useState(() => createInitialDoc())
+  const latestDocumentRef = useRef(initialDocument)
+
+  useEffect(() => {
+    latestDocumentRef.current = initialDocument
+  }, [initialDocument])
 
   useEffect(() => {
     const loadEntity = async () => {
@@ -78,7 +83,9 @@ export const AdminPostDesigner = () => {
             },
           ]
         }
-        setDocumentState(normalized || fallback)
+        const nextDocument = normalized || fallback
+        setInitialDocument(nextDocument)
+        latestDocumentRef.current = nextDocument
       } catch (error) {
         showApiError(error, isStory ? 'Không tải được câu chuyện để chỉnh sửa.' : 'Không tải được bài viết để chỉnh sửa.')
         navigate('/admin/publications')
@@ -91,7 +98,7 @@ export const AdminPostDesigner = () => {
   }, [isEditing, isStory, publicationId, navigate])
 
   const handleDocChange = useCallback((nextDocument) => {
-    setDocumentState(nextDocument)
+    latestDocumentRef.current = nextDocument
   }, [])
 
   const canSubmit = useMemo(() => {
@@ -104,11 +111,13 @@ export const AdminPostDesigner = () => {
 
     setSaving(true)
 
+    const currentDocument = latestDocumentRef.current || initialDocument
+
     const normalizedDoc = {
-      ...documentState,
+      ...currentDocument,
       title: formData.title,
       metadata: {
-        ...(documentState.metadata || {}),
+        ...(currentDocument.metadata || {}),
         entity,
       },
     }
@@ -239,7 +248,8 @@ export const AdminPostDesigner = () => {
 
         <Card className="p-4 rounded-2xl border border-gray-100">
           <HybridCMSEditorRoot
-            initialDocument={documentState}
+            key={`${entity}-${publicationId || 'new'}`}
+            initialDocument={initialDocument}
             onDocumentChange={handleDocChange}
           />
         </Card>

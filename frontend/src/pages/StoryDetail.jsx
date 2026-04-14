@@ -52,14 +52,14 @@ export const StoryDetail = () => {
   const document = normalizeLayoutMetadataToDocument(story.layout_metadata, story.title || 'Story')
 
   return (
-    <div className="min-h-screen bg-gray-50/50 pb-20">
-      <section className="bg-gradient-to-br from-[#ff6b6b] via-[#ee5253] to-red-600 text-white py-16 px-4">
+    <div className="page-shell-public bg-gray-50/50">
+      <section className="page-hero page-hero-caro text-slate-700">
         <div className="max-w-5xl mx-auto space-y-5">
-          <Link to="/stories/inspiring" className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest bg-white/10 border border-white/20 px-4 py-2 rounded-full">
+          <Link to="/stories/inspiring" className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest bg-white/90 border border-orange-200 px-4 py-2 rounded-full text-fpt-blue">
             <ArrowLeft size={14} /> Quay lại
           </Link>
-          <h1 className="text-4xl md:text-6xl font-black italic leading-tight">{story.title}</h1>
-          <div className="flex flex-wrap gap-4 text-xs font-black uppercase tracking-widest text-red-100">
+          <h1 className="text-4xl md:text-6xl font-black italic leading-tight text-fpt-blue">{story.title}</h1>
+          <div className="flex flex-wrap gap-4 text-xs font-black uppercase tracking-widest text-slate-500">
             <span className="inline-flex items-center gap-1.5"><User size={14} /> {story.author}</span>
             <span className="inline-flex items-center gap-1.5"><Clock size={14} /> {story.read_time_minutes} phút đọc</span>
             {story.category && <span>{story.category}</span>}

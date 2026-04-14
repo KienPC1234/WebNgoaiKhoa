@@ -61,19 +61,19 @@ export const SubjectContentHub = () => {
   }, [subject, contentType])
 
   return (
-    <div className="min-h-screen bg-gray-50/50 pb-20">
-      <section className="bg-gradient-to-br from-fpt-blue via-[#1a2d6c] to-fpt-orange text-white py-16 px-4">
+    <div className="page-shell-public bg-gray-50/50">
+      <section className="page-hero page-hero-caro text-slate-700">
         <div className="max-w-6xl mx-auto">
-          <div className="inline-flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest border border-white/20">
+          <div className="inline-flex items-center gap-2 bg-white/90 px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest border border-orange-200 text-fpt-blue">
             <TypeIcon size={16} />
             {subjectLabel}
           </div>
-          <h1 className="text-4xl md:text-6xl font-black mt-6 italic uppercase tracking-tight">{typeLabel}</h1>
-          <p className="text-blue-100 mt-4 font-medium">Danh sách nội dung được xuất bản chính thức cho chuyên môn {subjectLabel}.</p>
+          <h1 className="text-4xl md:text-6xl font-black mt-6 italic uppercase tracking-tight text-fpt-blue">{typeLabel}</h1>
+          <p className="text-slate-500 mt-4 font-medium">Danh sách nội dung được xuất bản chính thức cho chuyên môn {subjectLabel}.</p>
         </div>
       </section>
 
-      <div className="max-w-6xl mx-auto px-4 mt-10 space-y-6">
+      <div className="page-content-wrap space-y-6">
         <div className="flex justify-end">
           <button
             onClick={loadItems}

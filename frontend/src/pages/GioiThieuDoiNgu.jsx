@@ -37,15 +37,15 @@ export const GioiThieuDoiNgu = () => {
             className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md px-6 py-2 rounded-full text-xs font-black uppercase tracking-[0.3em] border border-white/20 shadow-xl"
           >
             <Users size={16} className="text-blue-400" />
-            <span>Guong mat tieu bieu</span>
+            <span>Gương mặt tiêu biểu</span>
           </motion.div>
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-6xl md:text-8xl font-black italic leading-tight uppercase"
           >
-            DOI NGU <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-200 not-italic">GIAO VIEN TAM HUYET</span>
+            ĐỘI NGŨ <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-200 not-italic">GIÁO VIÊN TẦM HUẾT</span>
           </motion.h1>
           <motion.p
             initial={{ opacity: 0 }}
@@ -53,7 +53,7 @@ export const GioiThieuDoiNgu = () => {
             transition={{ delay: 0.2 }}
             className="text-xl text-blue-50 max-w-3xl mx-auto font-medium leading-relaxed"
           >
-            Hoi tu nhung chuyen gia giau kinh nghiem, khong ngung sang tao va truyen lua dam me cho the he sinh vien.
+            Hội tụ những chuyên gia giàu kinh nghiệm, không ngừng sáng tạo và truyền lửa đam mê cho thế hệ sinh viên.
           </motion.p>
         </div>
       </section>
@@ -68,7 +68,7 @@ export const GioiThieuDoiNgu = () => {
         {!loading && staff.length === 0 && (
           <Card className="p-12 text-center rounded-[40px] border-dashed border-2 border-gray-200 bg-white mb-8">
             <Users size={42} className="mx-auto text-gray-300 mb-4" />
-            <p className="text-gray-400 font-black uppercase tracking-widest">Chua co ho so doi ngu giao vien.</p>
+            <p className="text-gray-400 font-black uppercase tracking-widest">Chưa có hồ sơ đội ngũ giáo viên.</p>
           </Card>
         )}
 
@@ -117,8 +117,8 @@ export const GioiThieuDoiNgu = () => {
           <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div className="space-y-8">
               <h2 className="text-4xl md:text-5xl font-black italic uppercase tracking-tighter leading-tight">
-                Triet ly giao duc <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-fpt-orange to-yellow-400 not-italic">SANG TAO & NHAN VAN</span>
+                Triết lý giáo dục <br />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-fpt-orange to-yellow-400 not-italic">SÁNG TẠO & NHÂN VĂN</span>
               </h2>
               <div className="space-y-6">
                 <div className="flex gap-5">
@@ -126,8 +126,8 @@ export const GioiThieuDoiNgu = () => {
                     <Sparkles size={24} />
                   </div>
                   <div>
-                    <h5 className="font-black text-lg uppercase tracking-widest mb-2">Doi ngu tinh hoa</h5>
-                    <p className="text-blue-100 opacity-80 font-medium">100% giao vien dat chuan chuyen mon, tam huyet va khong ngung cai tien phuong phap giang day.</p>
+                    <h5 className="font-black text-lg uppercase tracking-widest mb-2">Đội ngũ tinh hoa</h5>
+                    <p className="text-blue-100 opacity-80 font-medium">100% giáo viên đạt chuẩn chuyên môn, tầm huết và không ngừng cải tiến phương pháp giảng dạy.</p>
                   </div>
                 </div>
                 <div className="flex gap-5">
@@ -135,8 +135,8 @@ export const GioiThieuDoiNgu = () => {
                     <Heart size={24} />
                   </div>
                   <div>
-                    <h5 className="font-black text-lg uppercase tracking-widest mb-2">Trai tim nhan hau</h5>
-                    <p className="text-blue-100 opacity-80 font-medium">Giao duc bang tinh yeu thuong, thau hieu tam ly sinh vien de cung phat trien.</p>
+                    <h5 className="font-black text-lg uppercase tracking-widest mb-2">Trái tim nhân hậu</h5>
+                    <p className="text-blue-100 opacity-80 font-medium">Giáo dục bằng tình yêu thương, thấu hiểu tâm lý sinh viên để cùng phát triển.</p>
                   </div>
                 </div>
               </div>
@@ -145,7 +145,7 @@ export const GioiThieuDoiNgu = () => {
               <Card className="aspect-square bg-white/5 border-white/10 flex flex-col items-center justify-center text-center p-6 space-y-4 hover:bg-white/10 transition-colors">
                 <GraduationCap size={40} className="text-fpt-orange" />
                 <div className="text-3xl font-black">20+</div>
-                <div className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-200">Giang vien uu tu</div>
+                <div className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-200">Giảng viên ưu tú</div>
               </Card>
               <Card className="aspect-square bg-white/5 border-white/10 flex flex-col items-center justify-center text-center p-6 space-y-4 hover:bg-white/10 transition-colors">
                 <BookOpen size={40} className="text-emerald-400" />

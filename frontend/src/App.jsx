@@ -51,9 +51,13 @@ const PageWrapper = ({ children }) => (
 )
 
 const RouteLoading = () => (
-  <div className="min-h-[45vh] flex items-center justify-center">
-    <div className="surface px-6 py-4 text-xs font-black uppercase tracking-widest text-fpt-blue">
-      Đang tải trang...
+  <div className="relative flex min-h-[45vh] items-center justify-center overflow-hidden px-4">
+    <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(245,130,31,0.1),transparent_45%),radial-gradient(circle_at_80%_80%,rgba(26,45,108,0.1),transparent_42%)]" />
+    <div className="relative flex min-w-[260px] items-center gap-3 rounded-2xl border border-orange-100 bg-white/90 px-6 py-4 shadow-[0_24px_50px_-35px_rgba(15,23,42,0.45)] backdrop-blur">
+      <span className="h-3 w-3 animate-pulse rounded-full bg-fpt-orange" />
+      <span className="h-3 w-3 animate-pulse rounded-full bg-fpt-blue [animation-delay:120ms]" />
+      <span className="h-3 w-3 animate-pulse rounded-full bg-emerald-500 [animation-delay:240ms]" />
+      <span className="ml-2 text-xs font-black uppercase tracking-widest text-fpt-blue">Đang tải trang...</span>
     </div>
   </div>
 )

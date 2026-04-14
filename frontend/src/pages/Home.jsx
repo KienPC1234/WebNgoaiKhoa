@@ -67,11 +67,10 @@ export const Home = () => {
 
   return (
     <div className="space-y-28 pb-28">
-      <section className="relative min-h-[92vh] overflow-hidden border-b border-slate-100 bg-white px-4 pb-16 pt-20 md:pt-24">
+      <section className="page-hero page-hero-caro min-h-[92vh] border-b border-orange-100 pb-16 pt-20 md:pt-24">
         <div className="pointer-events-none absolute inset-0 z-0">
           <div className="absolute -right-44 -top-56 h-[780px] w-[780px] rounded-full bg-fpt-orange/15 blur-[130px]" />
           <div className="absolute -bottom-44 -left-32 h-[560px] w-[560px] rounded-full bg-fpt-blue/10 blur-[120px]" />
-          <div className="absolute inset-0 opacity-40" style={{ backgroundImage: 'radial-gradient(circle at 1.6px 1.6px, rgba(148,163,184,0.4) 1px, transparent 0)', backgroundSize: '34px 34px' }} />
         </div>
 
         <GridBackground className="opacity-25" />
@@ -79,25 +78,9 @@ export const Home = () => {
 
         <div className="container relative z-10 mx-auto grid grid-cols-1 items-center gap-14 lg:grid-cols-12">
           <div className="lg:col-span-7" data-aos="fade-right">
-            <div className="mb-10 inline-flex items-center gap-3 rounded-full border border-slate-200 bg-white/95 px-5 py-2 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500 shadow-lg shadow-slate-200/50">
-              <Sparkles size={14} className="text-fpt-orange" />
-              FPT Extracurricular 2026
-            </div>
-
-            <div className="mb-8 flex items-center gap-4">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-orange-100 bg-white shadow-[0_14px_34px_-22px_rgba(242,112,36,0.9)]">
-                <img src="/favicon.svg" alt="Logo Tổ xã hội" className="h-8 w-8 object-contain" />
-              </div>
-              <div>
-                <p className="font-display text-2xl font-black uppercase tracking-tight text-fpt-blue sm:text-3xl">Tổ xã hội</p>
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-fpt-orange sm:text-[11px]">Deep learning with love</p>
-              </div>
-            </div>
-
-            <h1 className="text-balance text-[52px] font-black uppercase leading-[0.84] text-fpt-blue sm:text-[72px] lg:text-[108px]">
-              Nhịp đập
-              <br />
-              <span className="relative inline-block italic text-fpt-orange">
+            <h1 className="text-balance text-[52px] font-black uppercase text-fpt-blue sm:text-[72px] lg:text-[108px]">
+              <span className="block leading-[0.9]">Nhịp đập</span>
+              <span className="relative mt-6 block leading-[0.9] italic text-fpt-orange sm:mt-7 lg:mt-8">
                 Sáng tạo
                 <svg className="absolute -bottom-5 left-0 h-7 w-full text-fpt-green/20" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">
                   <path d="M0 6 Q 25 0 50 6 T 100 6" stroke="currentColor" strokeWidth="10" fill="none" />
@@ -129,13 +112,13 @@ export const Home = () => {
             </div>
           </div>
 
-          <div className="relative lg:col-span-5" data-aos="fade-left" data-aos-delay="120">
+          <div className="relative lg:-mt-20 lg:col-span-5" data-aos="fade-left" data-aos-delay="120">
             <div className="relative mx-auto aspect-[4/5] w-full max-w-[500px]">
-              <div className="absolute right-0 top-10 h-full w-[88%] -rotate-3 rounded-[2.6rem] border border-slate-200 bg-slate-50" />
-              <div className="group absolute right-4 top-5 h-full w-[88%] rotate-2 overflow-hidden rounded-[2.6rem] border border-slate-100 bg-white p-4 shadow-[0_34px_60px_-45px_rgba(15,23,42,0.65)] transition-transform duration-700 hover:rotate-0">
-                <div className="h-full w-full overflow-hidden rounded-[2.2rem] bg-gradient-to-br from-slate-900 via-fpt-blue to-slate-800 p-8 text-white">
-                  <div className="mb-8 inline-flex items-center gap-2 rounded-full bg-white/12 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em]">
-                    <BookOpen size={14} /> Editorial insight
+              <div className="absolute right-0 top-2 h-full w-[88%] -rotate-3 rounded-[2.6rem] border border-slate-200 bg-slate-50" />
+              <div className="group absolute right-4 -top-4 h-full w-[88%] rotate-2 overflow-hidden rounded-[2.6rem] border border-slate-100 bg-white p-4 shadow-[0_34px_60px_-45px_rgba(15,23,42,0.65)] transition-transform duration-700 hover:rotate-0">
+                <div className="relative h-full w-full overflow-hidden rounded-[2.2rem] bg-gradient-to-br from-slate-900 via-fpt-blue to-slate-800 px-8 pb-8 pt-18 text-white">
+                  <div className="absolute left-8 top-4 inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-slate-900/30 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-white/85">
+                    <BookOpen size={12} /> Editorial Insight
                   </div>
                   <h3 className="text-3xl font-black leading-tight">Sáng tạo là hành trình tự do nhất của học sinh FPT.</h3>
                   <p className="mt-5 text-sm leading-relaxed text-white/80">
