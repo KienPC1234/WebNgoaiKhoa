@@ -13,7 +13,7 @@ export const AiChatWidget = () => {
   const [isMinimized, setIsMinimized] = useState(false)
   const [input, setInput] = useState('')
   const [messages, setMessages] = useState([
-    { role: 'assistant', content: 'Chào bạn! Tôi là trợ lý AI của **Ngoại khoá nhịp đập**. Tôi có thể giúp bạn tìm hiểu về các hoạt động ngoại khóa, hướng dẫn gửi bài cho ấn phẩm **Nhái Bén**, hoặc giải đáp các thắc mắc về câu lạc bộ. \n\nBạn có thể hỏi tôi về: \n- Cách đăng ký tham gia CLB Văn học? \n- Thể lệ cuộc thi sáng tác mới nhất? \n- Lịch sinh hoạt các phân môn tuần này?' }
+    { role: 'assistant', content: 'Chào bạn! Tôi là trợ lý AI của **Tổ xã hội**. Tôi có thể giúp bạn tìm hiểu về các hoạt động ngoại khóa, hướng dẫn gửi bài cho ấn phẩm **Nhái Bén**, hoặc giải đáp các thắc mắc về câu lạc bộ. \n\nBạn có thể hỏi tôi về: \n- Cách đăng ký tham gia CLB Văn học? \n- Thể lệ cuộc thi sáng tác mới nhất? \n- Lịch sinh hoạt các phân môn tuần này?' }
   ])
   const [isTyping, setIsTyping] = useState(false)
   const [showScrollDown, setShowScrollDown] = useState(false)

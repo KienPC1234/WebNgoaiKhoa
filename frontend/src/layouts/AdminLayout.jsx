@@ -33,7 +33,7 @@ export const AdminLayout = () => {
             </div>
             <div className="flex flex-col">
               <span className="text-lg font-black text-fpt-blue leading-none tracking-tight">ADMIN PANEL</span>
-              <span className="text-[10px] font-bold text-fpt-orange uppercase tracking-widest">Ngoại khoá nhịp đập</span>
+              <span className="text-[10px] font-bold text-fpt-orange uppercase tracking-widest">Tổ xã hội</span>
             </div>
           </Link>
         </div>

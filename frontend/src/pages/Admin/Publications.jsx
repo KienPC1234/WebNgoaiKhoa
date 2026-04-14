@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
-import { Card, Button } from '../../components/UI'
-import { Plus, Trash2, Edit, Search, FileText, Image as ImageIcon, X, Check, Newspaper, Calendar, ArrowRight, ExternalLink } from 'lucide-react'
+import { Card, Button } from '@/components/UI'
+import { Plus, Trash2, Edit, Search, FileText, Image as ImageIcon, X, Check, Newspaper, Calendar, ArrowRight, ExternalLink, Zap } from 'lucide-react'
 import { CKEditor } from '@ckeditor/ckeditor5-react'
 import ClassicEditor from '@ckeditor/ckeditor5-build-classic'
 
@@ -18,6 +18,9 @@ export const AdminPublications = () => {
     title: '',
     content: '',
     category: 'van',
+    subject: 'van',
+    content_type: 'an-pham',
+    featured_year: '2025-2026',
     image_url: ''
   })
 
@@ -54,7 +57,7 @@ export const AdminPublications = () => {
         })
       }
       setShowModal(false)
-      setFormData({ title: '', content: '', category: 'van', image_url: '' })
+      setFormData({ title: '', content: '', category: 'van', subject: 'van', content_type: 'an-pham', featured_year: '2025-2026', image_url: '' })
       setEditingPub(null)
       fetchPubs()
     } catch (err) {
@@ -94,7 +97,7 @@ export const AdminPublications = () => {
             />
           </div>
           <Button 
-            onClick={() => {setEditingPub(null); setFormData({title: '', content: '', category: 'van', image_url: ''}); setShowModal(true);}}
+            onClick={() => {setEditingPub(null); setFormData({title: '', content: '', category: 'van', subject: 'van', content_type: 'an-pham', featured_year: '2025-2026', image_url: ''}); setShowModal(true);}}
             className="bg-fpt-orange hover:bg-orange-600 text-white px-8 py-4 rounded-2xl flex items-center gap-3 font-black shadow-xl shadow-orange-100 hover:scale-105 transition-all border-none"
           >
             <Plus size={20} /> THÊM MỚI
@@ -130,11 +133,16 @@ export const AdminPublications = () => {
               <div className="flex-1 min-w-0 space-y-4">
                 <div className="flex items-center gap-4">
                   <span className={`text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest shadow-sm ${
-                    pub.category === 'van' ? 'bg-orange-500 text-white' : 
-                    pub.category === 'ktpl' ? 'bg-blue-500 text-white' :
-                    'bg-emerald-500 text-white'
+                    pub.subject === 'van' ? 'bg-orange-500 text-white' : 
+                    pub.subject === 'ktpl' ? 'bg-blue-500 text-white' :
+                    pub.subject === 'lich-su' ? 'bg-amber-600 text-white' :
+                    pub.subject === 'dia-li' ? 'bg-teal-600 text-white' :
+                    'bg-indigo-600 text-white'
                   }`}>
-                    {pub.category === 'van' ? 'Văn học (Nhái Bén)' : pub.category === 'ktpl' ? 'Kinh tế Pháp luật' : 'Tin tức'}
+                    {pub.subject === 'van' ? 'Ngữ Văn' : pub.subject === 'ktpl' ? 'Kinh tế pháp luật' : pub.subject === 'lich-su' ? 'Lịch sử' : pub.subject === 'dia-li' ? 'Địa lí' : 'Vovinam'}
+                  </span>
+                  <span className="text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest bg-gray-100 text-gray-600">
+                    {pub.content_type === 'an-pham' ? 'Ấn phẩm' : pub.content_type === 'tai-lieu' ? 'Tài liệu' : 'Vinh danh'}
                   </span>
                   <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest flex items-center gap-2">
                     <Calendar size={14} />
@@ -152,7 +160,19 @@ export const AdminPublications = () => {
               </div>
               <div className="flex md:flex-col items-center gap-3 w-full md:w-auto">
                 <button 
-                    onClick={() => {setEditingPub(pub); setFormData({title: pub.title, content: pub.content, category: pub.category, image_url: pub.image_url || ''}); setShowModal(true);}}
+                    onClick={() => {
+                      setEditingPub(pub)
+                      setFormData({
+                        title: pub.title,
+                        content: pub.content,
+                        category: pub.category || pub.subject || 'van',
+                        subject: pub.subject || pub.category || 'van',
+                        content_type: pub.content_type || 'an-pham',
+                        featured_year: pub.featured_year || '2025-2026',
+                        image_url: pub.image_url || ''
+                      })
+                      setShowModal(true)
+                    }}
                     className="flex-1 md:flex-none p-5 text-gray-400 bg-gray-50 hover:bg-fpt-blue hover:text-white rounded-2xl transition-all shadow-sm group/btn"
                 >
                   <Edit size={22} className="group-hover/btn:rotate-12 transition-transform" />
@@ -227,15 +247,40 @@ export const AdminPublications = () => {
                 <div className="lg:col-span-4 space-y-8">
                     <div className="space-y-3">
                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2">Chuyên mục xuất bản</label>
-                        <select 
-                            value={formData.category}
-                            onChange={(e) => setFormData({...formData, category: e.target.value})}
+                      <select
+                        value={formData.subject}
+                        onChange={(e) => setFormData({...formData, subject: e.target.value, category: e.target.value})}
                             className="w-full px-8 py-5 bg-gray-50 border-2 border-transparent focus:border-fpt-orange focus:bg-white rounded-2xl outline-none font-black transition-all appearance-none cursor-pointer shadow-inner text-fpt-blue uppercase text-xs tracking-widest"
                         >
-                            <option value="van">Văn học (Nhái Bén)</option>
-                            <option value="ktpl">Kinh tế Pháp luật</option>
-                            <option value="ngoaikhoa">Tin tức Ngoại khoá</option>
+                        <option value="van">Ngữ Văn</option>
+                        <option value="ktpl">Kinh tế pháp luật</option>
+                        <option value="lich-su">Lịch sử</option>
+                        <option value="dia-li">Địa lí</option>
+                        <option value="vovinam">Vovinam</option>
                         </select>
+                    </div>
+
+                    <div className="space-y-3">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2">Loại nội dung</label>
+                      <select
+                        value={formData.content_type}
+                        onChange={(e) => setFormData({...formData, content_type: e.target.value})}
+                        className="w-full px-8 py-5 bg-gray-50 border-2 border-transparent focus:border-fpt-orange focus:bg-white rounded-2xl outline-none font-black transition-all appearance-none cursor-pointer shadow-inner text-fpt-blue uppercase text-xs tracking-widest"
+                      >
+                        <option value="an-pham">Ấn phẩm/SP học tập</option>
+                        <option value="tai-lieu">Tài liệu tham khảo</option>
+                        <option value="vinh-danh">Vinh danh năm học</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-3">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2">Năm học</label>
+                      <input
+                        value={formData.featured_year}
+                        onChange={(e) => setFormData({...formData, featured_year: e.target.value})}
+                        className="w-full px-6 py-5 bg-gray-50 border-2 border-transparent focus:border-fpt-orange focus:bg-white rounded-2xl outline-none font-black transition-all text-xs shadow-inner"
+                        placeholder="2025-2026"
+                      />
                     </div>
 
                     <div className="space-y-3">

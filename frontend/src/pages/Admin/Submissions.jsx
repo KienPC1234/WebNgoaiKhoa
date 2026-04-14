@@ -34,7 +34,7 @@ export const AdminSubmissions = () => {
 
   const handleUpdateStatus = async (id, status) => {
     try {
-      await axios.put(`${API_URL}/admin/submissions/${id}/status?status=${status}`, {}, {
+      await axios.put(`${API_URL}/admin/submissions/${id}/status`, { status }, {
         headers: { Authorization: `Bearer ${token}` }
       })
       fetchSubs()
@@ -46,10 +46,12 @@ export const AdminSubmissions = () => {
     }
   }
 
-  const filteredSubs = subs.filter(sub => {
+  const filteredSubs = subs.filter((sub) => {
+    const studentName = (sub.student_name || '').toLowerCase()
+    const title = (sub.title || '').toLowerCase()
+    const query = searchTerm.toLowerCase()
     const matchesFilter = filter === 'all' || sub.status === filter
-    const matchesSearch = sub.student_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         sub.title.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesSearch = studentName.includes(query) || title.includes(query)
     return matchesFilter && matchesSearch
   })
 
@@ -100,7 +102,11 @@ export const AdminSubmissions = () => {
               <p className="text-gray-300 font-black uppercase tracking-widest text-sm">Danh sách trống</p>
             </div>
           ) : (
-            filteredSubs.map((sub) => (
+            filteredSubs.map((sub) => {
+              const studentName = sub.student_name || 'Ẩn danh'
+              const studentEmail = sub.student_email || 'Không có email'
+
+              return (
               <Card 
                 key={sub.id} 
                 onClick={() => setSelectedSub(sub)}
@@ -115,11 +121,11 @@ export const AdminSubmissions = () => {
                       "w-12 h-12 rounded-2xl flex items-center justify-center font-black shadow-inner transition-colors",
                       selectedSub?.id === sub.id ? "bg-white/20 text-white" : "bg-gray-50 text-gray-400 group-hover:bg-white"
                     )}>
-                      {sub.student_name.charAt(0)}
+                      {studentName.charAt(0)}
                     </div>
                     <div>
-                      <h4 className={cn("font-black text-sm uppercase tracking-tight", selectedSub?.id === sub.id ? "text-white" : "text-fpt-blue")}>{sub.student_name}</h4>
-                      <p className={cn("text-[9px] font-bold uppercase tracking-[0.2em]", selectedSub?.id === sub.id ? "text-white/60" : "text-gray-400")}>{sub.student_email}</p>
+                      <h4 className={cn("font-black text-sm uppercase tracking-tight", selectedSub?.id === sub.id ? "text-white" : "text-fpt-blue")}>{studentName}</h4>
+                      <p className={cn("text-[9px] font-bold uppercase tracking-[0.2em]", selectedSub?.id === sub.id ? "text-white/60" : "text-gray-400")}>{studentEmail}</p>
                     </div>
                   </div>
                   <span className={cn(
@@ -132,13 +138,14 @@ export const AdminSubmissions = () => {
                   </span>
                 </div>
                 <h3 className={cn("font-black text-lg mb-2 truncate italic", selectedSub?.id === sub.id ? "text-white" : "text-gray-700")}>"{sub.title}"</h3>
-                <p className={cn("text-xs line-clamp-2 leading-relaxed opacity-70", selectedSub?.id === sub.id ? "text-blue-50" : "text-gray-400")}>{sub.content}</p>
+                <p className={cn("text-xs line-clamp-2 leading-relaxed opacity-70", selectedSub?.id === sub.id ? "text-blue-50" : "text-gray-400")}>{sub.content || 'Không có nội dung'}</p>
                 
                 {selectedSub?.id === sub.id && (
                   <div className="absolute top-0 right-0 w-24 h-full bg-white/5 opacity-10 skew-x-12 translate-x-12"></div>
                 )}
               </Card>
-            ))
+              )
+            })
           )}
         </div>
 

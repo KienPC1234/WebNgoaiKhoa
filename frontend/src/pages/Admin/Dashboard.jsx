@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import axios from 'axios'
+import { cn } from '../../components/UI'
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table"
 import { Users, FileText, Send, PieChart, Clock, AlertCircle, ArrowUpRight, TrendingUp, Calendar, Zap } from 'lucide-react'
@@ -197,14 +198,18 @@ export const AdminDashboard = () => {
                     <TableCell colSpan={4} className="px-8 py-20 text-center text-gray-400 italic font-medium">Hệ thống đang chờ bài nộp đầu tiên...</TableCell>
                   </TableRow>
                 ) : (
-                  recentSubmissions.map((sub) => (
+                  recentSubmissions.map((sub) => {
+                    const studentName = sub.student_name || 'Ẩn danh'
+                    const studentEmail = sub.student_email || 'Không có email'
+
+                    return (
                     <TableRow key={sub.id} className="hover:bg-orange-50/20 transition-all group border-b border-gray-50/50 cursor-pointer">
                       <TableCell className="px-8 py-5">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 font-black text-xs border-2 border-white shadow-sm">{sub.student_name.charAt(0)}</div>
+                          <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 font-black text-xs border-2 border-white shadow-sm">{studentName.charAt(0)}</div>
                           <div>
-                            <p className="font-black text-gray-800 text-sm leading-tight group-hover:text-fpt-orange transition-colors">{sub.student_name}</p>
-                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter mt-0.5">{sub.student_email}</p>
+                            <p className="font-black text-gray-800 text-sm leading-tight group-hover:text-fpt-orange transition-colors">{studentName}</p>
+                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter mt-0.5">{studentEmail}</p>
                           </div>
                         </div>
                       </TableCell>
@@ -222,7 +227,8 @@ export const AdminDashboard = () => {
                         {new Date(sub.created_at).toLocaleDateString('vi-VN')}
                       </TableCell>
                     </TableRow>
-                  ))
+                    )
+                  })
                 )}
               </TableBody>
             </Table>

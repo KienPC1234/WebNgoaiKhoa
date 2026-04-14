@@ -9,12 +9,16 @@ from dotenv import load_dotenv
 # Load env variables
 load_dotenv()
 
-app = FastAPI(title="WebNgoaiKhoa API")
+app = FastAPI(
+    title="WebNgoaiKhoa API",
+    description="Hệ thống quản lý ngoại khóa và AI Assistant cho FPT Education",
+    version="2.0.0"
+)
 
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Adjust this for production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -28,16 +32,23 @@ app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
 
 @app.get("/")
 async def root():
-    return {"message": "Welcome to WebNgoaiKhoa API (Ngoại khoá nhịp đập)"}
+    return {
+        "status": "online",
+        "message": "Welcome to WebNgoaiKhoa API",
+        "version": "2.0.0"
+    }
 
 @app.websocket("/ws/notifications")
 async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
     try:
         while True:
-            # We can receive messages if needed, but for now we just keep it open
+            # Keep connection alive and wait for client to close
             await websocket.receive_text()
     except WebSocketDisconnect:
+        manager.disconnect(websocket)
+    except Exception as e:
+        print(f"WebSocket error: {e}")
         manager.disconnect(websocket)
 
 if __name__ == "__main__":

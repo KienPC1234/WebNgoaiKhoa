@@ -49,11 +49,11 @@ export const Home = () => {
               <span>Sức mạnh AI tại FPT Education</span>
             </div>
             <h1 className="text-6xl md:text-8xl font-black leading-tight text-fpt-blue italic drop-shadow-sm">
-              NGOẠI KHOÁ <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-fpt-orange to-orange-400 not-italic">NHỊP ĐẬP</span>
+              TỔ <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-fpt-orange to-orange-400 not-italic">XÃ HỘI</span>
             </h1>
             <p className="text-xl text-gray-600 font-medium leading-relaxed max-w-xl">
-              Nơi khơi nguồn sáng tạo và kết nối tri thức. Trải nghiệm không gian ngoại khóa đầy màu sắc, năng động cùng trợ lý AI thông minh 24/7.
+              Deep learning with love — Nơi khơi nguồn sáng tạo và kết nối tri thức. Trải nghiệm không gian ngoại khóa đầy màu sắc, năng động cùng trợ lý AI thông minh 24/7.
             </p>
             <div className="flex flex-wrap gap-4 pt-4">
               <Link to="/phanmon/van">

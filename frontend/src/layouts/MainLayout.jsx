@@ -1,15 +1,17 @@
 import { Link, Outlet, useLocation } from 'react-router-dom'
-import { AiChatWidget } from '../components/AiChatWidget'
-import { Home, Compass, GraduationCap, Phone, Sparkles, ChevronDown, ArrowUp, Bell, X, UserCircle } from 'lucide-react'
+import { AiChatWidget } from '@/components/AiChatWidget'
+import { Home, Compass, GraduationCap, Sparkles, ChevronDown, ArrowUp, Bell, X, UserCircle, Users, Calendar, BookOpen, Award, Heart } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 export const MainLayout = () => {
   const location = useLocation()
   const [showPhanMonDropdown, setShowPhanMonDropdown] = useState(false)
+  const [showChuyenMonDropdown, setShowChuyenMonDropdown] = useState(false)
+  const [showNhanVatDropdown, setShowNhanVatDropdown] = useState(false)
   const [showBackToTop, setShowBackToTop] = useState(false)
   const [notifications, setNotifications] = useState([])
-  
+
   const isActive = (path) => location.pathname === path
 
   // Scroll to top listener
@@ -25,11 +27,11 @@ export const MainLayout = () => {
   useEffect(() => {
     let ws;
     let reconnectTimeout;
-    
+
     const connectWS = () => {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
       const wsUrl = `${protocol}//${window.location.host}/ws/notifications`
-      
+
       try {
         ws = new WebSocket(wsUrl)
 
@@ -38,7 +40,7 @@ export const MainLayout = () => {
             const data = JSON.parse(event.data)
             const newNotif = { ...data, id: Date.now() }
             setNotifications(prev => [newNotif, ...prev])
-            
+
             setTimeout(() => {
               setNotifications(prev => prev.filter(n => n.id !== newNotif.id))
             }, 8000)
@@ -85,56 +87,196 @@ export const MainLayout = () => {
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           {/* Logo Section */}
           <Link to="/" className="flex items-center gap-2 group">
-            <motion.div 
+            <motion.div
               whileHover={{ rotate: 12, scale: 1.1 }}
               className="bg-fpt-orange p-2 rounded-xl shadow-lg shadow-orange-200"
             >
               <Sparkles className="text-white" size={24} />
             </motion.div>
             <div className="flex flex-col">
-              <span className="text-2xl font-black text-fpt-blue leading-none italic tracking-tighter">NGOẠI KHOÁ</span>
-              <span className="text-[10px] font-black text-fpt-orange tracking-[0.3em] uppercase ml-0.5">Nhịp đập số</span>
+              <span className="text-2xl font-black text-fpt-blue leading-none italic tracking-tighter">TỔ XÃ HỘI</span>
+              <span className="text-[10px] font-black text-fpt-orange tracking-[0.3em] uppercase ml-0.5">Deep learning with love</span>
             </div>
           </Link>
 
           {/* Menu Items */}
           <nav className="hidden lg:flex items-center gap-10">
             <NavLink to="/" icon={Home} label="Trang chủ" active={isActive('/')} />
-            <NavLink to="/ngoaikhoa" icon={Compass} label="Ngoại khoá" active={isActive('/ngoaikhoa')} />
 
-            {/* Dropdown Phân các môn */}
-            <div 
+            {/* Giới thiệu */}
+            <div
               className="relative group py-2"
               onMouseEnter={() => setShowPhanMonDropdown(true)}
               onMouseLeave={() => setShowPhanMonDropdown(false)}
             >
               <button className={cn(
                 "flex items-center gap-2 font-black text-xs uppercase tracking-widest transition-all",
-                location.pathname.startsWith('/phanmon') ? 'text-fpt-orange' : 'text-gray-500 hover:text-fpt-orange'
+                location.pathname.startsWith('/gioithieu') ? 'text-fpt-orange' : 'text-gray-500 hover:text-fpt-orange'
               )}>
-                <GraduationCap size={18} />
-                Phân các môn
+                <Sparkles size={18} />
+                Giới thiệu
                 <ChevronDown size={14} className={cn("transition-transform duration-300", showPhanMonDropdown ? "rotate-180" : "")} />
               </button>
-              
+
               <AnimatePresence>
                 {showPhanMonDropdown && (
-                  <motion.div 
-                    initial={{ opacity: 0, y: 15, scale: 0.95 }}
+                  <motion.div
+                    initial={{ opacity: 0, y: 15, scale: 0.98 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute top-full left-0 bg-white/95 backdrop-blur-xl border border-gray-100 shadow-2xl rounded-2xl py-4 min-w-[240px] z-50 overflow-hidden"
+                    exit={{ opacity: 0, y: 10, scale: 0.98 }}
+                    className="absolute top-full left-0 bg-white/95 backdrop-blur-xl border border-gray-100 shadow-2xl rounded-2xl py-4 min-w-[320px] z-50 overflow-hidden"
                   >
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-fpt-orange to-fpt-blue"></div>
-                    <DropdownLink to="/phanmon/van" color="bg-fpt-orange" label="Phân môn Văn (Nhái Bén)" />
-                    <DropdownLink to="/phanmon/ktpl" color="bg-fpt-blue" label="Kinh tế Pháp luật" />
+                    <div className="px-4 py-2 space-y-1">
+                      <ul className="grid grid-cols-1 gap-2">
+                        <li>
+                          <Link to="/nhanvat/scale" className="flex items-center gap-3 p-3 rounded-xl hover:bg-orange-50/50 transition-all group/item">
+                            <Users className="text-fpt-blue group-hover/item:scale-110 transition-transform" size={20} />
+                            <div className="flex-1">
+                              <div className="font-black text-[10px] uppercase tracking-widest text-gray-700 group-hover/item:text-fpt-orange">Tổ xã hội - quy mô</div>
+                              <div className="text-[10px] text-gray-400 font-medium">Quy mô, sứ mệnh và phạm vi</div>
+                            </div>
+                          </Link>
+                        </li>
+                        <li>
+                          <Link to="/nhanvat/staff" className="flex items-center gap-3 p-3 rounded-xl hover:bg-orange-50/50 transition-all group/item">
+                            <BookOpen className="text-fpt-orange group-hover/item:scale-110 transition-transform" size={20} />
+                            <div className="flex-1">
+                              <div className="font-black text-[10px] uppercase tracking-widest text-gray-700 group-hover/item:text-fpt-orange">Đội ngũ giáo viên</div>
+                              <div className="text-[10px] text-gray-400 font-medium">Giới thiệu đội ngũ giảng dạy</div>
+                            </div>
+                          </Link>
+                        </li>
+                      </ul>
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
 
-            <NavLink to="/lienhe" icon={Phone} label="Liên hệ" active={isActive('/lienhe')} />
+            {/* Chuyên môn - mega dropdown */}
+            <div
+              className="relative group py-2"
+              onMouseEnter={() => setShowChuyenMonDropdown(true)}
+              onMouseLeave={() => setShowChuyenMonDropdown(false)}
+            >
+              <button className={cn(
+                "flex items-center gap-2 font-black text-xs uppercase tracking-widest transition-all",
+                location.pathname.startsWith('/phanmon') ? 'text-fpt-orange' : 'text-gray-500 hover:text-fpt-orange'
+              )}>
+                <GraduationCap size={18} />
+                Chuyên môn
+                <ChevronDown size={14} className={cn("transition-transform duration-300", showChuyenMonDropdown ? "rotate-180" : "")} />
+              </button>
+
+              <AnimatePresence>
+                {showChuyenMonDropdown && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 15, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.98 }}
+                    className="absolute top-full left-[-200px] bg-white/95 backdrop-blur-xl border border-gray-100 shadow-2xl rounded-2xl py-8 min-w-[1000px] z-50 overflow-hidden"
+                  >
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-fpt-orange to-fpt-blue"></div>
+                    <div className="grid grid-cols-5 gap-8 px-8">
+                      {[
+                        { name: 'Ngữ Văn', path: 'van', color: 'fpt-orange' },
+                        { name: 'Kinh tế pháp luật', path: 'ktpl', color: 'fpt-blue' },
+                        { name: 'Lịch sử', path: 'lich-su', color: 'fpt-orange' },
+                        { name: 'Địa lí', path: 'dia-li', color: 'fpt-blue' },
+                        { name: 'Vovinam', path: 'vovinam', color: 'fpt-orange' },
+                      ].map((mon) => (
+                        <div key={mon.path} className="space-y-4">
+                          <div className={`flex items-center gap-2 border-b border-${mon.path === 'ktpl' || mon.path === 'dia-li' ? 'blue' : 'orange'}-100 pb-2`}>
+                            <div className={`w-1.5 h-4 bg-${mon.color} rounded-full`}></div>
+                            <h5 className="text-[11px] font-black uppercase tracking-widest text-fpt-blue">{mon.name}</h5>
+                          </div>
+                          <ul className="space-y-3">
+                            {[
+                              { label: 'Ấn phẩm/sp học tập', sub: 'an-pham', icon: BookOpen },
+                              { label: 'Tài liệu tham khảo', sub: 'tai-lieu', icon: Compass },
+                              { label: 'Vinh danh năm học', sub: 'vinh-danh', icon: Award },
+                            ].map((item) => (
+                              <li key={item.sub}>
+                                <Link to={`/phanmon/${mon.path}/${item.sub}`} className="flex items-center gap-2 group/sub">
+                                  <item.icon size={14} className="text-gray-300 group-hover/sub:text-fpt-orange transition-colors" />
+                                  <span className="text-[10px] font-black uppercase tracking-widest text-gray-500 group-hover/sub:text-fpt-orange transition-colors">{item.label}</span>
+                                </Link>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Nhân vật & sự kiện */}
+            <div
+              className="relative group py-2"
+              onMouseEnter={() => setShowNhanVatDropdown(true)}
+              onMouseLeave={() => setShowNhanVatDropdown(false)}
+            >
+              <button className={cn(
+                "flex items-center gap-2 font-black text-xs uppercase tracking-widest transition-all",
+                (location.pathname.startsWith('/nhanvat') || location.pathname.startsWith('/events') || location.pathname.startsWith('/stories'))
+                  ? 'text-fpt-orange'
+                  : 'text-gray-500 hover:text-fpt-orange'
+              )}>
+                <UserCircle size={18} />
+                Nhân vật & sự kiện
+                <ChevronDown size={14} className={cn("transition-transform duration-300", showNhanVatDropdown ? "rotate-180" : "")} />
+              </button>
+
+              <AnimatePresence>
+                {showNhanVatDropdown && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 15, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.98 }}
+                    className="absolute top-full left-0 bg-white/95 backdrop-blur-xl border border-gray-100 shadow-2xl rounded-2xl py-4 min-w-[320px] z-50 overflow-hidden"
+                  >
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-fpt-orange to-fpt-blue"></div>
+                    <div className="px-4 py-2 space-y-1">
+                      <ul className="grid grid-cols-1 gap-2">
+                        <li>
+                          <Link to="/events/upcoming" className="flex items-center gap-3 p-3 rounded-xl hover:bg-blue-50/50 transition-all group/item">
+                            <Calendar className="text-fpt-blue group-hover/item:scale-110 transition-transform" size={20} />
+                            <div className="flex-1">
+                              <div className="font-black text-[10px] uppercase tracking-widest text-gray-700 group-hover/item:text-fpt-orange">Sự kiện sắp tới</div>
+                              <div className="text-[10px] text-gray-400 font-medium">Lịch hội thảo, workshop và hoạt động</div>
+                            </div>
+                          </Link>
+                        </li>
+                        <li>
+                          <Link to="/stories/inspiring" className="flex items-center gap-3 p-3 rounded-xl hover:bg-orange-50/50 transition-all group/item">
+                            <Heart className="text-red-400 group-hover/item:scale-110 transition-transform" size={20} />
+                            <div className="flex-1">
+                              <div className="font-black text-[10px] uppercase tracking-widest text-gray-700 group-hover/item:text-fpt-orange">Câu chuyện truyền cảm hứng</div>
+                              <div className="text-[10px] text-gray-400 font-medium">Những chia sẻ và thành tựu nổi bật</div>
+                            </div>
+                          </Link>
+                        </li>
+                        <li>
+                          <Link to="/nhanvat/honors" className="flex items-center gap-3 p-3 rounded-xl hover:bg-orange-50/50 transition-all group/item">
+                            <Award className="text-fpt-orange group-hover/item:scale-110 transition-transform" size={20} />
+                            <div className="flex-1">
+                              <div className="font-black text-[10px] uppercase tracking-widest text-gray-700 group-hover/item:text-fpt-orange">Vinh danh & giải thưởng</div>
+                              <div className="text-[10px] text-gray-400 font-medium">Danh sách học viên & tập thể xuất sắc</div>
+                            </div>
+                          </Link>
+                        </li>
+                      </ul>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
           </nav>
+
 
           {/* Action Buttons */}
           <div className="flex items-center gap-4">
@@ -142,7 +284,7 @@ export const MainLayout = () => {
               <UserCircle size={16} />
               Quản trị
             </Link>
-            <motion.button 
+            <motion.button
               whileHover={{ scale: 1.05, boxShadow: '0 10px 20px -5px rgba(242,112,36,0.4)' }}
               whileTap={{ scale: 0.95 }}
               className="flex items-center gap-2 bg-fpt-orange text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-orange-100 border-none"
@@ -167,7 +309,7 @@ export const MainLayout = () => {
             <div className="col-span-1 md:col-span-2 space-y-6">
               <div className="flex items-center gap-2">
                 <div className="bg-fpt-blue p-1.5 rounded-lg"><Sparkles className="text-white" size={20} /></div>
-                <span className="text-xl font-black text-fpt-blue italic uppercase tracking-tighter">WebNgoaiKhoa</span>
+                <span className="text-xl font-black text-fpt-blue italic uppercase tracking-tighter">Tổ xã hội</span>
               </div>
               <p className="text-gray-500 font-medium leading-relaxed max-w-md">
                 Nền tảng kết nối tri thức và phát triển kỹ năng toàn diện cho sinh viên FPT Education. Tích hợp trí tuệ nhân tạo thế hệ mới.
@@ -192,7 +334,7 @@ export const MainLayout = () => {
           </div>
           <div className="border-t border-gray-100 pt-10 text-center">
             <p className="text-gray-400 text-[10px] font-black uppercase tracking-[0.4em]">
-              © 2026 NGOẠI KHOÁ NHỊP ĐẬP • FPT EDUCATION
+              © 2026 TỔ XÃ HỘI • FPT EDUCATION
             </p>
           </div>
         </div>
@@ -216,7 +358,7 @@ export const MainLayout = () => {
             </motion.button>
           )}
         </AnimatePresence>
-        
+
         {/* Spacer for AI Widget Button which is also at bottom-right */}
         <div className="h-16 w-16"></div>
       </div>
@@ -251,8 +393,8 @@ export const MainLayout = () => {
 }
 
 const NavLink = ({ to, icon: Icon, label, active }) => (
-  <Link 
-    to={to} 
+  <Link
+    to={to}
     className={cn(
       "flex items-center gap-2 font-black text-xs uppercase tracking-widest transition-all relative group",
       active ? 'text-fpt-orange' : 'text-gray-500 hover:text-fpt-orange'
@@ -268,8 +410,8 @@ const NavLink = ({ to, icon: Icon, label, active }) => (
 )
 
 const DropdownLink = ({ to, color, label }) => (
-  <Link 
-    to={to} 
+  <Link
+    to={to}
     className="flex items-center gap-3 px-6 py-3.5 hover:bg-gray-50 transition-all group"
   >
     <span className={cn("w-2 h-2 rounded-full transition-transform group-hover:scale-150", color)}></span>

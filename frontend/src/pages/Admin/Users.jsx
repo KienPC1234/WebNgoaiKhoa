@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
-import { Card, Button } from '../../components/UI'
+import { Card, Button, cn } from '../../components/UI'
 import { User, Mail, Shield, Check, X, Search, Trash2, Edit, MoreVertical } from 'lucide-react'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
@@ -42,10 +42,13 @@ export const AdminUsers = () => {
     }
   }
 
-  const filteredUsers = users.filter(user => 
-    user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    user.email.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const filteredUsers = users.filter((user) => {
+    const fullName = (user.full_name || '').toLowerCase()
+    const email = (user.email || '').toLowerCase()
+    const query = searchTerm.toLowerCase()
+
+    return fullName.includes(query) || email.includes(query)
+  })
 
   return (
     <div className="space-y-8 animate-fadeIn">
@@ -90,7 +93,7 @@ export const AdminUsers = () => {
                       <User size={28} />
                     </div>
                     <div>
-                      <h3 className="font-black text-fpt-blue text-lg leading-tight group-hover:text-fpt-orange transition-colors">{user.full_name}</h3>
+                      <h3 className="font-black text-fpt-blue text-lg leading-tight group-hover:text-fpt-orange transition-colors">{user.full_name || 'Chưa cập nhật'}</h3>
                       <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-gray-400 mt-1">
                         <Shield size={12} className={user.role === 'admin' ? "text-fpt-blue" : "text-fpt-orange"} />
                         {user.role}

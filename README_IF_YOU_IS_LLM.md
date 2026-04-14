@@ -1,4 +1,4 @@
-# MANDATORY CONTEXT FOR GEMINI CLI
+# MANDATORY CONTEXT FOR LLM
 
 ## Environment Mandates
 - **Backend Environment:** You MUST always use the Conda environment named `webngoaikhoa_fpt_env`.

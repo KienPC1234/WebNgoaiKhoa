@@ -1,59 +1,33 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.models.user import User
-from app.models.publication import Publication, Submission
+from app.models.publication import ContentType, Event, Publication, Story, Submission
 from app.api.auth import get_current_admin
 from app.db.notifications import manager
-from pydantic import BaseModel
+from app.schemas.schemas import (
+    EventCreate,
+    EventOut,
+    StoryCreate,
+    StoryOut,
+    UserOut, UserUpdate, 
+    PublicationOut, PublicationCreate, 
+    SubmissionOut, DashboardStats, SubmissionStatusUpdate
+)
 from typing import List, Optional
-from datetime import datetime
 
 router = APIRouter()
 
-# --- Schemas ---
-class UserBase(BaseModel):
-    email: str
-    full_name: str
-    role: str
-    is_active: bool
 
-class UserUpdate(BaseModel):
-    full_name: Optional[str] = None
-    role: Optional[str] = None
-    is_active: Optional[bool] = None
+def normalize_publication_payload(pub: PublicationCreate) -> dict:
+    payload = pub.model_dump()
+    subject = payload.get("subject") or payload.get("category") or "van"
+    content_type = payload.get("content_type") or ContentType.AN_PHAM.value
 
-class UserOut(UserBase):
-    id: int
-    class Config:
-        from_attributes = True
-
-class PublicationBase(BaseModel):
-    title: str
-    content: str
-    category: str
-    image_url: Optional[str] = None
-
-class PublicationCreate(PublicationBase):
-    pass
-
-class PublicationOut(PublicationBase):
-    id: int
-    created_at: datetime
-    class Config:
-        from_attributes = True
-
-class SubmissionOut(BaseModel):
-    id: int
-    title: str
-    content: str
-    student_name: str
-    student_email: str
-    status: str
-    votes: int
-    created_at: datetime
-    class Config:
-        from_attributes = True
+    payload["subject"] = subject
+    payload["category"] = subject  # Keep legacy clients compatible
+    payload["content_type"] = content_type
+    return payload
 
 # --- User Management ---
 
@@ -67,7 +41,7 @@ async def update_user(user_id: int, user_update: UserUpdate, db: Session = Depen
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    for key, value in user_update.dict(exclude_unset=True).items():
+    for key, value in user_update.model_dump(exclude_unset=True).items():
         setattr(user, key, value)
     
     db.commit()
@@ -78,11 +52,12 @@ async def update_user(user_id: int, user_update: UserUpdate, db: Session = Depen
 
 @router.get("/publications", response_model=List[PublicationOut])
 async def get_publications(db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
-    return db.query(Publication).all()
+    return db.query(Publication).order_by(Publication.created_at.desc()).all()
 
 @router.post("/publications", response_model=PublicationOut)
 async def create_publication(pub: PublicationCreate, db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
-    new_pub = Publication(**pub.dict(), author_id=admin.id)
+    payload = normalize_publication_payload(pub)
+    new_pub = Publication(**payload, author_id=admin.id)
     db.add(new_pub)
     db.commit()
     db.refresh(new_pub)
@@ -93,8 +68,9 @@ async def update_publication(pub_id: int, pub_update: PublicationCreate, db: Ses
     pub = db.query(Publication).filter(Publication.id == pub_id).first()
     if not pub:
         raise HTTPException(status_code=404, detail="Publication not found")
-    
-    for key, value in pub_update.dict().items():
+
+    payload = normalize_publication_payload(pub_update)
+    for key, value in payload.items():
         setattr(pub, key, value)
     
     db.commit()
@@ -110,44 +86,134 @@ async def delete_publication(pub_id: int, db: Session = Depends(get_db), admin: 
     db.commit()
     return {"message": "Publication deleted"}
 
+
+# --- Event Management ---
+
+@router.get("/events", response_model=List[EventOut])
+async def get_events(db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
+    return db.query(Event).order_by(Event.event_date.asc()).all()
+
+
+@router.post("/events", response_model=EventOut)
+async def create_event(payload: EventCreate, db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
+    event = Event(**payload.model_dump())
+    db.add(event)
+    db.commit()
+    db.refresh(event)
+    return event
+
+
+@router.put("/events/{event_id}", response_model=EventOut)
+async def update_event(event_id: int, payload: EventCreate, db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    for key, value in payload.model_dump().items():
+        setattr(event, key, value)
+
+    db.commit()
+    db.refresh(event)
+    return event
+
+
+@router.delete("/events/{event_id}")
+async def delete_event(event_id: int, db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    db.delete(event)
+    db.commit()
+    return {"message": "Event deleted"}
+
+
+# --- Story Management ---
+
+@router.get("/stories", response_model=List[StoryOut])
+async def get_stories(db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
+    return db.query(Story).order_by(Story.created_at.desc()).all()
+
+
+@router.post("/stories", response_model=StoryOut)
+async def create_story(payload: StoryCreate, db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
+    story = Story(**payload.model_dump())
+    db.add(story)
+    db.commit()
+    db.refresh(story)
+    return story
+
+
+@router.put("/stories/{story_id}", response_model=StoryOut)
+async def update_story(story_id: int, payload: StoryCreate, db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
+    story = db.query(Story).filter(Story.id == story_id).first()
+    if not story:
+        raise HTTPException(status_code=404, detail="Story not found")
+
+    for key, value in payload.model_dump().items():
+        setattr(story, key, value)
+
+    db.commit()
+    db.refresh(story)
+    return story
+
+
+@router.delete("/stories/{story_id}")
+async def delete_story(story_id: int, db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
+    story = db.query(Story).filter(Story.id == story_id).first()
+    if not story:
+        raise HTTPException(status_code=404, detail="Story not found")
+    db.delete(story)
+    db.commit()
+    return {"message": "Story deleted"}
+
 # --- Submission Management ---
 
 @router.get("/submissions", response_model=List[SubmissionOut])
 async def get_submissions(db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
-    return db.query(Submission).all()
+    return db.query(Submission).order_by(Submission.created_at.desc()).all()
 
 @router.put("/submissions/{sub_id}/status")
-async def update_submission_status(sub_id: int, status: str, db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
+async def update_submission_status(
+    sub_id: int,
+    payload: Optional[SubmissionStatusUpdate] = None,
+    status: Optional[str] = None,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
     submission = db.query(Submission).filter(Submission.id == sub_id).first()
     if not submission:
         raise HTTPException(status_code=404, detail="Submission not found")
-    
-    submission.status = status
+
+    next_status = payload.status if payload else status
+    if next_status not in {"pending", "approved", "rejected"}:
+        raise HTTPException(status_code=400, detail="Invalid status")
+
+    submission.status = next_status
     db.commit()
 
-    # Notify about status update
+    # Notify via WebSocket
     await manager.broadcast({
         "type": "submission_update",
-        "title": "Cập nhật trạng thái bài thi",
-        "message": f"Bài thi '{submission.title}' đã được chuyển sang trạng thái: {status.upper()}.",
-        "status": status,
+        "title": "Cập nhật hệ thống",
+        "message": f"Bài thi '{submission.title}' đã được cập nhật trạng thái: {next_status.upper()}.",
         "id": submission.id
     })
 
-    return {"message": f"Submission status updated to {status}"}
+    return {
+        "message": f"Submission status updated to {next_status}",
+        "id": submission.id,
+        "status": submission.status,
+    }
 
 # --- Stats for Dashboard ---
 
-@router.get("/stats")
+@router.get("/stats", response_model=DashboardStats)
 async def get_stats(db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
-    user_count = db.query(User).count()
-    pub_count = db.query(Publication).count()
-    sub_count = db.query(Submission).count()
-    pending_subs = db.query(Submission).filter(Submission.status == "pending").count()
-    
     return {
-        "users": user_count,
-        "publications": pub_count,
-        "submissions": sub_count,
-        "pending_submissions": pending_subs
+        "users": db.query(User).count(),
+        "publications": db.query(Publication).count(),
+        "submissions": db.query(Submission).count(),
+        "pending_submissions": db.query(Submission).filter(Submission.status == "pending").count(),
+        "events": db.query(Event).count(),
+        "stories": db.query(Story).count(),
     }

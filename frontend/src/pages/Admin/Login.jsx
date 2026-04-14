@@ -13,7 +13,7 @@ const Input = ({ label, ...props }) => (
   </div>
 )
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3002/api'
+const API_URL = import.meta.env.VITE_API_URL || '/api'
 
 export const AdminLogin = () => {
   const [email, setEmail] = useState('')
@@ -54,7 +54,7 @@ export const AdminLogin = () => {
       <Card className="max-w-md w-full p-10 space-y-8 border-none shadow-2xl rounded-[32px]">
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-black text-fpt-blue italic">ADMIN LOGIN</h1>
-          <p className="text-gray-400 font-bold text-xs uppercase tracking-[0.2em]">Ban Tổ Chức - Web Ngoại Khoá</p>
+          <p className="text-gray-400 font-bold text-xs uppercase tracking-[0.2em]">Ban Tổ Chức - Tổ xã hội</p>
         </div>
 
         {error && (
