@@ -404,6 +404,8 @@ export const AiChatWidget = ({ pendingOpen = false, onPendingOpenHandled }) => {
   const scrollRafRef = useRef(0)
   const floatingBottom = 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)'
 
+  const isFullscreen = isMobile && !isMinimized
+
   const quickSuggestions = [
     "Thể lệ Nhái Bén là gì?",
     "Cách viết bài cho CLB Văn?",
@@ -670,22 +672,22 @@ export const AiChatWidget = ({ pendingOpen = false, onPendingOpenHandled }) => {
   return (
     <div className={cn(
       'fixed z-[120] flex flex-col transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]',
-      isMobile ? 'left-0 right-0 px-3' : 'right-3 sm:right-4 md:right-6',
+      isFullscreen ? 'inset-0' : (isMobile ? 'left-0 right-0 px-3' : 'right-3 sm:right-4 md:right-6'),
       isMinimized
         ? 'h-16 w-[min(82vw,320px)]'
-        : isMobile
-          ? 'h-[min(70dvh,90vh)] w-full max-w-md mx-auto'
+        : isFullscreen
+          ? 'h-full w-full'
           : 'h-[min(80dvh,700px)] w-[min(calc(100vw-1.5rem),440px)]',
-      isMobile && 'ai-chat-compact'
-    )} style={{ bottom: floatingBottom }}>
-      <Card className="h-full flex flex-col overflow-hidden rounded-[2rem] border-0 bg-white p-0 shadow-[0_40px_100px_-30px_rgba(15,23,42,0.4)] ring-1 ring-black/[0.03]">
+      isFullscreen ? 'ai-chat-fullscreen ai-chat-compact' : (isMobile && 'ai-chat-compact')
+    )} style={isFullscreen ? undefined : { bottom: floatingBottom }}>
+      <Card className={cn('h-full flex flex-col overflow-hidden border-0 bg-white p-0 shadow-[0_40px_100px_-30px_rgba(15,23,42,0.4)] ring-1 ring-black/[0.03]', isFullscreen ? 'rounded-none' : 'rounded-[2rem]')}>
         {/* Modern Header */}
         <div className={cn(
           'relative flex shrink-0 items-center justify-between transition-all',
-          isMobile ? 'px-4' : 'px-5',
+          isFullscreen ? 'px-5' : (isMobile ? 'px-4' : 'px-5'),
           isMinimized
             ? 'h-full bg-gradient-to-r from-fpt-blue to-[#2a3b75]'
-            : (isMobile ? 'h-14 bg-gradient-to-br from-fpt-blue via-[#23336a] to-fpt-blue border-b border-white/10' : 'h-24 bg-gradient-to-br from-fpt-blue via-[#23336a] to-fpt-blue border-b border-white/10')
+            : (isFullscreen ? 'h-16 bg-gradient-to-br from-fpt-blue via-[#23336a] to-fpt-blue border-b border-white/10' : (isMobile ? 'h-14 bg-gradient-to-br from-fpt-blue via-[#23336a] to-fpt-blue border-b border-white/10' : 'h-24 bg-gradient-to-br from-fpt-blue via-[#23336a] to-fpt-blue border-b border-white/10'))
         )}>
           {/* Header BG decoration */}
           {!isMinimized && (
@@ -764,7 +766,7 @@ export const AiChatWidget = ({ pendingOpen = false, onPendingOpenHandled }) => {
               role="log"
               aria-live="polite"
               aria-atomic="false"
-              className={cn('relative flex-1 overflow-y-auto bg-slate-50/50 custom-scrollbar', isMobile ? 'p-3 space-y-2' : 'p-5 space-y-6')}
+              className={cn('relative flex-1 overflow-y-auto bg-slate-50/50 custom-scrollbar', isFullscreen ? 'p-5 space-y-4' : (isMobile ? 'p-3 space-y-2' : 'p-5 space-y-6'))}
             >
               {visibleMessages.map((msg, i) => (
                 <div key={i} className={cn(
@@ -833,7 +835,7 @@ export const AiChatWidget = ({ pendingOpen = false, onPendingOpenHandled }) => {
             </div>
 
             {/* Input Area */}
-            <div className={cn('bg-white border-t border-slate-100', isMobile ? 'p-3' : 'p-5')}>
+            <div className={cn('bg-white border-t border-slate-100', isFullscreen ? 'p-4' : (isMobile ? 'p-3' : 'p-5'))}>
               {messages.length === 1 && (
                 <div className="mb-4 flex flex-wrap gap-2 animate-fadeInUp">
                   {quickSuggestions.map((text, i) => (
@@ -858,7 +860,7 @@ export const AiChatWidget = ({ pendingOpen = false, onPendingOpenHandled }) => {
                       if (e.key === 'Enter') handleSend()
                     }}
                     placeholder="Viết nội dung cần hỗ trợ..."
-                    className={cn('w-full rounded-2xl border border-slate-200 bg-slate-50 text-sm font-bold outline-none transition-all focus:border-fpt-orange/30 focus:bg-white focus:ring-4 focus:ring-orange-500/5 group-hover:border-slate-300', isMobile ? 'px-4 py-3' : 'px-5 py-4')}
+                    className={cn('w-full rounded-2xl border border-slate-200 bg-slate-50 text-sm font-bold outline-none transition-all focus:border-fpt-orange/30 focus:bg-white focus:ring-4 focus:ring-orange-500/5 group-hover:border-slate-300', isFullscreen ? 'px-5 py-4' : (isMobile ? 'px-4 py-3' : 'px-5 py-4'))}
                   />
                   {!input.trim() && !isTyping && (
                     <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
