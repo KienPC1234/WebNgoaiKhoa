@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { Send, X, Bot, Sparkles, Trash2, Maximize2, Minimize2, Square, ArrowDown, User, Zap } from 'lucide-react'
 import { Card } from '@/components/ui/core'
 import { cn } from '@/lib/utils'
@@ -359,6 +359,8 @@ const dropEmptyAssistantMessages = (items = []) =>
 export const AiChatWidget = ({ pendingOpen = false, onPendingOpenHandled }) => {
   const navigate = useNavigate()
   const actionEngine = useMemo(() => createAiActionEngine({ navigate }), [navigate])
+  const location = useLocation()
+  const prevPathRef = useRef(location?.pathname || '')
   const [isOpen, setIsOpen] = useState(() => localStorage.getItem(CHAT_OPEN_STORAGE_KEY) === '1')
   const [isMinimized, setIsMinimized] = useState(() => localStorage.getItem(CHAT_MIN_STORAGE_KEY) === '1')
   const [input, setInput] = useState('')
@@ -437,6 +439,20 @@ export const AiChatWidget = ({ pendingOpen = false, onPendingOpenHandled }) => {
       }
     }
   }, [])
+
+  useEffect(() => {
+    // Auto-minimize chat on mobile when route changes
+    if (!isMobile) {
+      prevPathRef.current = location?.pathname || ''
+      return
+    }
+    const prev = prevPathRef.current || ''
+    const curr = location?.pathname || ''
+    if (prev && prev !== curr && isOpen && !isMinimized) {
+      setIsMinimized(true)
+    }
+    prevPathRef.current = curr
+  }, [location?.pathname, isMobile, isOpen, isMinimized])
 
   useEffect(() => {
     if (!pendingOpen) return
@@ -619,6 +635,26 @@ export const AiChatWidget = ({ pendingOpen = false, onPendingOpenHandled }) => {
 
       if (toolCalls.length > 0) {
         const toolResults = await actionEngine.executeToolCalls(toolCalls, { userQuery: messageToSend })
+
+        // On mobile: if any tool result performed navigation or highlighted an element, auto-minimize
+        try {
+          if (isMobile && isOpen && !isMinimized) {
+            const navHighlightNames = new Set(['navigate_to_page', 'search_content', 'compute_selector_for_text', 'open_and_focus', 'scroll_to_target', 'highlight_target'])
+            const shouldAutoMinimize = Array.isArray(toolResults) && toolResults.some((res) => {
+              if (!res) return false
+              if (res.ok === false) return false
+              if (res.action && navHighlightNames.has(res.action)) return true
+              if (res.name && navHighlightNames.has(res.name)) return true
+              if (res.path) return true
+              if (res.element) return true
+              return false
+            })
+            if (shouldAutoMinimize) setIsMinimized(true)
+          }
+        } catch (e) {
+          // ignore any detection errors
+        }
+
         const actionFeedback = buildActionFeedback(toolResults)
 
         if (actionFeedback) {
