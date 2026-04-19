@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Link } from 'react-router-dom'
-import axios from 'axios'
 import { Award, BookOpen, Compass, ExternalLink, RefreshCw } from 'lucide-react'
-import { Card } from '@/components/UI'
+import { Card } from '@/components/ui/core'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 const toPlainText = (value) => (value || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
@@ -42,13 +41,18 @@ export const SubjectContentHub = () => {
     setLoading(true)
     setError('')
     try {
-      const res = await axios.get(`${API_URL}/public/publications`, {
-        params: {
-          subject,
-          content_type: contentType,
+      const params = new URLSearchParams({
+        subject: subject || '',
+        content_type: contentType || '',
+      })
+      const response = await fetch(`${API_URL}/public/publications?${params.toString()}`, {
+        headers: {
+          Accept: 'application/json',
         },
       })
-      setItems(res.data || [])
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
+      const data = await response.json()
+      setItems(data || [])
     } catch (e) {
       setError('Không tải được dữ liệu. Vui lòng thử lại.')
     } finally {
@@ -73,11 +77,12 @@ export const SubjectContentHub = () => {
         </div>
       </section>
 
-      <div className="page-content-wrap space-y-6">
+      <div className="page-content-wrap space-y-6 cv-auto">
         <div className="flex justify-end">
           <button
+            type="button"
             onClick={loadItems}
-            className="inline-flex items-center gap-2 bg-white border border-gray-200 text-gray-600 hover:text-fpt-orange px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest"
+            className="tap-target inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs font-black uppercase tracking-widest text-gray-600 hover:text-fpt-orange"
           >
             <RefreshCw size={14} />
             Làm mới
@@ -109,7 +114,7 @@ export const SubjectContentHub = () => {
               <Card key={item.id} className="rounded-3xl p-0 overflow-hidden border-none shadow-lg bg-white">
                 <div className="h-44 bg-gray-100">
                   {item.image_url ? (
-                    <img src={item.image_url} alt={item.title} className="w-full h-full object-cover" />
+                    <img src={item.image_url} alt={item.title} loading="lazy" decoding="async" className="h-full w-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-gray-300">
                       <TypeIcon size={44} />
@@ -123,7 +128,7 @@ export const SubjectContentHub = () => {
                     <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
                       {new Date(item.created_at).toLocaleDateString('vi-VN')}
                     </span>
-                    <Link to={`/posts/${item.id}`} className="w-8 h-8 rounded-full bg-gray-50 text-gray-400 hover:text-fpt-orange flex items-center justify-center">
+                    <Link to={`/posts/${item.id}`} className="tap-target flex h-8 w-8 items-center justify-center rounded-full bg-gray-50 text-gray-400 hover:text-fpt-orange">
                       <ExternalLink size={14} />
                     </Link>
                   </div>

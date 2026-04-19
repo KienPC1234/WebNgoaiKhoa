@@ -11,12 +11,21 @@ import {
   Sparkles,
   Users,
 } from 'lucide-react'
-import { Button, Card, cn, GridBackground, ShimmerButton, Spotlight } from '../components/UI'
+import { Button, Card } from '@/components/ui/core'
+import { GridBackground, ShimmerButton, Spotlight } from '@/components/aceternity'
+import { cn } from '@/lib/utils'
 import { Link } from 'react-router-dom'
-import axios from 'axios'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 const toPlainText = (value) => (value || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+const toWebpCandidate = (url) => {
+  if (!url || typeof url !== 'string') return undefined
+  const [pathname, query = ''] = url.split('?')
+  if (!pathname) return undefined
+  const converted = pathname.replace(/\.(png|jpe?g)$/i, '.webp')
+  if (converted === pathname) return undefined
+  return `${converted}${query ? `?${query}` : ''}`
+}
 
 const featureCards = [
   {
@@ -51,18 +60,32 @@ export const Home = () => {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
+    const controller = new AbortController()
+
     const fetchLatest = async () => {
       setLoading(true)
       try {
-        const response = await axios.get(`${API_URL}/public/publications`)
-        setLatestPubs(response.data.slice(0, 3))
+        const response = await fetch(`${API_URL}/public/publications`, {
+          signal: controller.signal,
+          headers: {
+            Accept: 'application/json',
+          },
+        })
+        if (!response.ok) throw new Error(`HTTP ${response.status}`)
+        const data = await response.json()
+        setLatestPubs(Array.isArray(data) ? data.slice(0, 3) : [])
       } catch (error) {
-        console.error('Error fetching latest pubs:', error)
+        if (error?.name !== 'AbortError') {
+          console.error('Error fetching latest pubs:', error)
+        }
       } finally {
         setLoading(false)
       }
     }
+
     fetchLatest()
+
+    return () => controller.abort()
   }, [])
 
   return (
@@ -76,11 +99,11 @@ export const Home = () => {
         <GridBackground className="opacity-25" />
         <Spotlight className="opacity-80" />
 
-        <div className="container relative z-10 mx-auto grid grid-cols-1 items-center gap-14 lg:grid-cols-12">
+        <div className="app-section relative z-10 grid grid-cols-1 items-center gap-14 lg:grid-cols-12">
           <div className="lg:col-span-7" data-aos="fade-right">
             <h1 className="text-balance text-[52px] font-black uppercase text-fpt-blue sm:text-[72px] lg:text-[108px]">
               <span className="block leading-[0.9]">Nhịp đập</span>
-              <span className="relative mt-6 block leading-[0.9] italic text-fpt-orange sm:mt-7 lg:mt-8">
+              <span className="relative mt-6 inline-block leading-[0.9] italic text-fpt-orange sm:mt-7 lg:mt-8">
                 Sáng tạo
                 <svg className="absolute -bottom-5 left-0 h-7 w-full text-fpt-green/20" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">
                   <path d="M0 6 Q 25 0 50 6 T 100 6" stroke="currentColor" strokeWidth="10" fill="none" />
@@ -93,13 +116,13 @@ export const Home = () => {
             </p>
 
             <div className="mt-10 flex flex-wrap gap-4">
-              <Link to="/phanmon/van/an-pham">
+              <Link to="/phanmon/van/an-pham" className="tap-target">
                 <ShimmerButton className="rounded-2xl px-8 py-4 text-sm md:px-10 md:py-5 md:text-base">
                   Khám phá ngay <ArrowRight size={18} />
                 </ShimmerButton>
               </Link>
-              <Link to="/stories/inspiring">
-                <Button className="rounded-2xl bg-fpt-blue px-8 py-4 text-sm font-black text-white shadow-xl shadow-blue-200 transition-all hover:-translate-y-1 md:px-10 md:py-5 md:text-base">
+              <Link to="/stories/inspiring" className="tap-target">
+                <Button className="tap-target rounded-2xl bg-fpt-blue px-8 py-4 text-sm font-black text-white shadow-xl shadow-blue-200 transition-all hover:-translate-y-1 md:px-10 md:py-5 md:text-base">
                   Câu chuyện truyền cảm hứng
                 </Button>
               </Link>
@@ -117,7 +140,7 @@ export const Home = () => {
               <div className="absolute right-0 top-2 h-full w-[88%] -rotate-3 rounded-[2.6rem] border border-slate-200 bg-slate-50" />
               <div className="group absolute right-4 -top-4 h-full w-[88%] rotate-2 overflow-hidden rounded-[2.6rem] border border-slate-100 bg-white p-4 shadow-[0_34px_60px_-45px_rgba(15,23,42,0.65)] transition-transform duration-700 hover:rotate-0">
                 <div className="relative h-full w-full overflow-hidden rounded-[2.2rem] bg-gradient-to-br from-slate-900 via-fpt-blue to-slate-800 px-8 pb-8 pt-18 text-white">
-                  <div className="absolute left-8 top-4 inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-slate-900/30 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-white/85">
+                  <div className="absolute left-[15%] top-4 inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-slate-900/30 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-white/85">
                     <BookOpen size={12} /> Editorial Insight
                   </div>
                   <h3 className="text-3xl font-black leading-tight">Sáng tạo là hành trình tự do nhất của học sinh FPT.</h3>
@@ -151,7 +174,7 @@ export const Home = () => {
         </div>
       </section>
 
-      <section className="container mx-auto px-4">
+      <section className="app-section cv-auto" data-ai-anchor="home-latest-publications">
         <div className="mb-14 flex flex-col items-start justify-between gap-8 md:flex-row md:items-end" data-aos="fade-up">
           <div>
             <p className="mb-4 inline-flex items-center gap-2 rounded-full bg-orange-50 px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-fpt-orange">
@@ -165,7 +188,7 @@ export const Home = () => {
             </p>
           </div>
 
-          <Link to="/phanmon/van/an-pham" className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-6 py-3 text-xs font-black uppercase tracking-widest text-fpt-blue transition-all hover:gap-4 hover:bg-blue-100">
+          <Link to="/phanmon/van/an-pham" className="tap-target inline-flex items-center gap-2 rounded-full bg-blue-50 px-6 py-3 text-xs font-black uppercase tracking-widest text-fpt-blue transition-all hover:gap-4 hover:bg-blue-100">
             Xem tất cả <ChevronRight size={16} />
           </Link>
         </div>
@@ -180,10 +203,25 @@ export const Home = () => {
             </div>
           ) : (
             latestPubs.map((pub, idx) => (
-              <Card key={pub.id} data-aos="fade-up" data-aos-delay={idx * 100} className="group flex h-full flex-col overflow-hidden rounded-[2.2rem] border border-slate-100 p-0 shadow-lg transition-all hover:-translate-y-2 hover:shadow-2xl">
+              <Card
+                key={pub.id}
+                data-aos="fade-up"
+                data-aos-delay={idx * 100}
+                data-ai-anchor={`home-latest-card-${pub.id}`}
+                data-ai-card-title={pub.title}
+                className="group flex h-full flex-col overflow-hidden rounded-[2.2rem] border border-slate-100 p-0 shadow-lg transition-all hover:-translate-y-2 hover:shadow-2xl"
+              >
                 <div className="relative h-56 overflow-hidden bg-slate-100">
                   {pub.image_url ? (
-                    <img src={pub.image_url} alt={pub.title} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                    <img
+                      src={pub.image_url}
+                      srcSet={toWebpCandidate(pub.image_url) ? `${toWebpCandidate(pub.image_url)} 1x, ${pub.image_url} 1x` : undefined}
+                      sizes="(max-width: 768px) 100vw, 33vw"
+                      alt={pub.title}
+                      loading="lazy"
+                      decoding="async"
+                      className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
+                    />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 text-slate-400">
                       <BookOpen size={78} className="opacity-25" />
@@ -208,7 +246,7 @@ export const Home = () => {
                     <span className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
                       <Calendar size={14} /> {new Date(pub.created_at).toLocaleDateString('vi-VN')}
                     </span>
-                    <Link to={`/posts/${pub.id}`} className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-50 text-fpt-blue transition-colors group-hover:bg-fpt-orange group-hover:text-white">
+                    <Link to={`/posts/${pub.id}`} className="tap-target flex h-11 w-11 items-center justify-center rounded-full bg-slate-50 text-fpt-blue transition-colors group-hover:bg-fpt-orange group-hover:text-white">
                       <ArrowRight size={17} />
                     </Link>
                   </div>
@@ -219,7 +257,7 @@ export const Home = () => {
         </div>
       </section>
 
-      <section className="container mx-auto px-4">
+      <section className="app-section cv-auto">
         <div className="mb-12 max-w-3xl" data-aos="fade-up">
           <h2 className="text-4xl font-black uppercase tracking-tight text-fpt-blue md:text-5xl">Giá trị cốt lõi</h2>
           <p className="mt-4 text-lg font-medium text-slate-500">
@@ -248,7 +286,7 @@ export const Home = () => {
         </div>
       </section>
 
-      <section className="container mx-auto px-4" data-aos="zoom-in">
+      <section className="app-section cv-auto" data-aos="zoom-in" data-ai-anchor="home-creative-board">
         <div className="relative overflow-hidden rounded-[3rem] bg-fpt-blue p-10 shadow-2xl md:p-16">
           <div className="absolute -right-16 -top-16 h-72 w-72 rounded-full bg-fpt-orange/30 blur-3xl" />
           <div className="absolute -bottom-24 -left-20 h-72 w-72 rounded-full bg-cyan-400/20 blur-3xl" />
@@ -270,26 +308,45 @@ export const Home = () => {
 
             <div className="rounded-[2rem] border border-white/20 bg-white/10 p-6 backdrop-blur md:p-8">
               <div className="space-y-4">
-                <Link to="/phanmon/van/an-pham" className="flex items-center justify-between rounded-2xl bg-white/10 px-4 py-4 text-sm font-black uppercase tracking-widest text-white transition-colors hover:bg-white/20">
+                <Link to="/phanmon/van/an-pham" className="tap-target flex items-center justify-between rounded-2xl bg-white/10 px-4 py-4 text-sm font-black uppercase tracking-widest text-white transition-colors hover:bg-white/20">
                   Khám phá ấn phẩm mới
                   <ChevronRight size={16} />
                 </Link>
-                <Link to="/stories/inspiring" className="flex items-center justify-between rounded-2xl bg-white/10 px-4 py-4 text-sm font-black uppercase tracking-widest text-white transition-colors hover:bg-white/20">
+                <Link to="/stories/inspiring" className="tap-target flex items-center justify-between rounded-2xl bg-white/10 px-4 py-4 text-sm font-black uppercase tracking-widest text-white transition-colors hover:bg-white/20">
                   Xem câu chuyện nổi bật
                   <ChevronRight size={16} />
                 </Link>
-                <Link to="/events/upcoming" className="flex items-center justify-between rounded-2xl bg-white/10 px-4 py-4 text-sm font-black uppercase tracking-widest text-white transition-colors hover:bg-white/20">
+                <Link to="/events/upcoming" className="tap-target flex items-center justify-between rounded-2xl bg-white/10 px-4 py-4 text-sm font-black uppercase tracking-widest text-white transition-colors hover:bg-white/20">
                   Lịch sự kiện sắp tới
                   <ChevronRight size={16} />
                 </Link>
               </div>
 
-              <Link to="/phanmon/van/an-pham" className="mt-6 block">
-                <Button className="w-full rounded-2xl border-none bg-fpt-orange py-4 text-sm font-black uppercase tracking-widest text-white shadow-[0_18px_40px_-24px_rgba(242,112,36,0.95)] hover:bg-[#de631d]">
+              <Link to="/phanmon/van?tab=sang-tac" className="mt-6 block">
+                <Button className="tap-target w-full rounded-2xl border-none bg-fpt-orange py-4 text-sm font-black uppercase tracking-widest text-white shadow-[0_18px_40px_-24px_rgba(242,112,36,0.95)] hover:bg-[#de631d]">
                   <Send size={17} /> Gửi bài ngay
                 </Button>
               </Link>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="app-section cv-auto" data-ai-anchor="home-submit-entry">
+        <div className="rounded-[2rem] border border-orange-200 bg-gradient-to-r from-orange-50 via-white to-blue-50 p-6 shadow-[0_20px_40px_-30px_rgba(15,23,42,0.45)] md:p-8">
+          <div className="flex flex-col items-start gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-fpt-orange">Lối vào nhanh</p>
+              <h3 className="mt-1 text-2xl font-black text-fpt-blue md:text-3xl">Nộp Bài Sáng Tác Nhái Bén</h3>
+              <p className="mt-2 text-sm font-semibold text-slate-500 md:text-base">
+                Đi thẳng tới tab Sáng tác để nộp bài, có thể đính kèm file PDF (tối đa 15MB).
+              </p>
+            </div>
+            <Link to="/phanmon/van?tab=sang-tac">
+              <Button className="tap-target rounded-2xl border-none bg-fpt-orange px-6 py-3 text-sm font-black uppercase tracking-widest text-white hover:bg-[#de631d]">
+                <Send size={16} /> Mở trang nộp bài
+              </Button>
+            </Link>
           </div>
         </div>
       </section>

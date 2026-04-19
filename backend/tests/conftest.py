@@ -8,7 +8,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.db.session import Base, get_db
 from app.main import app
-from app.models.publication import Publication, Submission
+from app.models.publication import Comment, Publication, Submission, SubmissionVote
 from app.models.user import User, UserRole
 from app.api.auth import get_password_hash
 
@@ -52,6 +52,8 @@ def db_session():
     db = TestingSessionLocal()
     try:
         db.query(Publication).delete()
+        db.query(Comment).delete()
+        db.query(SubmissionVote).delete()
         db.query(Submission).delete()
         db.query(User).delete()
         db.commit()

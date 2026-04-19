@@ -26,6 +26,20 @@ const normalizeMarkdownText = (value = '') =>
     .replace(/&nbsp;/gi, ' ')
     .trim()
 
+// Replace bare internal paths like /phanmon/van?tab=the-le with markdown links
+const linkifyInternalPaths = (line = '') => {
+  if (!line || typeof line !== 'string') return line
+
+  return line.replace(/(^|\s)(\/[^\s`<>\)\]]+)/g, (m, prefix, path) => {
+    let trailing = ''
+    if (/[.,;:!?]$/.test(path)) {
+      trailing = path.slice(-1)
+      path = path.slice(0, -1)
+    }
+    return `${prefix}[${path}](${path})${trailing}`
+  })
+}
+
 const splitTableCells = (line = '') => {
   const normalized = String(line).trim().replace(/^\|/, '').replace(/\|$/, '')
   if (!normalized.length) return []
@@ -148,7 +162,7 @@ const parseMarkdownSegments = (content = '') => {
       }
     }
 
-    mdBuffer.push(line)
+    mdBuffer.push(!insideFence ? linkifyInternalPaths(line) : line)
     index += 1
   }
 
@@ -410,8 +424,7 @@ export const AiChatWidget = ({ pendingOpen = false, onPendingOpenHandled }) => {
 
   const quickSuggestions = [
     "Thể lệ Nhái Bén là gì?",
-    "Cách viết bài cho CLB Văn?",
-    "Gửi bài dự thi nhái bén ở đâu?"
+    "Gửi bài dự thi nhái bén"
   ]
 
   useEffect(() => {

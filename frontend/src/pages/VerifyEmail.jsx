@@ -26,7 +26,8 @@ const getRecaptchaTokenSafely = async (recaptchaRef) => {
 export const VerifyEmail = () => {
   const [searchParams] = useSearchParams()
   const token = searchParams.get('token')
-  const [email, setEmail] = useState('')
+  const emailQuery = searchParams.get('email') || ''
+  const [email, setEmail] = useState(emailQuery)
   const [otp, setOtp] = useState('')
   const [status, setStatus] = useState('idle')
   const [message, setMessage] = useState('')

@@ -14,7 +14,7 @@ export const GioiThieuDoiNgu = () => {
     const fetchStaff = async () => {
       setLoading(true)
       try {
-        const res = await axios.get(`${API_URL}/public/nhanvat/staff`)
+        const res = await axios.get(`${API_URL}/public/doingu/staff`)
         setStaff(res.data || [])
       } catch (error) {
         console.error('Error fetching staff profiles:', error)
@@ -39,13 +39,18 @@ export const GioiThieuDoiNgu = () => {
             <Users size={16} className="text-blue-400" />
             <span>Gương mặt tiêu biểu</span>
           </motion.div>
-          <motion.h1
+            <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-6xl md:text-8xl font-black italic leading-tight uppercase"
+            className="text-6xl md:text-8xl font-black italic leading-tight"
           >
             ĐỘI NGŨ <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-200 not-italic">GIÁO VIÊN TẦM HUẾT</span>
+            <span
+              className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-200 not-italic gradient-text-fix"
+              style={{ WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}
+            >
+              GIÁO VIÊN TÂM HUYẾT
+            </span>
           </motion.h1>
           <motion.p
             initial={{ opacity: 0 }}
@@ -116,9 +121,9 @@ export const GioiThieuDoiNgu = () => {
 
           <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div className="space-y-8">
-              <h2 className="text-4xl md:text-5xl font-black italic uppercase tracking-tighter leading-tight">
+                <h2 className="text-4xl md:text-5xl font-black italic uppercase tracking-tighter leading-tight">
                 Triết lý giáo dục <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-fpt-orange to-yellow-400 not-italic">SÁNG TẠO & NHÂN VĂN</span>
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-fpt-orange to-yellow-400 not-italic gradient-text-fix">SÁNG TẠO & NHÂN VĂN</span>
               </h2>
               <div className="space-y-6">
                 <div className="flex gap-5">
@@ -127,7 +132,7 @@ export const GioiThieuDoiNgu = () => {
                   </div>
                   <div>
                     <h5 className="font-black text-lg uppercase tracking-widest mb-2">Đội ngũ tinh hoa</h5>
-                    <p className="text-blue-100 opacity-80 font-medium">100% giáo viên đạt chuẩn chuyên môn, tầm huết và không ngừng cải tiến phương pháp giảng dạy.</p>
+                    <p className="text-blue-100 opacity-80 font-medium">100% giáo viên đạt chuẩn chuyên môn, tâm huyết và không ngừng cải tiến phương pháp giảng dạy.</p>
                   </div>
                 </div>
                 <div className="flex gap-5">
@@ -150,7 +155,7 @@ export const GioiThieuDoiNgu = () => {
               <Card className="aspect-square bg-white/5 border-white/10 flex flex-col items-center justify-center text-center p-6 space-y-4 hover:bg-white/10 transition-colors">
                 <BookOpen size={40} className="text-emerald-400" />
                 <div className="text-3xl font-black">150+</div>
-                <div className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-200">Nghien cuu khoa hoc</div>
+                <div className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-200">Khoá học</div>
               </Card>
             </div>
           </div>

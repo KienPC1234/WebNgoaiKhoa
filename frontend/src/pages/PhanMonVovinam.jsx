@@ -47,7 +47,7 @@ export const PhanMonVovinam = () => {
                         </div>
                         <h1 className="text-6xl md:text-8xl font-black italic leading-tight drop-shadow-xl uppercase">
                             VOVINAM <br />
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-200 not-italic">TINH HOA VÕ VIỆT</span>
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-200 not-italic gradient-text-fix">TINH HOA VÕ VIỆT</span>
                         </h1>
                         <p className="text-xl text-blue-100 max-w-xl font-medium leading-relaxed">
                             Rèn luyện thân thể, trau dồi đạo hạnh và phát huy tinh thần thượng võ của dân tộc Việt Nam thông qua môn võ truyền thống.

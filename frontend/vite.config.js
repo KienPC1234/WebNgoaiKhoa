@@ -10,6 +10,31 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [tailwindcss(), react()],
+    build: {
+      cssCodeSplit: true,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (!id.includes('node_modules')) return null
+
+            if (
+              id.includes('react-markdown') ||
+              id.includes('remark-math') ||
+              id.includes('rehype-katex') ||
+              id.includes('/katex/')
+            ) {
+              return 'markdown-math'
+            }
+
+            if (id.includes('/pdfjs-dist/')) return 'pdfjs'
+            if (id.includes('/framer-motion/')) return 'motion'
+            if (id.includes('/@ckeditor/')) return 'ckeditor'
+
+            return null
+          },
+        },
+      },
+    },
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),

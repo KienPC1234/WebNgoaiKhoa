@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import axios from 'axios'
 import { ArrowLeft, Clock, User } from 'lucide-react'
-import { Card } from '@/components/UI'
+import { Card } from '@/components/ui/core'
 import { PublicDocumentView } from '@/cms-editor/renderer/PublicDocumentView'
 import { normalizeLayoutMetadataToDocument } from '@/cms-editor/core/legacy'
 
@@ -15,19 +14,32 @@ export const StoryDetail = () => {
   const [error, setError] = useState('')
 
   useEffect(() => {
+    const controller = new AbortController()
+
     const loadStory = async () => {
       setLoading(true)
       setError('')
       try {
-        const res = await axios.get(`${API_URL}/public/stories/inspiring/${storyId}`)
-        setStory(res.data)
+        const response = await fetch(`${API_URL}/public/stories/inspiring/${storyId}`, {
+          signal: controller.signal,
+          headers: {
+            Accept: 'application/json',
+          },
+        })
+        if (!response.ok) throw new Error(`HTTP ${response.status}`)
+        const data = await response.json()
+        setStory(data)
       } catch (err) {
-        setError('Không tìm thấy câu chuyện hoặc câu chuyện đã bị ẩn.')
+        if (err?.name !== 'AbortError') {
+          setError('Không tìm thấy câu chuyện hoặc câu chuyện đã bị ẩn.')
+        }
       } finally {
         setLoading(false)
       }
     }
     loadStory()
+
+    return () => controller.abort()
   }, [storyId])
 
   if (loading) {
@@ -55,7 +67,7 @@ export const StoryDetail = () => {
     <div className="page-shell-public bg-gray-50/50">
       <section className="page-hero page-hero-caro text-slate-700">
         <div className="max-w-5xl mx-auto space-y-5">
-          <Link to="/stories/inspiring" className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest bg-white/90 border border-orange-200 px-4 py-2 rounded-full text-fpt-blue">
+          <Link to="/stories/inspiring" className="tap-target inline-flex items-center gap-2 rounded-full border border-orange-200 bg-white/90 px-4 py-2 text-xs font-black uppercase tracking-widest text-fpt-blue">
             <ArrowLeft size={14} /> Quay lại
           </Link>
           <h1 className="text-4xl md:text-6xl font-black italic leading-tight text-fpt-blue">{story.title}</h1>
@@ -67,10 +79,10 @@ export const StoryDetail = () => {
         </div>
       </section>
 
-      <div className="max-w-5xl mx-auto px-4 -mt-8 space-y-8">
+      <div className="mx-auto mt-8 max-w-5xl space-y-8 px-4 cv-auto">
         {story.image_url && (
           <Card className="overflow-hidden rounded-[28px] border-none shadow-xl">
-            <img src={story.image_url} alt={story.title} className="w-full h-[360px] object-cover" />
+            <img src={story.image_url} alt={story.title} loading="lazy" decoding="async" className="h-[360px] w-full object-cover" />
           </Card>
         )}
 

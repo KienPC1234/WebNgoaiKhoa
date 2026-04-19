@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Card, Button, RichTextEditor } from '@/components/UI'
-import { BookHeart, Plus, Save, Trash2 } from 'lucide-react'
+import { BookHeart, Plus, Save, Trash2, Mail, BellRing } from 'lucide-react'
 import { cmsService } from '@/lib/cmsService'
 import { confirmAction, showApiError, toastError, toastSuccess } from '@/lib/notify'
 
@@ -19,6 +19,15 @@ export const AdminStories = () => {
   const [loading, setLoading] = useState(true)
   const [stories, setStories] = useState([])
   const [form, setForm] = useState(emptyForm)
+  const [pushConfig, setPushConfig] = useState(null)
+  const [newsletterForm, setNewsletterForm] = useState({
+    title: '',
+    body: '',
+    action_url: '/stories/inspiring',
+    send_email: true,
+    send_webpush: true,
+  })
+  const [newsletterSending, setNewsletterSending] = useState(false)
 
   const fetchStories = async () => {
     setLoading(true)
@@ -35,6 +44,18 @@ export const AdminStories = () => {
 
   useEffect(() => {
     fetchStories()
+  }, [])
+
+  useEffect(() => {
+    const fetchPushConfig = async () => {
+      try {
+        const data = await cmsService.getPushConfig()
+        setPushConfig(data)
+      } catch {
+        setPushConfig(null)
+      }
+    }
+    fetchPushConfig()
   }, [])
 
   const createStory = async () => {
@@ -85,8 +106,87 @@ export const AdminStories = () => {
     }
   }
 
+  const handleSendNewsletter = async () => {
+    if (!newsletterForm.title.trim() || !newsletterForm.body.trim()) return
+
+    setNewsletterSending(true)
+    try {
+      const result = await cmsService.sendNewsletter(newsletterForm)
+      if (result.queued) {
+        toastSuccess(`Đã đưa vào hàng đợi gửi bản tin cho ${result.recipients} tài khoản.`)
+      } else {
+        toastSuccess('Không có người nhận phù hợp (đã unsubscribe hoặc chưa xác minh).')
+      }
+      setNewsletterForm((prev) => ({ ...prev, title: '', body: '' }))
+    } catch (err) {
+      showApiError(err, 'Gửi bản tin thất bại.')
+    } finally {
+      setNewsletterSending(false)
+    }
+  }
+
   return (
     <div className="space-y-8">
+      <Card className="rounded-2xl border border-slate-200 p-5 shadow-sm">
+        <div className="mb-4 flex items-center gap-2">
+          <Mail size={16} className="text-slate-600" />
+          <h3 className="text-sm font-semibold text-slate-800">Gửi bản tin thủ công</h3>
+        </div>
+
+        {pushConfig && (
+          <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+            Newsletter: <span className="font-semibold">{pushConfig.newsletter_enabled ? 'Bật' : 'Tắt'}</span> · Webpush: <span className="font-semibold">{pushConfig.webpush_enabled ? 'Sẵn sàng' : 'Chưa sẵn sàng'}</span>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <input
+            value={newsletterForm.title}
+            onChange={(e) => setNewsletterForm((prev) => ({ ...prev, title: e.target.value }))}
+            placeholder="Tiêu đề bản tin"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm"
+          />
+          <input
+            value={newsletterForm.action_url}
+            onChange={(e) => setNewsletterForm((prev) => ({ ...prev, action_url: e.target.value }))}
+            placeholder="Link đích (vd: /stories/inspiring)"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm"
+          />
+          <textarea
+            value={newsletterForm.body}
+            onChange={(e) => setNewsletterForm((prev) => ({ ...prev, body: e.target.value }))}
+            placeholder="Nội dung thông báo"
+            className="min-h-28 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm md:col-span-2"
+          />
+          <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
+            <input
+              type="checkbox"
+              checked={newsletterForm.send_email}
+              onChange={(e) => setNewsletterForm((prev) => ({ ...prev, send_email: e.target.checked }))}
+            />
+            Gửi email
+          </label>
+          <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
+            <input
+              type="checkbox"
+              checked={newsletterForm.send_webpush}
+              onChange={(e) => setNewsletterForm((prev) => ({ ...prev, send_webpush: e.target.checked }))}
+            />
+            Gửi webpush
+          </label>
+        </div>
+
+        <div className="mt-4 flex justify-end">
+          <Button
+            onClick={handleSendNewsletter}
+            disabled={newsletterSending || !newsletterForm.title.trim() || !newsletterForm.body.trim()}
+            className="rounded-md border-none bg-slate-900 px-3 py-2 text-xs normal-case tracking-normal text-white hover:bg-slate-700"
+          >
+            <BellRing size={14} className="mr-1" /> {newsletterSending ? 'Đang gửi...' : 'Đưa vào hàng đợi'}
+          </Button>
+        </div>
+      </Card>
+
       <Card className="p-8 rounded-[32px] border-none shadow-xl bg-white">
         <div className="flex items-center gap-3 mb-6">
           <div className="p-2 rounded-xl bg-rose-50 text-rose-600"><BookHeart size={20} /></div>

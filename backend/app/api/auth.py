@@ -17,6 +17,8 @@ import uuid
 
 from app.db.session import get_db
 from app.models.user import User
+from app.services import newsletter as newsletter_service
+from app.schemas.schemas import PushConfigOut, PushTokenIn, PushTokenOut
 
 router = APIRouter()
 
@@ -38,6 +40,7 @@ SMTP_FROM = os.getenv("SMTP_FROM", SMTP_USER or "no-reply@webngoaikhoa.local")
 UNSUBSCRIBE_URL_BASE = os.getenv("UNSUBSCRIBE_URL_BASE", "http://localhost:3002/api/auth/unsubscribe")
 UNSUBSCRIBE_SECRET = os.getenv("EMAIL_UNSUBSCRIBE_SECRET", SECRET_KEY)
 OTP_EXPIRE_MINUTES = int(os.getenv("OTP_EXPIRE_MINUTES", "10"))
+GOOGLE_OAUTH_CLIENT_ID = os.getenv("GOOGLE_OAUTH_CLIENT_ID", "")
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
@@ -78,6 +81,11 @@ class UnsubscribeIn(BaseModel):
     token: str
 
 
+class GoogleAuthIn(BaseModel):
+    id_token: str
+    full_name: Optional[str] = None
+
+
 class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -112,6 +120,10 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 def is_valid_email(email: str) -> bool:
     return bool(email and "@" in email and "." in email.split("@")[-1])
+
+
+def normalize_email(email: Optional[str]) -> str:
+    return (email or "").strip().lower()
 
 
 def is_recaptcha_enabled() -> bool:
@@ -223,6 +235,33 @@ async def get_current_admin(current_user: User = Depends(get_current_user)):
     return current_user
 
 
+async def get_current_admin_panel_user(current_user: User = Depends(get_current_user)):
+    if current_user.role not in {"admin", "website_manager", "submission_judge"}:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="The user does not have admin panel access",
+        )
+    return current_user
+
+
+async def get_current_website_manager(current_user: User = Depends(get_current_user)):
+    if current_user.role not in {"admin", "website_manager"}:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="The user does not have website management privileges",
+        )
+    return current_user
+
+
+async def get_current_submission_judge(current_user: User = Depends(get_current_user)):
+    if current_user.role not in {"admin", "submission_judge"}:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="The user does not have submission moderation privileges",
+        )
+    return current_user
+
+
 async def get_current_contestant(current_user: User = Depends(get_current_user)):
     if current_user.role not in ("student", "contestant", "admin"):
         raise HTTPException(
@@ -240,7 +279,9 @@ async def login(
 ):
     verify_recaptcha_or_raise(recaptcha_token, action="login")
 
-    user = db.query(User).filter(User.email == form_data.username).first()
+    normalized_username = normalize_email(form_data.username)
+
+    user = db.query(User).filter(User.email == normalized_username).first()
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -277,20 +318,99 @@ async def login(
     }
 
 
+@router.post("/google")
+async def login_or_register_google(payload: GoogleAuthIn, db: Session = Depends(get_db)):
+    if not GOOGLE_OAUTH_CLIENT_ID:
+        raise HTTPException(status_code=503, detail="Google OAuth chưa được cấu hình")
+
+    try:
+        from google.auth.transport import requests as google_requests
+        from google.oauth2 import id_token as google_id_token
+    except ImportError as exc:
+        raise HTTPException(status_code=500, detail="Thiếu thư viện Google OAuth trên server") from exc
+
+    try:
+        token_info = google_id_token.verify_oauth2_token(
+            payload.id_token,
+            google_requests.Request(),
+            GOOGLE_OAUTH_CLIENT_ID,
+        )
+    except Exception:
+        raise HTTPException(status_code=400, detail="Google token không hợp lệ")
+
+    issuer = token_info.get("iss")
+    if issuer not in {"accounts.google.com", "https://accounts.google.com"}:
+        raise HTTPException(status_code=400, detail="Google token issuer không hợp lệ")
+
+    email = (token_info.get("email") or "").strip().lower()
+    if not email:
+        raise HTTPException(status_code=400, detail="Google account không có email")
+
+    if not token_info.get("email_verified"):
+        raise HTTPException(status_code=400, detail="Google email chưa được xác minh")
+
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        user = User(
+            email=email,
+            hashed_password=get_password_hash(uuid.uuid4().hex),
+            full_name=(payload.full_name or token_info.get("name") or "").strip() or None,
+            role="student",
+            is_active=True,
+            is_subscribed=True,
+            email_verified=True,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    else:
+        if not user.is_active:
+            raise HTTPException(status_code=403, detail="Tài khoản đã bị vô hiệu hóa")
+
+        if not user.email_verified:
+            user.email_verified = True
+        if not user.full_name and (payload.full_name or token_info.get("name")):
+            user.full_name = (payload.full_name or token_info.get("name")).strip() or None
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.email},
+        expires_delta=access_token_expires,
+    )
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "role": user.role,
+            "full_name": user.full_name,
+            "email_verified": user.email_verified,
+            "is_subscribed": user.is_subscribed,
+        },
+    }
+
+
 @router.post("/register", response_model=UserOut)
 async def register_user(payload: RegisterIn, db: Session = Depends(get_db)):
     verify_recaptcha_or_raise(payload.recaptcha_token, action="register")
 
-    if not is_valid_email(payload.email):
+    normalized_email = normalize_email(payload.email)
+
+    if not is_valid_email(normalized_email):
         raise HTTPException(status_code=400, detail="Invalid email")
 
-    existing = db.query(User).filter(User.email == payload.email).first()
+    existing = db.query(User).filter(User.email == normalized_email).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
 
     otp = make_otp()
     new_user = User(
-        email=payload.email,
+        email=normalized_email,
         hashed_password=get_password_hash(payload.password),
         full_name=payload.full_name,
         role="student",
@@ -317,7 +437,9 @@ async def register_user(payload: RegisterIn, db: Session = Depends(get_db)):
 async def verify_otp(payload: VerifyOtpIn, db: Session = Depends(get_db)):
     verify_recaptcha_or_raise(payload.recaptcha_token, action="verify_otp")
 
-    user = db.query(User).filter(User.email == payload.email).first()
+    normalized_email = normalize_email(payload.email)
+
+    user = db.query(User).filter(User.email == normalized_email).first()
     if not user:
         raise HTTPException(status_code=404, detail="Email khong ton tai")
 
@@ -361,7 +483,9 @@ async def verify_email(token: str, db: Session = Depends(get_db)):
 async def resend_verify_email(payload: VerifyResendIn, db: Session = Depends(get_db)):
     verify_recaptcha_or_raise(payload.recaptcha_token, action="resend_otp")
 
-    user = db.query(User).filter(User.email == payload.email).first()
+    normalized_email = normalize_email(payload.email)
+
+    user = db.query(User).filter(User.email == normalized_email).first()
     if not user:
         raise HTTPException(status_code=404, detail="Email khong ton tai")
 
@@ -449,9 +573,47 @@ async def unsubscribe(payload: UnsubscribeIn, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Yeu cau huy dang ky khong hop le")
 
     user = db.query(User).filter(User.email == payload.email).first()
+    updated = False
     if user:
+        updated = bool(user.is_subscribed)
         user.is_subscribed = False
         db.add(user)
         db.commit()
 
-    return {"message": "Da huy dang ky nhan email"}
+    newsletter_service.clear_push_tokens(payload.email)
+
+    return {
+        "message": "Da huy dang ky nhan email",
+        "email": payload.email,
+        "updated": updated,
+        "webpush_tokens_cleared": True,
+    }
+
+
+@router.get("/push/config", response_model=PushConfigOut)
+async def get_push_config():
+    return {
+        "newsletter_enabled": newsletter_service.is_newsletter_enabled(),
+        "webpush_enabled": newsletter_service.is_webpush_channel_enabled(),
+    }
+
+
+@router.post("/push/register", response_model=PushTokenOut)
+async def register_push_token(payload: PushTokenIn, current_user: User = Depends(get_current_user)):
+    if not current_user.is_subscribed:
+        raise HTTPException(status_code=400, detail="User already unsubscribed")
+
+    tokens = newsletter_service.register_push_token(current_user.email, payload.token)
+    return {
+        "message": "Push token registered",
+        "tokens": tokens,
+    }
+
+
+@router.post("/push/unregister", response_model=PushTokenOut)
+async def unregister_push_token(payload: PushTokenIn, current_user: User = Depends(get_current_user)):
+    tokens = newsletter_service.unregister_push_token(current_user.email, payload.token)
+    return {
+        "message": "Push token unregistered",
+        "tokens": tokens,
+    }

@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
-import axios from 'axios'
-import { Card } from '@/components/UI'
+import { Card } from '@/components/ui/core'
 import { Heart, User, Clock, ArrowRight, Quote, Sparkles } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
@@ -13,18 +12,31 @@ export const StoriesInspiring = () => {
     const [loading, setLoading] = useState(false)
 
     useEffect(() => {
+        const controller = new AbortController()
+
         const fetchStories = async () => {
             setLoading(true)
             try {
-                const res = await axios.get(`${API_URL}/public/stories/inspiring`)
-                setStories(res.data || [])
+                const response = await fetch(`${API_URL}/public/stories/inspiring`, {
+                    signal: controller.signal,
+                    headers: {
+                        Accept: 'application/json',
+                    },
+                })
+                if (!response.ok) throw new Error(`HTTP ${response.status}`)
+                const data = await response.json()
+                setStories(data || [])
             } catch (error) {
-                console.error('Error fetching stories:', error)
+                if (error?.name !== 'AbortError') {
+                    console.error('Error fetching stories:', error)
+                }
             } finally {
                 setLoading(false)
             }
         }
         fetchStories()
+
+        return () => controller.abort()
     }, [])
 
     return (
@@ -45,7 +57,7 @@ export const StoriesInspiring = () => {
                         className="text-6xl md:text-8xl font-black italic leading-tight uppercase text-fpt-blue"
                     >
                         CÂU CHUYỆN <br />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-fpt-orange to-orange-500 not-italic">TRUYỀN CẢM HỨNG</span>
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-fpt-orange to-orange-500 not-italic gradient-text-fix">TRUYỀN CẢM HỨNG</span>
                     </motion.h1>
                     <motion.p
                         initial={{ opacity: 0 }}
@@ -58,7 +70,7 @@ export const StoriesInspiring = () => {
                 </div>
             </section>
 
-            <div className="page-content-wrap">
+            <div className="page-content-wrap cv-auto">
                 {loading && (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 mb-10">
                         {[1, 2, 3].map((i) => <div key={i} className="h-96 bg-white rounded-[40px] animate-pulse" />)}
@@ -76,7 +88,7 @@ export const StoriesInspiring = () => {
                         >
                             <Card className="p-0 border border-white/60 bg-white/95 backdrop-blur shadow-[0_22px_60px_-35px_rgba(15,23,42,0.35)] rounded-[32px] overflow-hidden group hover:-translate-y-2 transition-all duration-500 flex flex-col h-full">
                                 <div className="relative aspect-video overflow-hidden">
-                                    <img src={story.image_url} alt={story.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                                    <img src={story.image_url} alt={story.title} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" />
                                     <div className="absolute top-6 right-6">
                                         <span className="bg-white/90 backdrop-blur-md text-red-500 text-[10px] font-black px-4 py-2 rounded-xl uppercase tracking-widest shadow-lg">
                                             {story.category}
@@ -99,10 +111,10 @@ export const StoriesInspiring = () => {
                                         <p className="text-gray-500 font-medium leading-relaxed line-clamp-3">{toPlainText(story.snippet)}</p>
                                     </div>
                                     <div className="pt-6 border-t border-gray-100 flex items-center justify-between">
-                                        <Link to={`/stories/inspiring/${story.id}`} className="text-[11px] font-black uppercase tracking-widest text-red-500 flex items-center gap-2 group-hover:gap-3 transition-all">
+                                        <Link to={`/stories/inspiring/${story.id}`} className="tap-target flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-red-500 transition-all group-hover:gap-3">
                                             Đọc câu chuyện <ArrowRight size={16} />
                                         </Link>
-                                        <Heart size={20} className="text-gray-200 group-hover:text-red-400 group-hover:fill-red-400 transition-all cursor-pointer" />
+                                        <Heart aria-hidden="true" size={20} className="text-gray-200 transition-all group-hover:fill-red-400 group-hover:text-red-400" />
                                     </div>
                                 </div>
                             </Card>
@@ -118,7 +130,7 @@ export const StoriesInspiring = () => {
                 )}
 
                 {/* Highlight Quote */}
-                <section className="mt-28 relative py-20 px-10 text-center">
+                <section className="cv-auto relative mt-28 px-10 py-20 text-center">
                     <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 bg-red-500 rounded-[32px] text-white flex items-center justify-center shadow-2xl shadow-red-200 rotate-12">
                         <Quote size={48} />
                     </div>

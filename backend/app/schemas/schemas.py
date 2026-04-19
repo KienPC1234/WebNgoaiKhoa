@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict
-from typing import Any, Dict, Literal, Optional
+from typing import Any, Dict, Literal, Optional, List
 from datetime import datetime
 
 # --- User Schemas ---
@@ -46,6 +46,7 @@ class PublicationOut(PublicationBase):
 class SubmissionBase(BaseModel):
     title: str
     content: str
+    attachment_url: Optional[str] = None
     student_name: Optional[str] = None
     student_email: Optional[str] = None
 
@@ -65,6 +66,22 @@ class SubmissionStatusUpdate(BaseModel):
     status: Literal["pending", "approved", "rejected"]
 
 
+class SubmissionCommentCreate(BaseModel):
+    content: str
+    recaptcha_token: Optional[str] = None
+
+
+class SubmissionCommentOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    content: str
+    submission_id: int
+    user_id: Optional[int] = None
+    created_at: datetime
+    author_name: Optional[str] = None
+
+
 # --- Event Schemas ---
 class EventBase(BaseModel):
     title: str
@@ -73,6 +90,7 @@ class EventBase(BaseModel):
     location: str
     image_url: Optional[str] = None
     status: Optional[str] = "upcoming"
+    linked_post_id: Optional[int] = None
     is_active: Optional[bool] = True
 
 
@@ -166,3 +184,64 @@ class DashboardStats(BaseModel):
     pending_submissions: int
     events: int
     stories: int
+
+
+class AdminActivityItem(BaseModel):
+    type: str
+    title: str
+    status: Optional[str] = None
+    created_at: datetime
+
+
+class AdminOverview(BaseModel):
+    stats: DashboardStats
+    ai_status: str
+    ai_documents: int
+    knowledge_assets: int
+    recent_activity: List[AdminActivityItem]
+
+
+class AIKnowledgeAssetOut(BaseModel):
+    id: str
+    file_name: str
+    file_type: str
+    size_bytes: int
+    chunks: int
+    uploaded_by: Optional[str] = None
+    uploaded_at: str
+
+
+class AIKnowledgeUploadOut(BaseModel):
+    uploaded: List[AIKnowledgeAssetOut]
+    failed: List[Dict[str, str]]
+
+
+class NewsletterDispatchIn(BaseModel):
+    title: str
+    body: str
+    action_url: Optional[str] = None
+    send_email: bool = True
+    send_webpush: bool = True
+
+
+class NewsletterDispatchOut(BaseModel):
+    queued: bool
+    recipients: int
+    send_email: bool
+    send_webpush: bool
+    newsletter_enabled: bool
+    webpush_configured: bool
+
+
+class PushTokenIn(BaseModel):
+    token: str
+
+
+class PushTokenOut(BaseModel):
+    message: str
+    tokens: int
+
+
+class PushConfigOut(BaseModel):
+    newsletter_enabled: bool
+    webpush_enabled: bool

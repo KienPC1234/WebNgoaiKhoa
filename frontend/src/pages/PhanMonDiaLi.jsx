@@ -47,7 +47,7 @@ export const PhanMonDiaLi = () => {
                         </div>
                         <h1 className="text-6xl md:text-8xl font-black italic leading-tight drop-shadow-xl uppercase">
                             Địa lí <br />
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-200 not-italic">TOÀN CẦU</span>
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-200 not-italic gradient-text-fix">TOÀN CẦU</span>
                         </h1>
                         <p className="text-xl text-emerald-50 max-w-xl font-medium leading-relaxed">
                             Mở rộng nhãn quan về không gian sống, hiểu biết về tài nguyên và quy luật phát triển bền vững của Trái Đất.

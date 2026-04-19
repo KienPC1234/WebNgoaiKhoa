@@ -1,0 +1,2168 @@
+{
+  "generatedAt": "2026-04-19T02:10:13.128Z",
+  "version": 2,
+  "total": 242,
+  "elements": [
+    {
+      "route": "/phanmon/van?tab=sang-tac",
+      "kind": "label",
+      "text": "Họ và tên tác giả",
+      "source": "manual-tab-hint"
+    },
+    {
+      "route": "/phanmon/van?tab=sang-tac",
+      "kind": "label",
+      "text": "Ho va Ten Tac Gia",
+      "source": "manual-tab-hint"
+    },
+    {
+      "route": "/phanmon/van?tab=sang-tac",
+      "kind": "label",
+      "text": "Tên tác phẩm",
+      "source": "manual-tab-hint"
+    },
+    {
+      "route": "/phanmon/van?tab=sang-tac",
+      "kind": "label",
+      "text": "Nội dung sáng tác",
+      "source": "manual-tab-hint",
+      "priority": 20
+    },
+    {
+      "route": "/phanmon/van?tab=sang-tac",
+      "kind": "button",
+      "text": "GỬI BÀI THI",
+      "source": "manual-tab-hint"
+    },
+    {
+      "route": "/phanmon/van?tab=sang-tac",
+      "kind": "button",
+      "text": "Nộp bài dự thi",
+      "source": "manual-tab-hint"
+    },
+    {
+      "route": "/events/upcoming",
+      "kind": "span",
+      "text": "Thông báo mới nhất",
+      "source": "src/pages/EventsUpcoming.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/EventsUpcoming.jsx",
+      "line": 130
+    },
+    {
+      "route": "/events/upcoming",
+      "kind": "h1",
+      "text": "SỰ KIỆN",
+      "source": "src/pages/EventsUpcoming.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/EventsUpcoming.jsx",
+      "line": 132
+    },
+    {
+      "route": "/events/upcoming",
+      "kind": "span",
+      "text": "SẮP DIỄN RA",
+      "source": "src/pages/EventsUpcoming.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/EventsUpcoming.jsx",
+      "line": 138
+    },
+    {
+      "route": "/events/upcoming",
+      "kind": "p",
+      "text": "Cập nhật những hoạt động học thuật, ngoại khóa và giao lưu văn hóa sôi nổi nhất của Tổ Xã hội.",
+      "source": "src/pages/EventsUpcoming.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/EventsUpcoming.jsx",
+      "line": 140
+    },
+    {
+      "route": "/events/upcoming",
+      "kind": "h2",
+      "text": "Lịch sự kiện theo tháng",
+      "source": "src/pages/EventsUpcoming.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/EventsUpcoming.jsx",
+      "line": 155
+    },
+    {
+      "route": "/events/upcoming",
+      "kind": "button",
+      "text": "Tháng trước",
+      "source": "src/pages/EventsUpcoming.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/EventsUpcoming.jsx",
+      "line": 157
+    },
+    {
+      "route": "/events/upcoming",
+      "kind": "button",
+      "text": "Tháng sau",
+      "source": "src/pages/EventsUpcoming.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/EventsUpcoming.jsx",
+      "line": 167
+    },
+    {
+      "route": "/events/upcoming",
+      "kind": "p",
+      "text": "Không có sự kiện trong ngày này.",
+      "source": "src/pages/EventsUpcoming.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/EventsUpcoming.jsx",
+      "line": 273
+    },
+    {
+      "route": "/events/upcoming",
+      "kind": "span",
+      "text": "Xem chi tiết",
+      "source": "src/pages/EventsUpcoming.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/EventsUpcoming.jsx",
+      "line": 320
+    },
+    {
+      "route": "/events/upcoming",
+      "kind": "span",
+      "text": "Tổ xã hội",
+      "source": "src/pages/EventsUpcoming.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/EventsUpcoming.jsx",
+      "line": 342
+    },
+    {
+      "route": "/events/upcoming",
+      "kind": "p",
+      "text": "Hiện chưa có sự kiện sắp tới.",
+      "source": "src/pages/EventsUpcoming.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/EventsUpcoming.jsx",
+      "line": 363
+    },
+    {
+      "route": "/events/upcoming",
+      "kind": "p",
+      "text": "Đề xuất hoạt động",
+      "source": "src/pages/EventsUpcoming.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/EventsUpcoming.jsx",
+      "line": 373
+    },
+    {
+      "route": "/events/upcoming",
+      "kind": "h2",
+      "text": "Bạn đang ấp ủ một ý tưởng sự kiện?",
+      "source": "src/pages/EventsUpcoming.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/EventsUpcoming.jsx",
+      "line": 374
+    },
+    {
+      "route": "/events/upcoming",
+      "kind": "p",
+      "text": "Đừng ngần ngại chia sẻ với chúng tôi. Tổ Xã hội luôn sẵn sàng đồng hành để hiện thực hóa những sáng kiến sáng tạo từ học sinh, sinh viên.",
+      "source": "src/pages/EventsUpcoming.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/EventsUpcoming.jsx",
+      "line": 375
+    },
+    {
+      "route": "/events/upcoming",
+      "kind": "button",
+      "text": "Gửi đề xuất ngay",
+      "source": "src/pages/EventsUpcoming.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/EventsUpcoming.jsx",
+      "line": 378
+    },
+    {
+      "route": "/",
+      "kind": "span",
+      "text": "Nhịp đập",
+      "source": "src/pages/Home.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Home.jsx",
+      "line": 105
+    },
+    {
+      "route": "/",
+      "kind": "span",
+      "text": "Sáng tạo",
+      "source": "src/pages/Home.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Home.jsx",
+      "line": 106
+    },
+    {
+      "route": "/",
+      "kind": "p",
+      "text": "Nền tảng kết nối đam mê, khơi nguồn tri thức và lan tỏa tinh thần học tập chủ động cho cộng đồng học sinh FPT.",
+      "source": "src/pages/Home.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Home.jsx",
+      "line": 114
+    },
+    {
+      "route": "/",
+      "kind": "ShimmerButton",
+      "text": "Khám phá ngay",
+      "source": "src/pages/Home.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Home.jsx",
+      "line": 120
+    },
+    {
+      "route": "/",
+      "kind": "Button",
+      "text": "Câu chuyện truyền cảm hứng",
+      "source": "src/pages/Home.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Home.jsx",
+      "line": 125
+    },
+    {
+      "route": "/",
+      "kind": "div",
+      "text": "Editorial Insight",
+      "source": "src/pages/Home.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Home.jsx",
+      "line": 143
+    },
+    {
+      "route": "/",
+      "kind": "h3",
+      "text": "Sáng tạo là hành trình tự do nhất của học sinh FPT.",
+      "source": "src/pages/Home.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Home.jsx",
+      "line": 146
+    },
+    {
+      "route": "/",
+      "kind": "p",
+      "text": "Mỗi bài viết là một góc nhìn độc đáo, mỗi dự án là một bước tiến của tinh thần học chủ động.",
+      "source": "src/pages/Home.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Home.jsx",
+      "line": 147
+    },
+    {
+      "route": "/",
+      "kind": "span",
+      "text": "Creative ranking",
+      "source": "src/pages/Home.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Home.jsx",
+      "line": 153
+    },
+    {
+      "route": "/",
+      "kind": "p",
+      "text": "Ranking",
+      "source": "src/pages/Home.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Home.jsx",
+      "line": 165
+    },
+    {
+      "route": "/",
+      "kind": "p",
+      "text": "Sáng tác 2026",
+      "source": "src/pages/Home.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Home.jsx",
+      "line": 170
+    },
+    {
+      "route": "/",
+      "kind": "section",
+      "text": "home-latest-publications",
+      "source": "src/pages/Home.jsx",
+      "anchor": "home-latest-publications",
+      "componentPath": "src/pages/Home.jsx",
+      "line": 177
+    },
+    {
+      "route": "/",
+      "kind": "p",
+      "text": "Editorial selection",
+      "source": "src/pages/Home.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Home.jsx",
+      "line": 180
+    },
+    {
+      "route": "/",
+      "kind": "h2",
+      "text": "Ấn phẩm",
+      "source": "src/pages/Home.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Home.jsx",
+      "line": 183
+    },
+    {
+      "route": "/",
+      "kind": "span",
+      "text": "Nhái Bén",
+      "source": "src/pages/Home.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Home.jsx",
+      "line": 184
+    },
+    {
+      "route": "/",
+      "kind": "p",
+      "text": "Khám phá thế giới quan đa chiều qua những trang viết đầy cảm hứng và trải nghiệm học thuật cập nhật.",
+      "source": "src/pages/Home.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Home.jsx",
+      "line": 186
+    },
+    {
+      "route": "/",
+      "kind": "Link",
+      "text": "Xem tất cả",
+      "source": "src/pages/Home.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Home.jsx",
+      "line": 191
+    },
+    {
+      "route": "/",
+      "kind": "p",
+      "text": "Chưa có bản tin nào được cập nhật.",
+      "source": "src/pages/Home.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Home.jsx",
+      "line": 202
+    },
+    {
+      "route": "/",
+      "kind": "h2",
+      "text": "Giá trị cốt lõi",
+      "source": "src/pages/Home.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Home.jsx",
+      "line": 262
+    },
+    {
+      "route": "/",
+      "kind": "p",
+      "text": "Từ học thuật đến hoạt động cộng đồng, mọi trải nghiệm đều hướng tới năng lực thật và tinh thần trách nhiệm xã hội.",
+      "source": "src/pages/Home.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Home.jsx",
+      "line": 263
+    },
+    {
+      "route": "/",
+      "kind": "section",
+      "text": "home-creative-board",
+      "source": "src/pages/Home.jsx",
+      "anchor": "home-creative-board",
+      "componentPath": "src/pages/Home.jsx",
+      "line": 289
+    },
+    {
+      "route": "/",
+      "kind": "p",
+      "text": "Community board",
+      "source": "src/pages/Home.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Home.jsx",
+      "line": 296
+    },
+    {
+      "route": "/",
+      "kind": "h2",
+      "text": "Bảng tin",
+      "source": "src/pages/Home.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Home.jsx",
+      "line": 299
+    },
+    {
+      "route": "/",
+      "kind": "span",
+      "text": "Sáng tác",
+      "source": "src/pages/Home.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Home.jsx",
+      "line": 302
+    },
+    {
+      "route": "/",
+      "kind": "p",
+      "text": "Gửi tác phẩm, theo dõi bài nổi bật và kết nối với cộng đồng học sinh cùng tinh thần học thật, làm thật.",
+      "source": "src/pages/Home.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Home.jsx",
+      "line": 304
+    },
+    {
+      "route": "/",
+      "kind": "Link",
+      "text": "Khám phá ấn phẩm mới",
+      "source": "src/pages/Home.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Home.jsx",
+      "line": 311
+    },
+    {
+      "route": "/",
+      "kind": "Link",
+      "text": "Xem câu chuyện nổi bật",
+      "source": "src/pages/Home.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Home.jsx",
+      "line": 315
+    },
+    {
+      "route": "/",
+      "kind": "Link",
+      "text": "Lịch sự kiện sắp tới",
+      "source": "src/pages/Home.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Home.jsx",
+      "line": 319
+    },
+    {
+      "route": "/",
+      "kind": "Button",
+      "text": "Gửi bài ngay",
+      "source": "src/pages/Home.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Home.jsx",
+      "line": 326
+    },
+    {
+      "route": "/",
+      "kind": "section",
+      "text": "home-submit-entry",
+      "source": "src/pages/Home.jsx",
+      "anchor": "home-submit-entry",
+      "componentPath": "src/pages/Home.jsx",
+      "line": 335
+    },
+    {
+      "route": "/",
+      "kind": "p",
+      "text": "Lối vào nhanh",
+      "source": "src/pages/Home.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Home.jsx",
+      "line": 339
+    },
+    {
+      "route": "/",
+      "kind": "h3",
+      "text": "Nộp Bài Sáng Tác Nhái Bén",
+      "source": "src/pages/Home.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Home.jsx",
+      "line": 340
+    },
+    {
+      "route": "/",
+      "kind": "p",
+      "text": "Đi thẳng tới tab Sáng tác để nộp bài, có thể đính kèm file PDF (tối đa 15MB).",
+      "source": "src/pages/Home.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Home.jsx",
+      "line": 341
+    },
+    {
+      "route": "/",
+      "kind": "Button",
+      "text": "Mở trang nộp bài",
+      "source": "src/pages/Home.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Home.jsx",
+      "line": 346
+    },
+    {
+      "route": "/doingu/honors",
+      "kind": "h1",
+      "text": "Vinh danh năm học",
+      "source": "src/pages/HonorsYearly.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/HonorsYearly.jsx",
+      "line": 42
+    },
+    {
+      "route": "/doingu/honors",
+      "kind": "p",
+      "text": "Tổng hợp danh sách vinh danh từ các phân môn thuộc Tổ xã hội.",
+      "source": "src/pages/HonorsYearly.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/HonorsYearly.jsx",
+      "line": 43
+    },
+    {
+      "route": "/doingu/honors",
+      "kind": "p",
+      "text": "Chưa có danh sách vinh danh.",
+      "source": "src/pages/HonorsYearly.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/HonorsYearly.jsx",
+      "line": 57
+    },
+    {
+      "route": "/doingu/honors",
+      "kind": "Link",
+      "text": "Đọc toàn văn",
+      "source": "src/pages/HonorsYearly.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/HonorsYearly.jsx",
+      "line": 71
+    },
+    {
+      "route": "/login",
+      "kind": "span",
+      "text": "Bảo mật OTP + reCAPTCHA",
+      "source": "src/pages/Login.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Login.jsx",
+      "line": 102
+    },
+    {
+      "route": "/login",
+      "kind": "h1",
+      "text": "ĐĂNG NHẬP",
+      "source": "src/pages/Login.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Login.jsx",
+      "line": 105
+    },
+    {
+      "route": "/login",
+      "kind": "p",
+      "text": "Tổ xã hội",
+      "source": "src/pages/Login.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Login.jsx",
+      "line": 106
+    },
+    {
+      "route": "/login",
+      "kind": "Input",
+      "text": "ban@email.com",
+      "source": "src/pages/Login.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Login.jsx",
+      "line": 116
+    },
+    {
+      "route": "/login",
+      "kind": "span",
+      "text": "hoặc",
+      "source": "src/pages/Login.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Login.jsx",
+      "line": 143
+    },
+    {
+      "route": "/login",
+      "kind": "p",
+      "text": "Chưa có tài khoản?",
+      "source": "src/pages/Login.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Login.jsx",
+      "line": 153
+    },
+    {
+      "route": "/login",
+      "kind": "Link",
+      "text": "Đăng ký ngay",
+      "source": "src/pages/Login.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Login.jsx",
+      "line": 154
+    },
+    {
+      "route": "/login",
+      "kind": "p",
+      "text": "Cần xác minh email?",
+      "source": "src/pages/Login.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Login.jsx",
+      "line": 156
+    },
+    {
+      "route": "/login",
+      "kind": "Link",
+      "text": "Xác minh tài khoản",
+      "source": "src/pages/Login.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Login.jsx",
+      "line": 157
+    },
+    {
+      "route": "/doingu/scale",
+      "kind": "div",
+      "text": "Tổ xã hội",
+      "source": "src/pages/NhanVatScale.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/NhanVatScale.jsx",
+      "line": 22
+    },
+    {
+      "route": "/doingu/scale",
+      "kind": "h1",
+      "text": "Quy mô",
+      "source": "src/pages/NhanVatScale.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/NhanVatScale.jsx",
+      "line": 26
+    },
+    {
+      "route": "/doingu/scale",
+      "kind": "span",
+      "text": "Tổ xã hội",
+      "source": "src/pages/NhanVatScale.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/NhanVatScale.jsx",
+      "line": 27
+    },
+    {
+      "route": "/doingu/scale",
+      "kind": "p",
+      "text": "Trang nền tảng tổng hợp quy mô nhân sự, định hướng phát triển và năng lực chuyên môn của Tổ xã hội. Nội dung chi tiết sẽ tiếp tục được cập nhật theo từng năm học.",
+      "source": "src/pages/NhanVatScale.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/NhanVatScale.jsx",
+      "line": 29
+    },
+    {
+      "route": "/doingu/scale",
+      "kind": "h3",
+      "text": "Tổng quan nhanh",
+      "source": "src/pages/NhanVatScale.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/NhanVatScale.jsx",
+      "line": 35
+    },
+    {
+      "route": "/doingu/scale",
+      "kind": "p",
+      "text": "Định hướng: Giáo dục xã hội tích hợp AI",
+      "source": "src/pages/NhanVatScale.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/NhanVatScale.jsx",
+      "line": 37
+    },
+    {
+      "route": "/doingu/scale",
+      "kind": "p",
+      "text": "Phụ trách: Ngữ văn, KTPL, Lịch sử, Địa lí, Vovinam",
+      "source": "src/pages/NhanVatScale.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/NhanVatScale.jsx",
+      "line": 38
+    },
+    {
+      "route": "/doingu/scale",
+      "kind": "p",
+      "text": "Trọng tâm: học thuật, sự kiện, truyền cảm hứng",
+      "source": "src/pages/NhanVatScale.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/NhanVatScale.jsx",
+      "line": 39
+    },
+    {
+      "route": "/doingu/scale",
+      "kind": "h2",
+      "text": "Khung nội dung sắp bổ sung",
+      "source": "src/pages/NhanVatScale.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/NhanVatScale.jsx",
+      "line": 56
+    },
+    {
+      "route": "/doingu/scale",
+      "kind": "li",
+      "text": "1. Cơ cấu tổ chức và sơ đồ vận hành theo năm học.",
+      "source": "src/pages/NhanVatScale.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/NhanVatScale.jsx",
+      "line": 58
+    },
+    {
+      "route": "/doingu/scale",
+      "kind": "li",
+      "text": "2. Chỉ tiêu học thuật và hoạt động ngoại khóa theo phân môn.",
+      "source": "src/pages/NhanVatScale.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/NhanVatScale.jsx",
+      "line": 59
+    },
+    {
+      "route": "/doingu/scale",
+      "kind": "li",
+      "text": "3. Hệ thống học liệu trọng điểm và lịch cập nhật.",
+      "source": "src/pages/NhanVatScale.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/NhanVatScale.jsx",
+      "line": 60
+    },
+    {
+      "route": "/doingu/scale",
+      "kind": "li",
+      "text": "4. Bộ chỉ số chất lượng, báo cáo tiến độ theo học kỳ.",
+      "source": "src/pages/NhanVatScale.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/NhanVatScale.jsx",
+      "line": 61
+    },
+    {
+      "route": "/doingu/staff",
+      "kind": "div",
+      "text": "Đội ngũ giáo viên",
+      "source": "src/pages/NhanVatStaff.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/NhanVatStaff.jsx",
+      "line": 30
+    },
+    {
+      "route": "/doingu/staff",
+      "kind": "h1",
+      "text": "Nhân sự",
+      "source": "src/pages/NhanVatStaff.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/NhanVatStaff.jsx",
+      "line": 34
+    },
+    {
+      "route": "/doingu/staff",
+      "kind": "span",
+      "text": "chuyên môn",
+      "source": "src/pages/NhanVatStaff.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/NhanVatStaff.jsx",
+      "line": 35
+    },
+    {
+      "route": "/doingu/staff",
+      "kind": "p",
+      "text": "Trang giới thiệu đội ngũ giáo viên nòng cốt của Tổ xã hội. Đây là bản nền để tích hợp dữ liệu hồ sơ thật, thành tích, lịch giảng dạy và bài viết chuyên môn.",
+      "source": "src/pages/NhanVatStaff.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/NhanVatStaff.jsx",
+      "line": 37
+    },
+    {
+      "route": "/doingu/staff",
+      "kind": "div",
+      "text": "Dữ liệu hiện tại là mẫu giao diện cho giai đoạn triển khai.",
+      "source": "src/pages/NhanVatStaff.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/NhanVatStaff.jsx",
+      "line": 41
+    },
+    {
+      "route": "/doingu/staff",
+      "kind": "h2",
+      "text": "Hạng mục sẽ cập nhật tiếp",
+      "source": "src/pages/NhanVatStaff.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/NhanVatStaff.jsx",
+      "line": 58
+    },
+    {
+      "route": "/doingu/staff",
+      "kind": "li",
+      "text": "1. Hồ sơ chi tiết theo giáo viên và học phần phụ trách.",
+      "source": "src/pages/NhanVatStaff.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/NhanVatStaff.jsx",
+      "line": 63
+    },
+    {
+      "route": "/doingu/staff",
+      "kind": "li",
+      "text": "2. Bộ lọc theo phân môn, học kỳ và năng lực chuyên sâu.",
+      "source": "src/pages/NhanVatStaff.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/NhanVatStaff.jsx",
+      "line": 64
+    },
+    {
+      "route": "/doingu/staff",
+      "kind": "li",
+      "text": "3. Tích hợp lịch sự kiện/chuyên đề có giáo viên tham gia.",
+      "source": "src/pages/NhanVatStaff.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/NhanVatStaff.jsx",
+      "line": 65
+    },
+    {
+      "route": "/phanmon/dia-li",
+      "kind": "span",
+      "text": "Khám phá thế giới",
+      "source": "src/pages/PhanMonDiaLi.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonDiaLi.jsx",
+      "line": 46
+    },
+    {
+      "route": "/phanmon/dia-li",
+      "kind": "h1",
+      "text": "Địa lí",
+      "source": "src/pages/PhanMonDiaLi.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonDiaLi.jsx",
+      "line": 48
+    },
+    {
+      "route": "/phanmon/dia-li",
+      "kind": "span",
+      "text": "TOÀN CẦU",
+      "source": "src/pages/PhanMonDiaLi.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonDiaLi.jsx",
+      "line": 50
+    },
+    {
+      "route": "/phanmon/dia-li",
+      "kind": "p",
+      "text": "Mở rộng nhãn quan về không gian sống, hiểu biết về tài nguyên và quy luật phát triển bền vững của Trái Đất.",
+      "source": "src/pages/PhanMonDiaLi.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonDiaLi.jsx",
+      "line": 52
+    },
+    {
+      "route": "/phanmon/dia-li",
+      "kind": "Button",
+      "text": "BẢN ĐỒ TƯƠNG TÁC",
+      "source": "src/pages/PhanMonDiaLi.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonDiaLi.jsx",
+      "line": 56
+    },
+    {
+      "route": "/phanmon/dia-li",
+      "kind": "Button",
+      "text": "CỔNG DỮ LIỆU GIS",
+      "source": "src/pages/PhanMonDiaLi.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonDiaLi.jsx",
+      "line": 59
+    },
+    {
+      "route": "/phanmon/dia-li",
+      "kind": "p",
+      "text": "Tìm hiểu chi tiết về thông qua các báo cáo phân tích và dữ liệu thực tế.",
+      "source": "src/pages/PhanMonDiaLi.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonDiaLi.jsx",
+      "line": 85
+    },
+    {
+      "route": "/phanmon/dia-li",
+      "kind": "button",
+      "text": "XEM CHI TIẾT",
+      "source": "src/pages/PhanMonDiaLi.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonDiaLi.jsx",
+      "line": 88
+    },
+    {
+      "route": "/phanmon/dia-li",
+      "kind": "h2",
+      "text": "Học liệu & Ấn phẩm",
+      "source": "src/pages/PhanMonDiaLi.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonDiaLi.jsx",
+      "line": 99
+    },
+    {
+      "route": "/phanmon/dia-li",
+      "kind": "button",
+      "text": "Làm mới",
+      "source": "src/pages/PhanMonDiaLi.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonDiaLi.jsx",
+      "line": 103
+    },
+    {
+      "route": "/phanmon/dia-li",
+      "kind": "p",
+      "text": "Hiện chưa có học liệu nào.",
+      "source": "src/pages/PhanMonDiaLi.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonDiaLi.jsx",
+      "line": 114
+    },
+    {
+      "route": "/phanmon/dia-li",
+      "kind": "span",
+      "text": "DỮ LIỆU ĐỊA LÍ",
+      "source": "src/pages/PhanMonDiaLi.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonDiaLi.jsx",
+      "line": 129
+    },
+    {
+      "route": "/phanmon/dia-li",
+      "kind": "h2",
+      "text": "Dự án GIS & Cộng đồng",
+      "source": "src/pages/PhanMonDiaLi.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonDiaLi.jsx",
+      "line": 150
+    },
+    {
+      "route": "/phanmon/dia-li",
+      "kind": "span",
+      "text": "CÔNG NGHỆ MỚI",
+      "source": "src/pages/PhanMonDiaLi.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonDiaLi.jsx",
+      "line": 159
+    },
+    {
+      "route": "/phanmon/dia-li",
+      "kind": "h3",
+      "text": "Ứng dụng GIS trong Quản lý Môi trường Đô thị",
+      "source": "src/pages/PhanMonDiaLi.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonDiaLi.jsx",
+      "line": 160
+    },
+    {
+      "route": "/phanmon/dia-li",
+      "kind": "p",
+      "text": "Chủ động theo dõi và phân tích sự thay đổi của môi trường thông qua hệ thống thông tin địa lí hiện đại.",
+      "source": "src/pages/PhanMonDiaLi.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonDiaLi.jsx",
+      "line": 161
+    },
+    {
+      "route": "/phanmon/dia-li",
+      "kind": "Button",
+      "text": "KHÁM PHÁ NGAY",
+      "source": "src/pages/PhanMonDiaLi.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonDiaLi.jsx",
+      "line": 164
+    },
+    {
+      "route": "/phanmon/ktpl",
+      "kind": "span",
+      "text": "Chuyên môn & Học thuật",
+      "source": "src/pages/PhanMonKTPL.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonKTPL.jsx",
+      "line": 46
+    },
+    {
+      "route": "/phanmon/ktpl",
+      "kind": "h1",
+      "text": "KINH TẾ",
+      "source": "src/pages/PhanMonKTPL.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonKTPL.jsx",
+      "line": 48
+    },
+    {
+      "route": "/phanmon/ktpl",
+      "kind": "span",
+      "text": "PHÁP LUẬT",
+      "source": "src/pages/PhanMonKTPL.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonKTPL.jsx",
+      "line": 50
+    },
+    {
+      "route": "/phanmon/ktpl",
+      "kind": "p",
+      "text": "Kiến tạo nền tảng tư duy kinh tế và ý thức pháp luật vững vàng cho thế hệ công dân số FPT trong kỷ nguyên công nghệ.",
+      "source": "src/pages/PhanMonKTPL.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonKTPL.jsx",
+      "line": 52
+    },
+    {
+      "route": "/phanmon/ktpl",
+      "kind": "Button",
+      "text": "HỌC LIỆU MỚI",
+      "source": "src/pages/PhanMonKTPL.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonKTPL.jsx",
+      "line": 56
+    },
+    {
+      "route": "/phanmon/ktpl",
+      "kind": "Button",
+      "text": "THƯ VIỆN LUẬT",
+      "source": "src/pages/PhanMonKTPL.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonKTPL.jsx",
+      "line": 59
+    },
+    {
+      "route": "/phanmon/ktpl",
+      "kind": "p",
+      "text": "Khám phá chuyên đề chuyên sâu về cùng các bài giảng thực tế và tình huống điển hình.",
+      "source": "src/pages/PhanMonKTPL.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonKTPL.jsx",
+      "line": 85
+    },
+    {
+      "route": "/phanmon/ktpl",
+      "kind": "button",
+      "text": "KHÁM PHÁ",
+      "source": "src/pages/PhanMonKTPL.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonKTPL.jsx",
+      "line": 88
+    },
+    {
+      "route": "/phanmon/ktpl",
+      "kind": "h2",
+      "text": "Học liệu mới nhất",
+      "source": "src/pages/PhanMonKTPL.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonKTPL.jsx",
+      "line": 99
+    },
+    {
+      "route": "/phanmon/ktpl",
+      "kind": "button",
+      "text": "Làm mới",
+      "source": "src/pages/PhanMonKTPL.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonKTPL.jsx",
+      "line": 103
+    },
+    {
+      "route": "/phanmon/ktpl",
+      "kind": "p",
+      "text": "Hiện chưa có học liệu nào.",
+      "source": "src/pages/PhanMonKTPL.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonKTPL.jsx",
+      "line": 114
+    },
+    {
+      "route": "/phanmon/ktpl",
+      "kind": "span",
+      "text": "TÀI LIỆU PDF",
+      "source": "src/pages/PhanMonKTPL.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonKTPL.jsx",
+      "line": 129
+    },
+    {
+      "route": "/phanmon/ktpl",
+      "kind": "h2",
+      "text": "Pháp luật & Đời sống",
+      "source": "src/pages/PhanMonKTPL.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonKTPL.jsx",
+      "line": 150
+    },
+    {
+      "route": "/phanmon/ktpl",
+      "kind": "span",
+      "text": "TIÊU ĐIỂM 2026",
+      "source": "src/pages/PhanMonKTPL.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonKTPL.jsx",
+      "line": 159
+    },
+    {
+      "route": "/phanmon/ktpl",
+      "kind": "h3",
+      "text": "Phân tích Luật Giáo dục & Quyền lợi Sinh viên",
+      "source": "src/pages/PhanMonKTPL.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonKTPL.jsx",
+      "line": 160
+    },
+    {
+      "route": "/phanmon/ktpl",
+      "kind": "p",
+      "text": "Cập nhật trọng tâm về quy chế học tập, quyền lợi nội trú và các quy định chuyển đổi số trong giáo dục đại học.",
+      "source": "src/pages/PhanMonKTPL.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonKTPL.jsx",
+      "line": 161
+    },
+    {
+      "route": "/phanmon/ktpl",
+      "kind": "Button",
+      "text": "ĐỌC CHI TIẾT",
+      "source": "src/pages/PhanMonKTPL.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonKTPL.jsx",
+      "line": 164
+    },
+    {
+      "route": "/phanmon/ktpl",
+      "kind": "h5",
+      "text": "Hỏi đáp pháp luật",
+      "source": "src/pages/PhanMonKTPL.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonKTPL.jsx",
+      "line": 177
+    },
+    {
+      "route": "/phanmon/ktpl",
+      "kind": "p",
+      "text": "Giải đáp nhanh các thắc mắc về quy định nhà trường.",
+      "source": "src/pages/PhanMonKTPL.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonKTPL.jsx",
+      "line": 178
+    },
+    {
+      "route": "/phanmon/ktpl",
+      "kind": "h5",
+      "text": "Tư vấn kinh tế",
+      "source": "src/pages/PhanMonKTPL.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonKTPL.jsx",
+      "line": 184
+    },
+    {
+      "route": "/phanmon/ktpl",
+      "kind": "p",
+      "text": "Góc nhìn chuyên gia về khởi nghiệp sinh viên.",
+      "source": "src/pages/PhanMonKTPL.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonKTPL.jsx",
+      "line": 185
+    },
+    {
+      "route": "/phanmon/lich-su",
+      "kind": "span",
+      "text": "Dòng chảy thời gian",
+      "source": "src/pages/PhanMonLichSu.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonLichSu.jsx",
+      "line": 46
+    },
+    {
+      "route": "/phanmon/lich-su",
+      "kind": "h1",
+      "text": "Lịch sử",
+      "source": "src/pages/PhanMonLichSu.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonLichSu.jsx",
+      "line": 48
+    },
+    {
+      "route": "/phanmon/lich-su",
+      "kind": "span",
+      "text": "VIỆT NAM & TG",
+      "source": "src/pages/PhanMonLichSu.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonLichSu.jsx",
+      "line": 50
+    },
+    {
+      "route": "/phanmon/lich-su",
+      "kind": "p",
+      "text": "Ngược dòng quá khứ, thấu hiểu hiện tại để kiến tạo tương lai vững bền thông qua những bài học lịch sử hào hùng.",
+      "source": "src/pages/PhanMonLichSu.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonLichSu.jsx",
+      "line": 52
+    },
+    {
+      "route": "/phanmon/lich-su",
+      "kind": "Button",
+      "text": "TÀI LIỆU CỔ",
+      "source": "src/pages/PhanMonLichSu.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonLichSu.jsx",
+      "line": 56
+    },
+    {
+      "route": "/phanmon/lich-su",
+      "kind": "Button",
+      "text": "VĂN HIẾN VIỆT",
+      "source": "src/pages/PhanMonLichSu.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonLichSu.jsx",
+      "line": 59
+    },
+    {
+      "route": "/phanmon/lich-su",
+      "kind": "p",
+      "text": "Khám phá các chuyên đề về với hệ thống tư liệu học thuật phong phú và trực quan.",
+      "source": "src/pages/PhanMonLichSu.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonLichSu.jsx",
+      "line": 85
+    },
+    {
+      "route": "/phanmon/lich-su",
+      "kind": "button",
+      "text": "XEM CHI TIẾT",
+      "source": "src/pages/PhanMonLichSu.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonLichSu.jsx",
+      "line": 88
+    },
+    {
+      "route": "/phanmon/lich-su",
+      "kind": "h2",
+      "text": "Học liệu Chuyên môn",
+      "source": "src/pages/PhanMonLichSu.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonLichSu.jsx",
+      "line": 99
+    },
+    {
+      "route": "/phanmon/lich-su",
+      "kind": "button",
+      "text": "Làm mới",
+      "source": "src/pages/PhanMonLichSu.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonLichSu.jsx",
+      "line": 103
+    },
+    {
+      "route": "/phanmon/lich-su",
+      "kind": "p",
+      "text": "Hiện chưa có học liệu nào.",
+      "source": "src/pages/PhanMonLichSu.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonLichSu.jsx",
+      "line": 114
+    },
+    {
+      "route": "/phanmon/lich-su",
+      "kind": "span",
+      "text": "TÀI LIỆU HỌC TẬP",
+      "source": "src/pages/PhanMonLichSu.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonLichSu.jsx",
+      "line": 129
+    },
+    {
+      "route": "/phanmon/lich-su",
+      "kind": "h2",
+      "text": "Sự kiện & Timeline",
+      "source": "src/pages/PhanMonLichSu.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonLichSu.jsx",
+      "line": 150
+    },
+    {
+      "route": "/phanmon/lich-su",
+      "kind": "span",
+      "text": "THỐNG KÊ LỊCH SỬ",
+      "source": "src/pages/PhanMonLichSu.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonLichSu.jsx",
+      "line": 159
+    },
+    {
+      "route": "/phanmon/lich-su",
+      "kind": "h3",
+      "text": "Tái hiện các Đại hằng lịch sử qua thực tế ảo",
+      "source": "src/pages/PhanMonLichSu.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonLichSu.jsx",
+      "line": 160
+    },
+    {
+      "route": "/phanmon/lich-su",
+      "kind": "p",
+      "text": "Trải nghiệm công nghệ VR/AR trong việc phục dựng các di tích lịch sử và trận đánh kinh điển của dân tộc.",
+      "source": "src/pages/PhanMonLichSu.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonLichSu.jsx",
+      "line": 161
+    },
+    {
+      "route": "/phanmon/lich-su",
+      "kind": "Button",
+      "text": "XEM NGAY",
+      "source": "src/pages/PhanMonLichSu.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonLichSu.jsx",
+      "line": 164
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "div",
+      "text": "Ấn phẩm chuyên san",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 531
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "h1",
+      "text": "\"NHÁI BÉN\"",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 535
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "p",
+      "text": "Không gian sáng tạo dành riêng cho những tâm hồn yêu văn chương. Nơi nét bút trẻ được bay bổng, tôn vinh và lan tỏa.",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 536
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "h2",
+      "text": "SOẠN THẢO TÁC PHẨM",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 580
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "span",
+      "text": "Bản nháp tự động lưu",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 584
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "p",
+      "text": "Hướng dẫn nộp bài nhanh",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 589
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "p",
+      "text": "1. Điền đủ tên tác giả, tên tác phẩm và nội dung.",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 591
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "p",
+      "text": "2. Nếu có file đính kèm, hãy chọn đúng định dạng PDF (tối đa 15MB).",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 592
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "p",
+      "text": "3. Bấm GỬI BÀI THI, hệ thống sẽ chuyển bài sang trạng thái Chờ duyệt.",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 593
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "label",
+      "text": "Họ và tên tác giả",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 599
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "input",
+      "text": "Nguyễn Văn A...",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 600
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "label",
+      "text": "Tệp PDF (tuỳ chọn)",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 616
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "label",
+      "text": "Tên tác phẩm",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 647
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "input",
+      "text": "Tiêu đề tác phẩm...",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 648
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "p",
+      "text": "ký tự",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 663
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "label",
+      "text": "Nội dung sáng tác",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 668
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "textarea",
+      "text": "Hãy để cảm hứng của bạn bắt đầu tại đây...",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 669
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "p",
+      "text": "Preview PDF với hiệu ứng lật trang",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 690
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "p",
+      "text": "Đang render PDF...",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 697
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "p",
+      "text": "Không thể hiển thị preview cho PDF này.",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 713
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "div",
+      "text": "Bài dự thi gắn với tài khoản đã xác minh OTP và gửi trực tiếp tới Ban Giám Khảo",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 720
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "Button",
+      "text": "XÓA TRỐNG",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 725
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "div",
+      "text": "Tuyệt vời! Tác phẩm của bạn đã nằm trên bàn của Ban Giám Khảo. Hãy theo dõi thông báo nhé.",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 751
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "div",
+      "text": "Ối! Có lỗi xảy ra trong quá trình gửi. Vui lòng kiểm tra lại kết nối mạng.",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 757
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "h3",
+      "text": "Bài đã nộp của bạn",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 766
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "button",
+      "text": "Làm mới",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 768
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "div",
+      "text": "Đăng nhập để xem lịch sử bài đã nộp và trạng thái duyệt.",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 778
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "div",
+      "text": "Đang tải danh sách bài đã nộp...",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 782
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "div",
+      "text": "Bạn chưa gửi bài nào.",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 784
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "p",
+      "text": "Nộp lúc:",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 795
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "h2",
+      "text": "THỂ LỆ \"NHÁI BÉN\" 2026",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 812
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "p",
+      "text": "Tác phẩm tham gia phải là , chưa từng công bố trên bất kỳ phương tiện thông tin đại chúng hay mạng xã hội nào.",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 820
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "span",
+      "text": "sáng tác mới 100%",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 820
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "p",
+      "text": "Chủ đề xuyên suốt năm nay: .",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 824
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "span",
+      "text": "\"Nhịp đập số - Khát vọng vươn tầm\"",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 824
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "p",
+      "text": "Thể loại được chấp nhận:",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 829
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "li",
+      "text": "Truyện ngắn (tối đa 3000 chữ)",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 831
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "li",
+      "text": "Tản văn, Ghi chép (tối đa 1500 chữ)",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 832
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "li",
+      "text": "Thơ tự do, Thơ có luật",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 833
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "p",
+      "text": "Đối tượng tham gia mở rộng cho trong hệ thống giáo dục FPT yêu thích văn chương.",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 839
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "span",
+      "text": "toàn thể học sinh, sinh viên",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 839
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "p",
+      "text": "Đang tải Thư viện Tác phẩm...",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 852
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "h3",
+      "text": "Kho tàng đang chờ mở",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 859
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "p",
+      "text": "Chưa có tác phẩm nào được công bố. Hãy là ngòi bút đầu tiên khai bút!",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 860
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "a",
+      "text": "PDF đính kèm",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 877
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "p",
+      "text": "Tác phẩm đã duyệt",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 939
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "button",
+      "text": "Đóng",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 942
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "a",
+      "text": "Mở PDF đính kèm",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 970
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "h4",
+      "text": "Bình luận cộng đồng",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 986
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "RichTextEditor",
+      "text": "Chia sẻ cảm nhận của bạn về tác phẩm này...",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 998
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "div",
+      "text": "Đang tải bình luận...",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 1018
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "div",
+      "text": "Chưa có bình luận nào. Hãy là người bình luận đầu tiên.",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 1020
+    },
+    {
+      "route": "/phanmon/vovinam",
+      "kind": "span",
+      "text": "Việt Võ Đạo",
+      "source": "src/pages/PhanMonVovinam.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVovinam.jsx",
+      "line": 46
+    },
+    {
+      "route": "/phanmon/vovinam",
+      "kind": "h1",
+      "text": "VOVINAM",
+      "source": "src/pages/PhanMonVovinam.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVovinam.jsx",
+      "line": 48
+    },
+    {
+      "route": "/phanmon/vovinam",
+      "kind": "span",
+      "text": "TINH HOA VÕ VIỆT",
+      "source": "src/pages/PhanMonVovinam.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVovinam.jsx",
+      "line": 50
+    },
+    {
+      "route": "/phanmon/vovinam",
+      "kind": "p",
+      "text": "Rèn luyện thân thể, trau dồi đạo hạnh và phát huy tinh thần thượng võ của dân tộc Việt Nam thông qua môn võ truyền thống.",
+      "source": "src/pages/PhanMonVovinam.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVovinam.jsx",
+      "line": 52
+    },
+    {
+      "route": "/phanmon/vovinam",
+      "kind": "Button",
+      "text": "GIÁO TRÌNH VÕ THUẬT",
+      "source": "src/pages/PhanMonVovinam.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVovinam.jsx",
+      "line": 56
+    },
+    {
+      "route": "/phanmon/vovinam",
+      "kind": "Button",
+      "text": "THÀNH TÍCH ĐẠI HỘI",
+      "source": "src/pages/PhanMonVovinam.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVovinam.jsx",
+      "line": 59
+    },
+    {
+      "route": "/phanmon/vovinam",
+      "kind": "p",
+      "text": "Luyện tập theo hệ thống bài bản từ căn bản đến nâng cao của môn phái Vovinam.",
+      "source": "src/pages/PhanMonVovinam.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVovinam.jsx",
+      "line": 85
+    },
+    {
+      "route": "/phanmon/vovinam",
+      "kind": "button",
+      "text": "KHÁM PHÁ",
+      "source": "src/pages/PhanMonVovinam.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVovinam.jsx",
+      "line": 88
+    },
+    {
+      "route": "/phanmon/vovinam",
+      "kind": "h2",
+      "text": "Học liệu & Phim võ thuật",
+      "source": "src/pages/PhanMonVovinam.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVovinam.jsx",
+      "line": 99
+    },
+    {
+      "route": "/phanmon/vovinam",
+      "kind": "button",
+      "text": "Làm mới",
+      "source": "src/pages/PhanMonVovinam.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVovinam.jsx",
+      "line": 103
+    },
+    {
+      "route": "/phanmon/vovinam",
+      "kind": "p",
+      "text": "Hiện chưa có học liệu nào.",
+      "source": "src/pages/PhanMonVovinam.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVovinam.jsx",
+      "line": 114
+    },
+    {
+      "route": "/phanmon/vovinam",
+      "kind": "span",
+      "text": "VIDEO HƯỚNG DẪN",
+      "source": "src/pages/PhanMonVovinam.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVovinam.jsx",
+      "line": 129
+    },
+    {
+      "route": "/phanmon/vovinam",
+      "kind": "h2",
+      "text": "Đội tuyển & CLB Vovinam",
+      "source": "src/pages/PhanMonVovinam.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVovinam.jsx",
+      "line": 150
+    },
+    {
+      "route": "/phanmon/vovinam",
+      "kind": "span",
+      "text": "CÂU LẠC BỘ",
+      "source": "src/pages/PhanMonVovinam.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVovinam.jsx",
+      "line": 159
+    },
+    {
+      "route": "/phanmon/vovinam",
+      "kind": "h3",
+      "text": "Gia nhập CLB Vovinam FPT Education",
+      "source": "src/pages/PhanMonVovinam.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVovinam.jsx",
+      "line": 160
+    },
+    {
+      "route": "/phanmon/vovinam",
+      "kind": "p",
+      "text": "Nơi hội tụ những võ sinh đam mê, cùng rèn luyện tính kỷ luật và bản lĩnh trong môi trường chuyên nghiệp.",
+      "source": "src/pages/PhanMonVovinam.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVovinam.jsx",
+      "line": 161
+    },
+    {
+      "route": "/phanmon/vovinam",
+      "kind": "Button",
+      "text": "ĐĂNG KÝ NGAY",
+      "source": "src/pages/PhanMonVovinam.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVovinam.jsx",
+      "line": 164
+    },
+    {
+      "route": "/profile",
+      "kind": "div",
+      "text": "Đang tải hồ sơ...",
+      "source": "src/pages/Profile.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Profile.jsx",
+      "line": 85
+    },
+    {
+      "route": "/profile",
+      "kind": "h1",
+      "text": "HỒ SƠ TÀI KHOẢN",
+      "source": "src/pages/Profile.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Profile.jsx",
+      "line": 92
+    },
+    {
+      "route": "/profile",
+      "kind": "Button",
+      "text": "Lưu hồ sơ",
+      "source": "src/pages/Profile.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Profile.jsx",
+      "line": 105
+    },
+    {
+      "route": "/profile",
+      "kind": "Button",
+      "text": "Đăng xuất",
+      "source": "src/pages/Profile.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Profile.jsx",
+      "line": 106
+    },
+    {
+      "route": "/profile",
+      "kind": "h2",
+      "text": "ĐỔI MẬT KHẨU",
+      "source": "src/pages/Profile.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Profile.jsx",
+      "line": 111
+    },
+    {
+      "route": "/profile",
+      "kind": "Button",
+      "text": "Đổi mật khẩu",
+      "source": "src/pages/Profile.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Profile.jsx",
+      "line": 115
+    },
+    {
+      "route": "/profile",
+      "kind": "h2",
+      "text": "BÀI THI CỦA TÔI",
+      "source": "src/pages/Profile.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Profile.jsx",
+      "line": 120
+    },
+    {
+      "route": "/profile",
+      "kind": "p",
+      "text": "Bạn chưa có bài thi nào.",
+      "source": "src/pages/Profile.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Profile.jsx",
+      "line": 122
+    },
+    {
+      "route": "/register",
+      "kind": "span",
+      "text": "Xác minh email bằng OTP",
+      "source": "src/pages/Register.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Register.jsx",
+      "line": 121
+    },
+    {
+      "route": "/register",
+      "kind": "h1",
+      "text": "ĐĂNG KÝ TÀI KHOẢN",
+      "source": "src/pages/Register.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Register.jsx",
+      "line": 124
+    },
+    {
+      "route": "/register",
+      "kind": "p",
+      "text": "Tổ xã hội",
+      "source": "src/pages/Register.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Register.jsx",
+      "line": 125
+    },
+    {
+      "route": "/register",
+      "kind": "p",
+      "text": "Trang này được bảo vệ bởi reCAPTCHA. và của Google áp dụng.",
+      "source": "src/pages/Register.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Register.jsx",
+      "line": 143
+    },
+    {
+      "route": "/register",
+      "kind": "a",
+      "text": "Chính sách bảo mật",
+      "source": "src/pages/Register.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Register.jsx",
+      "line": 144
+    },
+    {
+      "route": "/register",
+      "kind": "a",
+      "text": "Điều khoản",
+      "source": "src/pages/Register.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Register.jsx",
+      "line": 144
+    },
+    {
+      "route": "/register",
+      "kind": "span",
+      "text": "hoặc",
+      "source": "src/pages/Register.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Register.jsx",
+      "line": 151
+    },
+    {
+      "route": "/register",
+      "kind": "p",
+      "text": "Đã có tài khoản?",
+      "source": "src/pages/Register.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Register.jsx",
+      "line": 160
+    },
+    {
+      "route": "/register",
+      "kind": "Link",
+      "text": "Đăng nhập",
+      "source": "src/pages/Register.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Register.jsx",
+      "line": 161
+    },
+    {
+      "route": "/register",
+      "kind": "p",
+      "text": "Đã đăng ký nhưng chưa xác minh?",
+      "source": "src/pages/Register.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Register.jsx",
+      "line": 163
+    },
+    {
+      "route": "/register",
+      "kind": "Link",
+      "text": "Nhập OTP",
+      "source": "src/pages/Register.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Register.jsx",
+      "line": 164
+    },
+    {
+      "route": "/stories/inspiring",
+      "kind": "span",
+      "text": "Chạm tới trái tim",
+      "source": "src/pages/StoriesInspiring.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/StoriesInspiring.jsx",
+      "line": 52
+    },
+    {
+      "route": "/stories/inspiring",
+      "kind": "h1",
+      "text": "CÂU CHUYỆN",
+      "source": "src/pages/StoriesInspiring.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/StoriesInspiring.jsx",
+      "line": 54
+    },
+    {
+      "route": "/stories/inspiring",
+      "kind": "span",
+      "text": "TRUYỀN CẢM HỨNG",
+      "source": "src/pages/StoriesInspiring.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/StoriesInspiring.jsx",
+      "line": 60
+    },
+    {
+      "route": "/stories/inspiring",
+      "kind": "p",
+      "text": "Lắng nghe những chia sẻ thật chân thành về hành trình trưởng thành và khám phá bản thân tại Tổ Xã hội.",
+      "source": "src/pages/StoriesInspiring.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/StoriesInspiring.jsx",
+      "line": 62
+    },
+    {
+      "route": "/stories/inspiring",
+      "kind": "div",
+      "text": "phút đọc",
+      "source": "src/pages/StoriesInspiring.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/StoriesInspiring.jsx",
+      "line": 105
+    },
+    {
+      "route": "/stories/inspiring",
+      "kind": "Link",
+      "text": "Đọc câu chuyện",
+      "source": "src/pages/StoriesInspiring.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/StoriesInspiring.jsx",
+      "line": 114
+    },
+    {
+      "route": "/stories/inspiring",
+      "kind": "p",
+      "text": "Hiện chưa có câu chuyện truyền cảm hứng.",
+      "source": "src/pages/StoriesInspiring.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/StoriesInspiring.jsx",
+      "line": 128
+    },
+    {
+      "route": "/stories/inspiring",
+      "kind": "h2",
+      "text": "\"Chúng tôi không chỉ dạy sinh viên học, chúng tôi cùng sinh viên viết tiếp những câu chuyện rực rỡ nhất của tuổi trẻ.\"",
+      "source": "src/pages/StoriesInspiring.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/StoriesInspiring.jsx",
+      "line": 138
+    },
+    {
+      "route": "/stories/inspiring",
+      "kind": "p",
+      "text": "TẬP THỂ GIÁO VIÊN TỔ XÃ HỘI",
+      "source": "src/pages/StoriesInspiring.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/StoriesInspiring.jsx",
+      "line": 141
+    }
+  ]
+}

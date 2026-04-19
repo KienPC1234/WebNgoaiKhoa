@@ -7,6 +7,7 @@ from app.models.publication import (
     StaffProfile,
     Story,
     Submission,
+    SubmissionVote,
 )
 import pymysql
 import os
@@ -68,6 +69,8 @@ def init_database():
         pub_columns = {c["name"] for c in inspector.get_columns("publications")}
         story_columns = {c["name"] for c in inspector.get_columns("stories")}
         user_columns = {c["name"] for c in inspector.get_columns("users")}
+        submission_columns = {c["name"] for c in inspector.get_columns("submissions")}
+        event_columns = {c["name"] for c in inspector.get_columns("events")}
         statements = []
 
         if "subject" not in pub_columns:
@@ -91,6 +94,10 @@ def init_database():
             statements.append("ALTER TABLE users ADD COLUMN last_verification_sent_at DATETIME NULL")
         if "is_subscribed" not in user_columns:
             statements.append("ALTER TABLE users ADD COLUMN is_subscribed BOOLEAN NOT NULL DEFAULT 1")
+        if "attachment_url" not in submission_columns:
+            statements.append("ALTER TABLE submissions ADD COLUMN attachment_url VARCHAR(500) NULL")
+        if "linked_post_id" not in event_columns:
+            statements.append("ALTER TABLE events ADD COLUMN linked_post_id INT NULL")
 
         if statements:
             with engine.begin() as conn:

@@ -645,3 +645,16 @@
   background: rgba(255, 255, 255, 0.16);
   color: #fff;
 }
+
+/* Utility: stabilize gradient text rendering and preserve combining marks (Vietnamese diacritics)
+   Apply `gradient-text-fix` alongside `text-transparent bg-clip-text` on elements that use
+   background-clip text gradients to avoid missing diacritics on some browsers. */
+.gradient-text-fix {
+  -webkit-text-stroke: 0.01px transparent;
+  -webkit-text-fill-color: transparent;
+  color: transparent !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: geometricPrecision;
+}
+

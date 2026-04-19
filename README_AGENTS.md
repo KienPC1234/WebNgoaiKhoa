@@ -1,4 +1,4 @@
-# MANDATORY CONTEXT FOR LLM
+# MANDATORY CONTEXT FOR AGENTS
 
 ## Environment Mandates
 - **Backend Environment:** You MUST always use the Conda environment named `webngoaikhoa_fpt_env`.

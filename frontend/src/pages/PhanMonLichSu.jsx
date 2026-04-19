@@ -47,7 +47,7 @@ export const PhanMonLichSu = () => {
                         </div>
                         <h1 className="text-6xl md:text-8xl font-black italic leading-tight drop-shadow-xl uppercase">
                             Lịch sử <br />
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-200 not-italic">VIỆT NAM & TG</span>
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-200 not-italic gradient-text-fix">VIỆT NAM & TG</span>
                         </h1>
                         <p className="text-xl text-orange-50 max-w-xl font-medium leading-relaxed">
                             Ngược dòng quá khứ, thấu hiểu hiện tại để kiến tạo tương lai vững bền thông qua những bài học lịch sử hào hùng.

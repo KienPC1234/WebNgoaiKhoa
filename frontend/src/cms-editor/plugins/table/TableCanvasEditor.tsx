@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import type { TableModel } from '../../core/types'
-import { mergeCells, resizeColumn, splitCell } from './operations'
+import { addColumn, addRow, deleteColumn, deleteRow, mergeCells, resizeColumn, splitCell } from './operations'
 
 interface CellPos {
   row: number
@@ -45,6 +45,8 @@ export const TableCanvasEditor: React.FC<TableCanvasEditorProps> = ({ table, onC
 
   const canMerge = Boolean(selectedRange)
   const canSplit = Boolean(anchor)
+  
+  const anchorPos = anchor ? parseCellKey(anchor) : null
 
   return (
     <div className="space-y-3">
@@ -58,29 +60,78 @@ export const TableCanvasEditor: React.FC<TableCanvasEditorProps> = ({ table, onC
             onChange(mergeCells(table, selectedRange.rowStart, selectedRange.colStart, selectedRange.rowEnd, selectedRange.colEnd))
           }}
         >
-          Merge vùng chọn
+          Gộp vùng chọn
         </button>
         <button
           type="button"
           className="px-3 py-1.5 rounded-lg text-xs font-black bg-orange-50 text-fpt-orange disabled:opacity-50"
-          disabled={!canSplit || !anchor}
+          disabled={!canSplit || !anchorPos}
           onClick={() => {
-            if (!anchor) return
-            const pos = parseCellKey(anchor)
-            if (!pos) return
-            onChange(splitCell(table, pos.row, pos.col))
+            if (!anchorPos) return
+            onChange(splitCell(table, anchorPos.row, anchorPos.col))
           }}
         >
-          Split ô gốc
+          Tách ô gốc
+        </button>
+      </div>
+      
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          className="px-3 py-1.5 rounded-lg text-xs font-black bg-green-50 text-green-600 disabled:opacity-50"
+          disabled={!anchorPos}
+          onClick={() => {
+            if (!anchorPos) return
+            onChange(addRow(table, anchorPos.row))
+          }}
+        >
+          Thêm hàng (sau)
+        </button>
+        <button
+          type="button"
+          className="px-3 py-1.5 rounded-lg text-xs font-black bg-red-50 text-red-600 disabled:opacity-50"
+          disabled={!anchorPos || table.rows.length <= 1}
+          onClick={() => {
+            if (!anchorPos) return
+            onChange(deleteRow(table, anchorPos.row))
+            setAnchor(null)
+            setFocus(null)
+          }}
+        >
+          Xóa hàng
+        </button>
+        <button
+          type="button"
+          className="px-3 py-1.5 rounded-lg text-xs font-black bg-green-50 text-green-600 disabled:opacity-50"
+          disabled={!anchorPos}
+          onClick={() => {
+            if (!anchorPos) return
+            onChange(addColumn(table, anchorPos.col))
+          }}
+        >
+          Thêm cột (sau)
+        </button>
+        <button
+          type="button"
+          className="px-3 py-1.5 rounded-lg text-xs font-black bg-red-50 text-red-600 disabled:opacity-50"
+          disabled={!anchorPos || table.columns.length <= 1}
+          onClick={() => {
+            if (!anchorPos) return
+            onChange(deleteColumn(table, anchorPos.col))
+            setAnchor(null)
+            setFocus(null)
+          }}
+        >
+          Xóa cột
         </button>
       </div>
 
       <div className="space-y-2">
-        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Resize cột</p>
+        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Đổi kích thước cột</p>
         <div className="grid grid-cols-1 gap-2">
           {table.columns.map((weight, col) => (
             <div key={`col-${col}`} className="flex items-center gap-2">
-              <span className="w-14 text-[10px] font-black text-gray-500">Col {col + 1}</span>
+              <span className="w-14 text-[10px] font-black text-gray-500">Cột {col + 1}</span>
               <input
                 type="range"
                 min={0.25}
@@ -89,7 +140,7 @@ export const TableCanvasEditor: React.FC<TableCanvasEditorProps> = ({ table, onC
                 value={weight}
                 onChange={(event) => onChange(resizeColumn(table, col, Number(event.target.value)))}
                 className="flex-1"
-                aria-label={`Resize column ${col + 1}`}
+                aria-label={`Đổi kích thước cột ${col + 1}`}
               />
               <span className="w-10 text-[10px] font-bold text-gray-400">{weight.toFixed(2)}</span>
             </div>
@@ -140,7 +191,7 @@ export const TableCanvasEditor: React.FC<TableCanvasEditorProps> = ({ table, onC
                         }}
                         className="w-full min-h-[52px] resize-y bg-transparent outline-none"
                         placeholder="Nội dung ô"
-                        aria-label={`Cell ${rowIndex + 1}-${colIndex + 1}`}
+                        aria-label={`Ô ${rowIndex + 1}-${colIndex + 1}`}
                       />
                     </td>
                   )
