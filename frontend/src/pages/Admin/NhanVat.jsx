@@ -51,7 +51,7 @@ export const AdminNhanVat = () => {
       setStaff(staffRes.data || [])
     } catch (error) {
       console.error('Error loading CMS data:', error)
-      showApiError(error, 'Không tải được dữ liệu nhân vật.')
+      showApiError(error, 'Không tải được dữ liệu đội ngũ.')
     } finally {
       setLoading(false)
     }

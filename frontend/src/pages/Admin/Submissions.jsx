@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { Card, Button, cn } from '../../components/UI'
-import { CheckCircle, XCircle, Clock, Eye, Search, Filter, User, Mail, Calendar, Trash2, ArrowUpRight, MessageSquare, Sparkles } from 'lucide-react'
-import { showApiError, toastSuccess } from '@/lib/notify'
+import { CheckCircle, XCircle, Clock, Eye, Search, User, Mail, Calendar, MessageSquare } from 'lucide-react'
+import { confirmAction, showApiError, toastError, toastSuccess } from '@/lib/notify'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 
@@ -12,6 +12,7 @@ export const AdminSubmissions = () => {
   const [filter, setFilter] = useState('all') // all, pending, approved, rejected
   const [selectedSub, setSelectedSub] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [updatingId, setUpdatingId] = useState(null)
 
   const token = localStorage.getItem('token')
 
@@ -25,26 +26,57 @@ export const AdminSubmissions = () => {
       const res = await axios.get(`${API_URL}/admin/submissions`, {
         headers: { Authorization: `Bearer ${token}` }
       })
-      setSubs(res.data)
+      const allSubs = res.data || []
+      setSubs(allSubs)
+
+      const pendingFirst = allSubs.find((item) => item.status === 'pending')
+      setSelectedSub(pendingFirst || allSubs[0] || null)
     } catch (err) {
       console.error('Error fetching subs:', err)
+      showApiError(err, 'Không thể tải danh sách bài dự thi.')
     } finally {
       setLoading(false)
     }
   }
 
   const handleUpdateStatus = async (id, status) => {
+    if (updatingId) return
+
+    const actionLabel = status === 'approved' ? 'phê duyệt' : status === 'rejected' ? 'từ chối' : 'đặt chờ duyệt'
+    const confirmed = await confirmAction({
+      title: 'Xác nhận cập nhật trạng thái?',
+      text: `Bạn sắp ${actionLabel} bài dự thi #${id}.`,
+      confirmButtonText: 'Xác nhận',
+      cancelButtonText: 'Hủy',
+    })
+    if (!confirmed) return
+
+    const target = subs.find((item) => item.id === id)
+    if (!target) {
+      toastError('Không tìm thấy bài dự thi để cập nhật.')
+      return
+    }
+
+    const previousStatus = target.status
+    setUpdatingId(id)
+    setSubs((prev) => prev.map((item) => (item.id === id ? { ...item, status } : item)))
+    if (selectedSub?.id === id) {
+      setSelectedSub((prev) => ({ ...prev, status }))
+    }
+
     try {
       await axios.put(`${API_URL}/admin/submissions/${id}/status`, { status }, {
         headers: { Authorization: `Bearer ${token}` }
       })
-      fetchSubs()
       toastSuccess(status === 'approved' ? 'Đã phê duyệt bài dự thi.' : 'Đã từ chối bài dự thi.')
-      if (selectedSub?.id === id) {
-        setSelectedSub({...selectedSub, status})
-      }
     } catch (err) {
+      setSubs((prev) => prev.map((item) => (item.id === id ? { ...item, status: previousStatus } : item)))
+      if (selectedSub?.id === id) {
+        setSelectedSub((prev) => ({ ...prev, status: previousStatus }))
+      }
       showApiError(err, 'Lỗi khi cập nhật trạng thái.')
+    } finally {
+      setUpdatingId(null)
     }
   }
 
@@ -57,51 +89,77 @@ export const AdminSubmissions = () => {
     return matchesFilter && matchesSearch
   })
 
+  const stats = {
+    all: subs.length,
+    pending: subs.filter((item) => item.status === 'pending').length,
+    approved: subs.filter((item) => item.status === 'approved').length,
+    rejected: subs.filter((item) => item.status === 'rejected').length,
+  }
+
+  useEffect(() => {
+    if (!filteredSubs.length) {
+      setSelectedSub(null)
+      return
+    }
+
+    if (!selectedSub || !filteredSubs.some((item) => item.id === selectedSub.id)) {
+      setSelectedSub(filteredSubs[0])
+    }
+  }, [filteredSubs, selectedSub])
+
   return (
-    <div className="space-y-8 animate-fadeIn h-[calc(100vh-160px)] flex flex-col pb-10">
-      {/* Header & Filters */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-white p-8 rounded-[40px] shadow-2xl shadow-gray-100/50 border border-gray-50">
-        <div className="flex gap-3 p-2 bg-gray-50 rounded-[24px]">
+    <div className="flex flex-col space-y-5 pb-8">
+      <Card className="rounded-2xl border border-slate-200 p-4 shadow-sm">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-wrap gap-2">
           {['all', 'pending', 'approved', 'rejected'].map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
               className={cn(
-                "px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all",
+                'rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
                 filter === f 
-                  ? "bg-fpt-blue text-white shadow-xl shadow-blue-100" 
-                  : "text-gray-400 hover:text-fpt-blue hover:bg-white"
+                  ? 'bg-slate-900 text-white'
+                  : 'border border-slate-200 text-slate-600 hover:bg-slate-100'
               )}
             >
-              {f === 'all' ? 'Tất cả' : f === 'pending' ? 'Chờ duyệt' : f === 'approved' ? 'Đã duyệt' : 'Từ chối'}
+              {f === 'all' ? `Tất cả (${stats.all})` : f === 'pending' ? `Chờ duyệt (${stats.pending})` : f === 'approved' ? `Đã duyệt (${stats.approved})` : `Từ chối (${stats.rejected})`}
             </button>
           ))}
-        </div>
+          </div>
         
-        <div className="relative w-full lg:w-96">
-          <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-          <input 
-            type="text" 
-            placeholder="Tìm theo tên hoặc tiêu đề..." 
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-14 pr-6 py-4 bg-gray-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-fpt-orange/20 font-bold text-sm shadow-inner"
-          />
+          <div className="flex w-full gap-2 lg:w-auto">
+            <div className="relative w-full lg:w-96">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            <input 
+              type="text" 
+              placeholder="Tìm theo tên hoặc tiêu đề" 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-700 outline-none focus:border-slate-400"
+            />
+            </div>
+            <Button
+              onClick={fetchSubs}
+              className="border border-slate-200 bg-white px-4 text-slate-700 hover:bg-slate-100"
+            >
+              Làm mới
+            </Button>
+          </div>
         </div>
-      </div>
+      </Card>
 
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-8 overflow-hidden">
-        {/* List Side */}
-        <div className="lg:col-span-5 space-y-4 overflow-y-auto pr-4 custom-scrollbar">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-12 lg:items-start">
+        <div className="space-y-3 lg:col-span-5 lg:max-h-[calc(100vh-220px)] lg:overflow-y-auto lg:pr-2 custom-scrollbar">
           {loading ? (
-            <div className="text-center py-20 bg-white rounded-[40px] shadow-lg">
-              <div className="w-12 h-12 border-4 border-fpt-orange border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="font-black text-fpt-blue uppercase tracking-widest text-[10px]">Đang quét bài dự thi...</p>
+            <div className="rounded-2xl border border-slate-200 bg-white py-12 text-center">
+              <div className="mx-auto mb-3 h-9 w-9 animate-spin rounded-full border-2 border-slate-300 border-t-slate-700"></div>
+              <p className="text-sm text-slate-500">Đang tải bài dự thi...</p>
             </div>
           ) : filteredSubs.length === 0 ? (
-            <div className="py-20 text-center bg-white rounded-[40px] border-4 border-dashed border-gray-50">
-              <Clock size={64} className="mx-auto text-gray-100 mb-6" />
-              <p className="text-gray-300 font-black uppercase tracking-widest text-sm">Danh sách trống</p>
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-white py-12 text-center">
+              <Clock size={40} className="mx-auto mb-3 text-slate-300" />
+              <p className="text-sm text-slate-500">Danh sách trống</p>
             </div>
           ) : (
             filteredSubs.map((sub) => {
@@ -113,104 +171,105 @@ export const AdminSubmissions = () => {
                 key={sub.id} 
                 onClick={() => setSelectedSub(sub)}
                 className={cn(
-                  "p-8 border-none shadow-xl cursor-pointer transition-all duration-500 rounded-[40px] group relative overflow-hidden",
-                  selectedSub?.id === sub.id ? "bg-fpt-blue text-white ring-4 ring-blue-50" : "bg-white hover:bg-orange-50/30"
+                  'cursor-pointer rounded-xl border p-4 shadow-sm transition-colors',
+                  selectedSub?.id === sub.id ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white hover:bg-slate-50'
                 )}
               >
-                <div className="flex justify-between items-start mb-6">
+                <div className="mb-3 flex items-start justify-between">
                   <div className="flex items-center gap-4">
                     <div className={cn(
-                      "w-12 h-12 rounded-2xl flex items-center justify-center font-black shadow-inner transition-colors",
-                      selectedSub?.id === sub.id ? "bg-white/20 text-white" : "bg-gray-50 text-gray-400 group-hover:bg-white"
+                      'flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold transition-colors',
+                      selectedSub?.id === sub.id ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
                     )}>
                       {studentName.charAt(0)}
                     </div>
                     <div>
-                      <h4 className={cn("font-black text-sm uppercase tracking-tight", selectedSub?.id === sub.id ? "text-white" : "text-fpt-blue")}>{studentName}</h4>
-                      <p className={cn("text-[9px] font-bold uppercase tracking-[0.2em]", selectedSub?.id === sub.id ? "text-white/60" : "text-gray-400")}>{studentEmail}</p>
+                      <h4 className={cn('text-sm font-medium', selectedSub?.id === sub.id ? 'text-white' : 'text-slate-800')}>{studentName}</h4>
+                      <p className={cn('text-xs', selectedSub?.id === sub.id ? 'text-white/70' : 'text-slate-500')}>{studentEmail}</p>
                     </div>
                   </div>
                   <span className={cn(
-                    "text-[8px] font-black px-3 py-1 rounded-lg uppercase tracking-widest border shadow-sm",
-                    sub.status === 'approved' ? 'bg-green-500 border-green-400 text-white' :
-                    sub.status === 'rejected' ? 'bg-red-500 border-red-400 text-white' :
-                    'bg-orange-500 border-orange-400 text-white'
+                    'rounded-full px-2 py-1 text-xs font-medium',
+                    sub.status === 'approved' ? 'bg-emerald-100 text-emerald-700' :
+                    sub.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                    'bg-amber-100 text-amber-700'
                   )}>
                     {sub.status === 'approved' ? 'Đã duyệt' : sub.status === 'rejected' ? 'Từ chối' : 'Mới'}
                   </span>
                 </div>
-                <h3 className={cn("font-black text-lg mb-2 truncate italic", selectedSub?.id === sub.id ? "text-white" : "text-gray-700")}>"{sub.title}"</h3>
-                <p className={cn("text-xs line-clamp-2 leading-relaxed opacity-70", selectedSub?.id === sub.id ? "text-blue-50" : "text-gray-400")}>{sub.content || 'Không có nội dung'}</p>
-                
-                {selectedSub?.id === sub.id && (
-                  <div className="absolute top-0 right-0 w-24 h-full bg-white/5 opacity-10 skew-x-12 translate-x-12"></div>
-                )}
+                <h3 className={cn('mb-1 truncate text-sm font-medium', selectedSub?.id === sub.id ? 'text-white' : 'text-slate-800')}>{sub.title}</h3>
+                <p className={cn('line-clamp-2 text-xs', selectedSub?.id === sub.id ? 'text-white/70' : 'text-slate-500')}>{sub.content || 'Không có nội dung'}</p>
               </Card>
               )
             })
           )}
         </div>
 
-        {/* Detail Side */}
-        <div className="lg:col-span-7 h-full">
+        <div className="lg:col-span-7 lg:sticky lg:top-4">
           {selectedSub ? (
-            <Card className="h-full border-none shadow-[0_30px_100px_-20px_rgba(0,0,0,0.2)] rounded-[60px] bg-white flex flex-col overflow-hidden animate-fadeInRight border border-gray-50">
-              <div className="p-10 border-b border-gray-50 bg-gray-50/30 relative">
-                <div className="absolute top-0 right-0 p-10 opacity-5">
-                  <Sparkles size={120} className="text-fpt-blue" />
-                </div>
-                
-                <div className="flex justify-between items-start mb-8 relative z-10">
+            <Card className="rounded-2xl border border-slate-200 bg-white shadow-sm flex flex-col overflow-hidden lg:max-h-[calc(100vh-220px)]">
+              <div className="border-b border-slate-200 bg-slate-50 p-6">
+                <div className="mb-4 flex items-start justify-between">
                   <div className="space-y-2">
-                    <span className="bg-orange-500 text-white text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-[0.2em] shadow-lg shadow-orange-100">Bài dự thi #{selectedSub.id}</span>
-                    <h2 className="text-4xl font-black text-fpt-blue italic leading-tight uppercase tracking-tighter max-w-2xl">{selectedSub.title}</h2>
+                    <span className="rounded-full bg-slate-900 px-2 py-1 text-xs font-medium text-white">Bài dự thi #{selectedSub.id}</span>
+                    <h2 className="max-w-2xl text-xl font-semibold text-slate-800">{selectedSub.title}</h2>
                   </div>
-                  <button onClick={() => setSelectedSub(null)} className="p-3 bg-white text-gray-300 hover:text-red-500 rounded-full shadow-sm transition-all hover:rotate-90">
-                    <XCircle size={32} />
+                  <button onClick={() => setSelectedSub(null)} className="rounded-full p-1 text-slate-400 hover:text-red-600">
+                    <XCircle size={22} />
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 relative z-10">
-                  <DetailBadge icon={User} label="Tác giả" value={selectedSub.student_name} color="text-fpt-orange" />
-                  <DetailBadge icon={Mail} label="Email" value={selectedSub.student_email} color="text-fpt-blue" />
-                  <DetailBadge icon={Calendar} label="Ngày gửi" value={new Date(selectedSub.created_at).toLocaleDateString('vi-VN')} color="text-emerald-500" />
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                  <DetailBadge icon={User} label="Tác giả" value={selectedSub.student_name} />
+                  <DetailBadge icon={Mail} label="Email" value={selectedSub.student_email} />
+                  <DetailBadge icon={Calendar} label="Ngày gửi" value={new Date(selectedSub.created_at).toLocaleDateString('vi-VN')} />
                 </div>
               </div>
               
-              <div className="flex-1 overflow-y-auto p-12 custom-scrollbar relative">
+              <div className="custom-scrollbar relative flex-1 overflow-y-auto p-6 max-h-[50vh] lg:max-h-[calc(100vh-420px)]">
                 <div className="prose prose-lg max-w-none">
-                  <p className="text-gray-600 font-medium leading-[2] whitespace-pre-wrap italic bg-gray-50/50 p-8 rounded-[40px] border border-gray-100 shadow-inner">
-                    <MessageSquare className="text-orange-200 mb-4" size={40} />
+                  {selectedSub.attachment_url ? (
+                    <a
+                      href={selectedSub.attachment_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mb-3 inline-flex items-center gap-2 rounded-lg border border-orange-200 bg-orange-50 px-3 py-1.5 text-[11px] font-black uppercase tracking-widest text-fpt-orange"
+                    >
+                      Xem PDF đính kèm
+                    </a>
+                  ) : null}
+                  <p className="whitespace-pre-wrap rounded-xl border border-slate-200 bg-white p-4 text-sm leading-7 text-slate-700">
+                    <MessageSquare className="mb-3 text-slate-300" size={22} />
                     {selectedSub.content}
                   </p>
                 </div>
               </div>
 
-              <div className="p-10 bg-white border-t border-gray-100 flex gap-6">
+              <div className="flex gap-3 border-t border-slate-200 bg-white p-5">
                 <button 
                   onClick={() => handleUpdateStatus(selectedSub.id, 'rejected')}
-                  disabled={selectedSub.status === 'rejected'}
-                  className="flex-1 bg-white border-4 border-red-50 text-red-500 py-6 rounded-3xl font-black uppercase tracking-[0.2em] hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-3 disabled:opacity-30 disabled:grayscale"
+                  disabled={selectedSub.status === 'rejected' || updatingId === selectedSub.id}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-md border border-red-200 px-3 py-2.5 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-40"
                 >
-                  <XCircle size={24} /> TỪ CHỐI BÀI
+                  <XCircle size={16} /> Từ chối
                 </button>
                 <button 
                   onClick={() => handleUpdateStatus(selectedSub.id, 'approved')}
-                  disabled={selectedSub.status === 'approved'}
-                  className="flex-[2] bg-fpt-blue text-white py-6 rounded-3xl font-black uppercase tracking-[0.2em] shadow-2xl shadow-blue-200 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-30 disabled:grayscale border-none"
+                  disabled={selectedSub.status === 'approved' || updatingId === selectedSub.id}
+                  className="flex flex-[1.4] items-center justify-center gap-2 rounded-md border-none bg-slate-900 px-3 py-2.5 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-40"
                 >
-                  <CheckCircle size={24} strokeWidth={3} /> PHÊ DUYỆT NGAY
+                  <CheckCircle size={16} /> {updatingId === selectedSub.id ? 'Đang cập nhật...' : 'Phê duyệt'}
                 </button>
               </div>
             </Card>
           ) : (
-            <div className="h-full flex flex-col items-center justify-center text-center space-y-8 bg-white/50 rounded-[60px] border-4 border-dashed border-gray-50 p-20 animate-pulse">
-              <div className="w-32 h-32 bg-gray-50 rounded-full flex items-center justify-center">
-                <Eye size={64} className="text-gray-200" strokeWidth={1} />
+            <div className="flex h-full flex-col items-center justify-center space-y-4 rounded-2xl border border-dashed border-slate-200 bg-white p-10 text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-slate-100">
+                <Eye size={30} className="text-slate-300" strokeWidth={1.6} />
               </div>
-              <div className="space-y-2">
-                <p className="font-black uppercase tracking-[0.4em] text-gray-300 text-lg italic">Trung tâm kiểm duyệt</p>
-                <p className="text-gray-400 font-bold text-sm uppercase tracking-widest">Vui lòng chọn một bản thảo để bắt đầu thẩm định</p>
+              <div className="space-y-1">
+                <p className="text-base font-medium text-slate-700">Trung tâm kiểm duyệt</p>
+                <p className="text-sm text-slate-500">Vui lòng chọn một bài để xem chi tiết và duyệt.</p>
               </div>
             </div>
           )}
@@ -220,14 +279,14 @@ export const AdminSubmissions = () => {
   )
 }
 
-const DetailBadge = ({ icon: Icon, label, value, color }) => (
-  <div className="flex items-center gap-4 bg-white p-5 rounded-[24px] border border-gray-100 shadow-sm">
-    <div className={cn("p-3 bg-gray-50 rounded-xl", color)}>
-      <Icon size={20} />
+const DetailBadge = ({ icon: Icon, label, value }) => (
+  <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-white p-3">
+    <div className="rounded-md bg-slate-100 p-2 text-slate-600">
+      <Icon size={15} />
     </div>
     <div className="min-w-0">
-      <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{label}</p>
-      <p className="text-sm font-black text-fpt-blue truncate">{value}</p>
+      <p className="text-xs text-slate-500">{label}</p>
+      <p className="truncate text-sm font-medium text-slate-700">{value || '-'}</p>
     </div>
   </div>
 )

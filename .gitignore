@@ -9,6 +9,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 .env
+*.secrets_json
 .venv
 venv/
 ENV/

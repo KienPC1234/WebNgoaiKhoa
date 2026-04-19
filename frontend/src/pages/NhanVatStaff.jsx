@@ -26,7 +26,7 @@ export const NhanVatStaff = () => {
   return (
     <div className="space-y-16 pb-20">
       <section className="relative overflow-hidden bg-gradient-to-br from-white via-blue-50/40 to-orange-50/30 px-4 pt-16 pb-14 border-b border-gray-100">
-        <div className="container mx-auto space-y-6">
+        <div className="app-section space-y-6">
           <div className="inline-flex items-center gap-2 rounded-full bg-fpt-orange text-white px-4 py-2 text-[11px] uppercase tracking-widest font-black">
             <Sparkles size={14} />
             Đội ngũ giáo viên

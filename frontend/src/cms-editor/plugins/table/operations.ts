@@ -55,6 +55,39 @@ export const splitCell = (table: TableModel, row: number, col: number): TableMod
   return normalize(next)
 }
 
+export const addRow = (table: TableModel, afterRowIndex: number): TableModel => {
+  const next = structuredClone(table) as TableModel
+  const newRow = Array.from({ length: next.columns.length }, () => createTableCell())
+  next.rows.splice(afterRowIndex + 1, 0, newRow)
+  return normalize(next)
+}
+
+export const deleteRow = (table: TableModel, rowIndex: number): TableModel => {
+  if (table.rows.length <= 1) return table
+  const next = structuredClone(table) as TableModel
+  next.rows.splice(rowIndex, 1)
+  return normalize(next)
+}
+
+export const addColumn = (table: TableModel, afterColIndex: number): TableModel => {
+  const next = structuredClone(table) as TableModel
+  next.columns.splice(afterColIndex + 1, 0, 1) // default weight 1
+  next.rows.forEach((row) => {
+    row.splice(afterColIndex + 1, 0, createTableCell())
+  })
+  return normalize(next)
+}
+
+export const deleteColumn = (table: TableModel, colIndex: number): TableModel => {
+  if (table.columns.length <= 1) return table
+  const next = structuredClone(table) as TableModel
+  next.columns.splice(colIndex, 1)
+  next.rows.forEach((row) => {
+    row.splice(colIndex, 1)
+  })
+  return normalize(next)
+}
+
 export const resizeColumn = (table: TableModel, col: number, weight: number): TableModel => {
   const next = structuredClone(table) as TableModel
   if (col < 0 || col >= next.columns.length) return table

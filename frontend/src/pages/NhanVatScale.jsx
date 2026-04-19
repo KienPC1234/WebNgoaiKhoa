@@ -17,7 +17,7 @@ export const NhanVatScale = () => {
   return (
     <div className="space-y-16 pb-20">
       <section className="relative overflow-hidden bg-gradient-to-br from-white via-blue-50/40 to-orange-50/30 px-4 pt-16 pb-14 border-b border-gray-100">
-        <div className="container mx-auto grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+        <div className="app-section grid grid-cols-1 items-center gap-10 lg:grid-cols-2">
           <div className="space-y-6">
             <div className="inline-flex items-center gap-2 rounded-full bg-fpt-blue text-white px-4 py-2 text-[11px] uppercase tracking-widest font-black">
               <Sparkles size={14} />

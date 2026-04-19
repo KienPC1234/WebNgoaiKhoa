@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Card, Button, RichTextEditor } from '@/components/UI'
-import { CalendarDays, Plus, Save, Trash2 } from 'lucide-react'
+import { CalendarDays, Plus, Save, Trash2, Mail, BellRing } from 'lucide-react'
+import PostLinkModal from '@/components/Admin/PostLinkModal'
 import { cmsService } from '@/lib/cmsService'
 import { confirmAction, showApiError, toastError, toastSuccess } from '@/lib/notify'
 
@@ -11,6 +12,7 @@ const emptyForm = {
   location: '',
   image_url: '',
   status: 'upcoming',
+  linked_post_id: '',
   is_active: true,
 }
 
@@ -19,6 +21,17 @@ export const AdminEvents = () => {
   const [events, setEvents] = useState([])
   const [form, setForm] = useState(emptyForm)
   const [viewMode, setViewMode] = useState('upcoming')
+  const [pushConfig, setPushConfig] = useState(null)
+  const [linkModalOpen, setLinkModalOpen] = useState(false)
+  const [linkModalContext, setLinkModalContext] = useState(null)
+  const [newsletterForm, setNewsletterForm] = useState({
+    title: '',
+    body: '',
+    action_url: '/events/upcoming',
+    send_email: true,
+    send_webpush: true,
+  })
+  const [newsletterSending, setNewsletterSending] = useState(false)
 
   const fetchEvents = async (mode = viewMode) => {
     setLoading(true)
@@ -39,13 +52,28 @@ export const AdminEvents = () => {
     fetchEvents(viewMode)
   }, [viewMode])
 
+  useEffect(() => {
+    const fetchPushConfig = async () => {
+      try {
+        const data = await cmsService.getPushConfig()
+        setPushConfig(data)
+      } catch {
+        setPushConfig(null)
+      }
+    }
+    fetchPushConfig()
+  }, [])
+
   const createEvent = async () => {
     if (!form.title || !form.description || !form.event_date || !form.location) {
       toastError('Vui lòng điền đầy đủ thông tin.')
       return
     }
     try {
-      await cmsService.createEvent(form)
+      await cmsService.createEvent({
+        ...form,
+        linked_post_id: form.linked_post_id === '' ? null : Number(form.linked_post_id),
+      })
       setForm(emptyForm)
       fetchEvents(viewMode)
     } catch (error) {
@@ -68,6 +96,27 @@ export const AdminEvents = () => {
     }
   }
 
+  const openLinkModalForForm = () => {
+    setLinkModalContext({ mode: 'form' })
+    setLinkModalOpen(true)
+  }
+
+  const openLinkModalForRow = (id) => {
+    setLinkModalContext({ mode: 'row', id })
+    setLinkModalOpen(true)
+  }
+
+  const handleModalSelect = (pub) => {
+    if (!pub) return
+    if (linkModalContext?.mode === 'form') {
+      setForm((prev) => ({ ...prev, linked_post_id: pub.id }))
+    } else if (linkModalContext?.mode === 'row' && linkModalContext.id) {
+      patchEvent(linkModalContext.id, 'linked_post_id', pub.id)
+    }
+    setLinkModalOpen(false)
+    setLinkModalContext(null)
+  }
+
   const removeEvent = async (id) => {
     const confirmed = await confirmAction({
       title: 'Xóa sự kiện này?',
@@ -85,40 +134,71 @@ export const AdminEvents = () => {
     }
   }
 
+  const handleSendNewsletter = async () => {
+    if (!newsletterForm.title.trim() || !newsletterForm.body.trim()) return
+
+    setNewsletterSending(true)
+    try {
+      const result = await cmsService.sendNewsletter(newsletterForm)
+      if (result.queued) {
+        toastSuccess(`Đã đưa vào hàng đợi gửi bản tin cho ${result.recipients} tài khoản.`)
+      } else {
+        toastSuccess('Không có người nhận phù hợp (đã unsubscribe hoặc chưa xác minh).')
+      }
+      setNewsletterForm((prev) => ({ ...prev, title: '', body: '' }))
+    } catch (err) {
+      showApiError(err, 'Gửi bản tin thất bại.')
+    } finally {
+      setNewsletterSending(false)
+    }
+  }
+
   return (
-    <div className="space-y-8">
-      <Card className="p-8 rounded-[32px] border-none shadow-xl bg-white">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="p-2 rounded-xl bg-blue-50 text-fpt-blue"><CalendarDays size={20} /></div>
-          <h2 className="text-2xl font-black text-fpt-blue uppercase tracking-tight">CMS Sự kiện sắp tới</h2>
+    <div className="space-y-6 pb-8">
+      <Card className="rounded-2xl border border-slate-200 p-5 shadow-sm">
+        <div className="mb-4 flex items-center gap-2">
+          <CalendarDays size={16} className="text-slate-500" />
+          <h2 className="text-base font-semibold text-slate-800">Quản lý sự kiện</h2>
         </div>
 
-        <div className="mb-5 inline-flex rounded-xl bg-gray-100 p-1">
+        <div className="mb-4 inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1">
           <button
             type="button"
             onClick={() => setViewMode('upcoming')}
-            className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition ${viewMode === 'upcoming' ? 'bg-white text-fpt-blue shadow-sm' : 'text-gray-500'}`}
+            className={`rounded-md px-3 py-1.5 text-xs font-medium transition ${viewMode === 'upcoming' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'}`}
           >
             Sắp tới
           </button>
           <button
             type="button"
             onClick={() => setViewMode('all')}
-            className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition ${viewMode === 'all' ? 'bg-white text-fpt-blue shadow-sm' : 'text-gray-500'}`}
+            className={`rounded-md px-3 py-1.5 text-xs font-medium transition ${viewMode === 'all' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'}`}
           >
             Tất cả
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <input className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="Tiêu đề" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-          <input className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="Địa điểm" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
-          <input type="datetime-local" className="px-4 py-3 rounded-xl bg-gray-50 font-bold" value={form.event_date} onChange={(e) => setForm({ ...form, event_date: e.target.value })} />
-          <select className="px-4 py-3 rounded-xl bg-gray-50 font-bold" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <input className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm" placeholder="Tiêu đề" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+          <input className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm" placeholder="Địa điểm" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
+          <input type="datetime-local" className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm" value={form.event_date} onChange={(e) => setForm({ ...form, event_date: e.target.value })} />
+          <select className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
             <option value="upcoming">Sắp diễn ra</option>
             <option value="registration">Mở đăng ký</option>
           </select>
-          <input className="px-4 py-3 rounded-xl bg-gray-50 font-bold md:col-span-2" placeholder="Image URL" value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} />
+          <div className="flex items-center gap-2">
+            <input
+              readOnly
+              className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm"
+              placeholder="ID bài viết liên kết (tùy chọn)"
+              value={form.linked_post_id ? `ID ${form.linked_post_id}` : ''}
+            />
+            <Button onClick={openLinkModalForForm} className="rounded-md border border-slate-300 bg-white px-3 py-2 text-xs normal-case tracking-normal text-slate-700 hover:bg-slate-50">Link Post</Button>
+            {form.linked_post_id && (
+              <Button onClick={() => setForm({ ...form, linked_post_id: '' })} className="rounded-md border border-slate-300 bg-white px-3 py-2 text-xs normal-case tracking-normal text-slate-700 hover:bg-slate-50">Clear</Button>
+            )}
+          </div>
+          <input className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm md:col-span-2" placeholder="Image URL" value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} />
           <RichTextEditor
             className="md:col-span-2"
             size="compact"
@@ -128,30 +208,97 @@ export const AdminEvents = () => {
           />
         </div>
 
-        <div className="mt-6 flex justify-end">
-          <Button onClick={createEvent} className="bg-fpt-orange text-white px-6 py-3 rounded-xl font-black inline-flex items-center gap-2 border-none">
-            <Plus size={16} /> Thêm sự kiện
+        <div className="mt-4 flex justify-end">
+          <Button onClick={createEvent} className="rounded-md border-none bg-slate-900 px-3 py-2 text-xs normal-case tracking-normal text-white hover:bg-slate-700">
+            <Plus size={14} className="mr-1" /> Thêm sự kiện
           </Button>
         </div>
       </Card>
 
-      <Card className="p-8 rounded-[32px] border-none shadow-xl bg-white">
+      <Card className="rounded-2xl border border-slate-200 p-5 shadow-sm">
+        <div className="mb-4 flex items-center gap-2">
+          <Mail size={16} className="text-slate-600" />
+          <h3 className="text-sm font-semibold text-slate-800">Gửi bản tin thủ công</h3>
+        </div>
+
+        {pushConfig && (
+          <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+            Newsletter: <span className="font-semibold">{pushConfig.newsletter_enabled ? 'Bật' : 'Tắt'}</span> · Webpush: <span className="font-semibold">{pushConfig.webpush_enabled ? 'Sẵn sàng' : 'Chưa sẵn sàng'}</span>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <input
+            value={newsletterForm.title}
+            onChange={(e) => setNewsletterForm((prev) => ({ ...prev, title: e.target.value }))}
+            placeholder="Tiêu đề bản tin"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm"
+          />
+          <input
+            value={newsletterForm.action_url}
+            onChange={(e) => setNewsletterForm((prev) => ({ ...prev, action_url: e.target.value }))}
+            placeholder="Link đích (vd: /events/upcoming)"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm"
+          />
+          <textarea
+            value={newsletterForm.body}
+            onChange={(e) => setNewsletterForm((prev) => ({ ...prev, body: e.target.value }))}
+            placeholder="Nội dung thông báo"
+            className="min-h-28 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm md:col-span-2"
+          />
+          <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
+            <input
+              type="checkbox"
+              checked={newsletterForm.send_email}
+              onChange={(e) => setNewsletterForm((prev) => ({ ...prev, send_email: e.target.checked }))}
+            />
+            Gửi email
+          </label>
+          <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
+            <input
+              type="checkbox"
+              checked={newsletterForm.send_webpush}
+              onChange={(e) => setNewsletterForm((prev) => ({ ...prev, send_webpush: e.target.checked }))}
+            />
+            Gửi webpush
+          </label>
+        </div>
+
+        <div className="mt-4 flex justify-end">
+          <Button
+            onClick={handleSendNewsletter}
+            disabled={newsletterSending || !newsletterForm.title.trim() || !newsletterForm.body.trim()}
+            className="rounded-md border-none bg-slate-900 px-3 py-2 text-xs normal-case tracking-normal text-white hover:bg-slate-700"
+          >
+            <BellRing size={14} className="mr-1" /> {newsletterSending ? 'Đang gửi...' : 'Đưa vào hàng đợi'}
+          </Button>
+        </div>
+      </Card>
+
+      <Card className="rounded-2xl border border-slate-200 p-5 shadow-sm">
         {loading ? (
-          <div className="py-16 text-center text-gray-400 font-black uppercase tracking-widest">Đang tải...</div>
+          <div className="py-12 text-center text-slate-500">Đang tải...</div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {events.map((item) => (
-              <div key={item.id} className="p-4 rounded-2xl border border-gray-100 grid grid-cols-1 md:grid-cols-12 gap-3">
-                <input className="md:col-span-3 px-3 py-2 rounded-lg bg-gray-50 font-bold" value={item.title || ''} onChange={(e) => patchEvent(item.id, 'title', e.target.value)} />
-                <input className="md:col-span-2 px-3 py-2 rounded-lg bg-gray-50 font-bold" value={item.location || ''} onChange={(e) => patchEvent(item.id, 'location', e.target.value)} />
-                <input type="datetime-local" className="md:col-span-2 px-3 py-2 rounded-lg bg-gray-50 font-bold" value={item.event_date ? new Date(item.event_date).toISOString().slice(0, 16) : ''} onChange={(e) => patchEvent(item.id, 'event_date', e.target.value)} />
-                <select className="md:col-span-2 px-3 py-2 rounded-lg bg-gray-50 font-bold" value={item.status || 'upcoming'} onChange={(e) => patchEvent(item.id, 'status', e.target.value)}>
+              <div key={item.id} className="grid grid-cols-1 gap-2 rounded-xl border border-slate-200 p-3 md:grid-cols-12">
+                <input className="md:col-span-3 rounded-md border border-slate-200 px-2.5 py-2 text-sm" value={item.title || ''} onChange={(e) => patchEvent(item.id, 'title', e.target.value)} />
+                <input className="md:col-span-2 rounded-md border border-slate-200 px-2.5 py-2 text-sm" value={item.location || ''} onChange={(e) => patchEvent(item.id, 'location', e.target.value)} />
+                <input type="datetime-local" className="md:col-span-2 rounded-md border border-slate-200 px-2.5 py-2 text-sm" value={item.event_date ? new Date(item.event_date).toISOString().slice(0, 16) : ''} onChange={(e) => patchEvent(item.id, 'event_date', e.target.value)} />
+                <select className="md:col-span-2 rounded-md border border-slate-200 px-2.5 py-2 text-sm" value={item.status || 'upcoming'} onChange={(e) => patchEvent(item.id, 'status', e.target.value)}>
                   <option value="upcoming">Sắp diễn ra</option>
                   <option value="registration">Mở đăng ký</option>
                 </select>
+                <div className="md:col-span-2 flex items-center gap-2">
+                  <div className="flex-1 text-sm text-slate-700">{item.linked_post_id ? `ID ${item.linked_post_id}` : 'Chưa liên kết'}</div>
+                  <Button onClick={() => openLinkModalForRow(item.id)} className="rounded-md border border-slate-300 bg-white px-3 py-2 text-xs normal-case tracking-normal text-slate-700 hover:bg-slate-50">Link</Button>
+                  {item.linked_post_id && (
+                    <Button onClick={() => patchEvent(item.id, 'linked_post_id', null)} className="rounded-md border border-slate-300 bg-white px-3 py-2 text-xs normal-case tracking-normal text-slate-700 hover:bg-slate-50">Clear</Button>
+                  )}
+                </div>
                 <div className="md:col-span-3 flex justify-end gap-2">
-                  <Button onClick={() => saveEvent(item)} className="bg-fpt-blue text-white px-3 py-2 rounded-lg font-black border-none inline-flex items-center gap-1"><Save size={14} />Lưu</Button>
-                  <Button onClick={() => removeEvent(item.id)} className="bg-red-500 text-white px-3 py-2 rounded-lg font-black border-none inline-flex items-center gap-1"><Trash2 size={14} />Xóa</Button>
+                  <Button onClick={() => saveEvent(item)} className="rounded-md border border-slate-300 bg-white px-3 py-2 text-xs normal-case tracking-normal text-slate-700 hover:bg-slate-100"><Save size={13} className="mr-1" />Lưu</Button>
+                  <Button onClick={() => removeEvent(item.id)} className="rounded-md border border-red-200 bg-white px-3 py-2 text-xs normal-case tracking-normal text-red-700 hover:bg-red-50"><Trash2 size={13} className="mr-1" />Xóa</Button>
                 </div>
                 <RichTextEditor
                   className="md:col-span-12"
@@ -161,10 +308,11 @@ export const AdminEvents = () => {
                 />
               </div>
             ))}
-            {events.length === 0 && <div className="py-12 text-center text-gray-400 font-black uppercase tracking-widest">Chưa có sự kiện.</div>}
+            {events.length === 0 && <div className="py-10 text-center text-slate-500">Chưa có sự kiện.</div>}
           </div>
         )}
       </Card>
+      <PostLinkModal open={linkModalOpen} onClose={() => { setLinkModalOpen(false); setLinkModalContext(null) }} onSelect={handleModalSelect} />
     </div>
   )
 }

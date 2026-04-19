@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { Card, Button, cn } from '../../components/UI'
-import { User, Mail, Shield, Check, X, Search, Trash2, Edit, MoreVertical } from 'lucide-react'
-import { showApiError, toastSuccess } from '@/lib/notify'
+import { User, Search, Shield, CheckCircle2, XCircle, Trash2 } from 'lucide-react'
+import { confirmAction, showApiError, toastError, toastSuccess } from '@/lib/notify'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 
@@ -12,6 +12,20 @@ export const AdminUsers = () => {
   const [searchTerm, setSearchTerm] = useState('')
 
   const token = localStorage.getItem('token')
+  let currentUser = null
+  try {
+    currentUser = JSON.parse(localStorage.getItem('user') || 'null')
+  } catch {
+    currentUser = null
+  }
+
+  const roleOptions = [
+    { value: 'student', label: 'Học sinh/sinh viên' },
+    { value: 'teacher', label: 'Giáo viên' },
+    { value: 'submission_judge', label: 'Người chấm bài' },
+    { value: 'website_manager', label: 'Quản lý website' },
+    { value: 'admin', label: 'Admin hệ thống' },
+  ]
 
   useEffect(() => {
     fetchUsers()
@@ -44,6 +58,55 @@ export const AdminUsers = () => {
     }
   }
 
+  const handleDeleteUser = async (user) => {
+    const confirmed = await confirmAction({
+      title: 'Xóa người dùng này?',
+      text: `Tài khoản ${user.email} sẽ bị xóa khỏi hệ thống.`,
+      confirmButtonText: 'Xóa tài khoản',
+    })
+    if (!confirmed) return
+
+    try {
+      await axios.delete(`${API_URL}/admin/users/${user.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      toastSuccess('Đã xóa người dùng.')
+      fetchUsers()
+    } catch (err) {
+      showApiError(err, 'Không thể xóa người dùng.')
+    }
+  }
+
+  const handleUpdateRole = async (user, nextRole) => {
+    if (!nextRole || nextRole === user.role) return
+
+    const isEditingOtherAdmin = user.role === 'admin' && user.id !== currentUser?.id
+    if (isEditingOtherAdmin) {
+      toastError('Không thể thay đổi quyền của tài khoản admin khác.')
+      return
+    }
+
+    const confirmed = await confirmAction({
+      title: 'Đổi quyền người dùng?',
+      text: `Bạn sắp đổi quyền của ${user.email} thành ${nextRole}.`,
+      confirmButtonText: 'Xác nhận đổi quyền',
+    })
+    if (!confirmed) return
+
+    try {
+      await axios.put(`${API_URL}/admin/users/${user.id}`, {
+        role: nextRole,
+      }, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      toastSuccess('Đã cập nhật quyền người dùng.')
+      fetchUsers()
+    } catch (err) {
+      showApiError(err, 'Không thể cập nhật quyền người dùng.')
+      fetchUsers()
+    }
+  }
+
   const filteredUsers = users.filter((user) => {
     const fullName = (user.full_name || '').toLowerCase()
     const email = (user.email || '').toLowerCase()
@@ -53,91 +116,109 @@ export const AdminUsers = () => {
   })
 
   return (
-    <div className="space-y-8 animate-fadeIn">
-      <div className="flex justify-between items-center bg-white p-6 rounded-[32px] shadow-xl shadow-gray-100/50 border border-gray-50">
-        <div className="relative w-96">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-          <input 
-            type="text" 
-            placeholder="Tìm kiếm theo tên hoặc email..." 
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 bg-gray-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-fpt-orange/20 transition-all font-medium text-sm"
-          />
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="text-right">
-            <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Tổng số người dùng</p>
-            <p className="text-2xl font-black text-fpt-blue">{users.length}</p>
+    <div className="space-y-6 pb-8">
+      <Card className="rounded-2xl border border-slate-200 p-5 shadow-sm">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="relative w-full md:max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            <input
+              type="text"
+              placeholder="Tìm kiếm theo tên hoặc email"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-700 outline-none focus:border-slate-400"
+            />
           </div>
-          <div className="w-12 h-12 bg-fpt-blue/5 rounded-2xl flex items-center justify-center text-fpt-blue">
-            <User size={24} />
-          </div>
-        </div>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+            <User size={16} className="text-slate-500" />
+            <span className="text-sm font-medium text-slate-700">Tổng người dùng: {users.length}</span>
+          </div>
+        </div>
+      </Card>
+
+      <Card className="rounded-2xl border border-slate-200 p-0 shadow-sm overflow-hidden">
         {loading ? (
-          [1, 2, 3].map(i => <div key={i} className="h-64 bg-gray-100 rounded-[32px] animate-pulse"></div>)
-        ) : filteredUsers.length === 0 ? (
-          <div className="col-span-full py-20 text-center">
-            <User size={48} className="mx-auto text-gray-200 mb-4" />
-            <p className="text-gray-400 font-black uppercase tracking-widest">Không tìm thấy người dùng nào</p>
+          <div className="py-12 text-center">
+            <div className="mx-auto h-9 w-9 animate-spin rounded-full border-2 border-slate-300 border-t-slate-700" />
+            <p className="mt-3 text-sm text-slate-500">Đang tải danh sách người dùng...</p>
           </div>
+        ) : filteredUsers.length === 0 ? (
+          <div className="py-14 text-center text-slate-500">Không tìm thấy người dùng phù hợp.</div>
         ) : (
-          filteredUsers.map((user) => (
-            <Card key={user.id} className="p-0 overflow-hidden border-none shadow-xl hover:shadow-2xl transition-all duration-500 rounded-[32px] group">
-              <div className={cn("h-2 w-full bg-gradient-to-r", user.role === 'admin' ? "from-fpt-blue to-blue-400" : "from-fpt-orange to-orange-400")}></div>
-              <div className="p-8 space-y-6">
-                <div className="flex justify-between items-start">
-                  <div className="flex items-center gap-4">
-                    <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center shadow-inner", user.role === 'admin' ? "bg-blue-50 text-fpt-blue" : "bg-orange-50 text-fpt-orange")}>
-                      <User size={28} />
-                    </div>
-                    <div>
-                      <h3 className="font-black text-fpt-blue text-lg leading-tight group-hover:text-fpt-orange transition-colors">{user.full_name || 'Chưa cập nhật'}</h3>
-                      <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-gray-400 mt-1">
-                        <Shield size={12} className={user.role === 'admin' ? "text-fpt-blue" : "text-fpt-orange"} />
-                        {user.role}
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead className="bg-slate-50 text-left text-xs text-slate-500">
+                <tr>
+                  <th className="px-4 py-3 font-medium">Họ tên</th>
+                  <th className="px-4 py-3 font-medium">Email</th>
+                  <th className="px-4 py-3 font-medium">Vai trò</th>
+                  <th className="px-4 py-3 font-medium">Trạng thái</th>
+                  <th className="px-4 py-3 font-medium text-right">Hành động</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredUsers.map((user) => (
+                  <tr key={user.id} className="border-t border-slate-100 hover:bg-slate-50/60">
+                    <td className="px-4 py-3 font-medium text-slate-800">{user.full_name || 'Chưa cập nhật'}</td>
+                    <td className="px-4 py-3 text-slate-600">{user.email}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <Shield size={12} className="text-slate-400" />
+                        <select
+                          value={user.role}
+                          onChange={(e) => handleUpdateRole(user, e.target.value)}
+                          disabled={user.role === 'admin' && user.id !== currentUser?.id}
+                          className={cn(
+                            'rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700',
+                            user.role === 'admin' ? 'border-slate-700 text-slate-900' : ''
+                          )}
+                        >
+                          {roleOptions.map((option) => (
+                            <option key={option.value} value={option.value}>{option.label}</option>
+                          ))}
+                        </select>
                       </div>
-                    </div>
-                  </div>
-                  <button className="text-gray-300 hover:text-gray-600 transition-colors p-1"><MoreVertical size={20} /></button>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3 text-sm text-gray-500 font-medium">
-                    <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-gray-400"><Mail size={14} /></div>
-                    <span className="truncate">{user.email}</span>
-                  </div>
-                  <div className="flex items-center gap-3 text-sm text-gray-500 font-medium">
-                    <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-gray-400"><Check size={14} /></div>
-                    <span className="flex items-center gap-2">
-                      Trạng thái: 
-                      <span className={cn("px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-widest", user.is_active ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600")}>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={cn(
+                        'inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium',
+                        user.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+                      )}>
+                        {user.is_active ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
                         {user.is_active ? 'Đang hoạt động' : 'Đã khóa'}
                       </span>
-                    </span>
-                  </div>
-                </div>
-
-                <div className="pt-6 border-t border-gray-50 flex gap-3">
-                  <Button 
-                    onClick={() => handleToggleStatus(user)}
-                    variant={user.is_active ? "outline" : "default"}
-                    className={cn("flex-1 text-[10px] font-black border-none", user.is_active ? "bg-red-50 text-red-500 hover:bg-red-500 hover:text-white" : "bg-green-50 text-green-600 hover:bg-green-600 hover:text-white")}
-                  >
-                    {user.is_active ? 'KHÓA TÀI KHOẢN' : 'KÍCH HOẠT'}
-                  </Button>
-                  <Button className="w-12 h-12 p-0 bg-gray-50 text-gray-400 hover:bg-fpt-blue hover:text-white border-none">
-                    <Edit size={18} />
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          ))
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="inline-flex gap-2">
+                        <Button
+                          onClick={() => handleToggleStatus(user)}
+                          variant={user.is_active ? 'danger' : 'default'}
+                          size="sm"
+                          className={cn(
+                            'rounded-md border-none px-3 py-1.5 text-xs normal-case tracking-normal',
+                            user.is_active ? 'bg-red-50 text-red-700 hover:bg-red-600 hover:text-white' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white'
+                          )}
+                        >
+                          {user.is_active ? 'Khóa tài khoản' : 'Kích hoạt'}
+                        </Button>
+                        <Button
+                          onClick={() => handleDeleteUser(user)}
+                          size="sm"
+                          className="rounded-md border border-red-200 bg-white px-2.5 py-1.5 text-red-600 hover:bg-red-50"
+                          title="Xóa người dùng"
+                        >
+                          <Trash2 size={14} />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
-      </div>
+      </Card>
     </div>
   )
 }

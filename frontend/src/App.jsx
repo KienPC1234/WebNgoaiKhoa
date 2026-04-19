@@ -1,12 +1,31 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { lazy, Suspense, useEffect } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import AOS from 'aos'
 import 'aos/dist/aos.css'
 import { AdminPostDesigner } from '@/pages/Admin/PostDesigner'
+import { NotificationPermissionPrompt } from '@/components/NotificationPermissionPrompt'
+
+const MissingLazyComponent = ({ componentName }) => (
+  <div className="p-6 text-sm font-semibold text-red-600">
+    Không tải được component: {componentName}
+  </div>
+)
 
 const lazyNamed = (importer, name) =>
-  lazy(() => importer().then((module) => ({ default: module[name] })))
+  lazy(() =>
+    importer().then((module) => {
+      const resolved = module?.[name] || module?.default
+      if (resolved) {
+        return { default: resolved }
+      }
+
+      console.error(`[App] Missing lazy export: ${name}`)
+      return {
+        default: () => <MissingLazyComponent componentName={name} />,
+      }
+    })
+  )
 
 const MainLayout = lazyNamed(() => import('@/layouts/MainLayout'), 'MainLayout')
 const AdminLayout = lazyNamed(() => import('@/layouts/AdminLayout'), 'AdminLayout')
@@ -33,11 +52,17 @@ const VerifyEmail = lazyNamed(() => import('@/pages/VerifyEmail'), 'VerifyEmail'
 const AdminDashboard = lazyNamed(() => import('@/pages/Admin/Dashboard'), 'AdminDashboard')
 const AdminNhanVatCMS = lazyNamed(() => import('@/pages/Admin/NhanVatCMS'), 'AdminNhanVatCMS')
 const AdminPublications = lazyNamed(() => import('@/pages/Admin/Publications'), 'AdminPublications')
+const AdminVinhDanh = lazyNamed(() => import('@/pages/Admin/VinhDanh'), 'AdminVinhDanh')
 const AdminEvents = lazyNamed(() => import('@/pages/Admin/Events'), 'AdminEvents')
-const AdminStories = lazyNamed(() => import('@/pages/Admin/Stories'), 'AdminStories')
 const AdminSubmissions = lazyNamed(() => import('@/pages/Admin/Submissions'), 'AdminSubmissions')
 const AdminUsers = lazyNamed(() => import('@/pages/Admin/Users'), 'AdminUsers')
+const AdminAIKnowledge = lazyNamed(() => import('@/pages/Admin/AIKnowledge'), 'AdminAIKnowledge')
 const AdminCMSEditorFramework = lazyNamed(() => import('@/pages/Admin/CMSEditorFramework'), 'AdminCMSEditorFramework')
+const AdminAuthOverview = lazyNamed(() => import('@/pages/Admin/AuthOverview'), 'AuthOverview')
+
+const ADMIN_PANEL_ROLES = new Set(['admin', 'website_manager', 'submission_judge'])
+const WEBSITE_MANAGER_ROLES = new Set(['admin', 'website_manager'])
+const SUBMISSION_REVIEW_ROLES = new Set(['admin', 'submission_judge'])
 
 const PageWrapper = ({ children }) => (
   <motion.div
@@ -50,17 +75,6 @@ const PageWrapper = ({ children }) => (
   </motion.div>
 )
 
-const RouteLoading = () => (
-  <div className="relative flex min-h-[45vh] items-center justify-center overflow-hidden px-4">
-    <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(245,130,31,0.1),transparent_45%),radial-gradient(circle_at_80%_80%,rgba(26,45,108,0.1),transparent_42%)]" />
-    <div className="relative flex min-w-[260px] items-center gap-3 rounded-2xl border border-orange-100 bg-white/90 px-6 py-4 shadow-[0_24px_50px_-35px_rgba(15,23,42,0.45)] backdrop-blur">
-      <span className="h-3 w-3 animate-pulse rounded-full bg-fpt-orange" />
-      <span className="h-3 w-3 animate-pulse rounded-full bg-fpt-blue [animation-delay:120ms]" />
-      <span className="h-3 w-3 animate-pulse rounded-full bg-emerald-500 [animation-delay:240ms]" />
-      <span className="ml-2 text-xs font-black uppercase tracking-widest text-fpt-blue">Đang tải trang...</span>
-    </div>
-  </div>
-)
 
 const AnimatedRoutes = () => {
   const location = useLocation()
@@ -71,13 +85,13 @@ const AnimatedRoutes = () => {
         <Route path="/" element={<MainLayout />}>
           <Route index element={<PageWrapper><Home /></PageWrapper>} />
 
-          <Route path="nhanvat/scale" element={<PageWrapper><GioiThieuQuyMo /></PageWrapper>} />
-          <Route path="nhanvat/staff" element={<PageWrapper><GioiThieuDoiNgu /></PageWrapper>} />
+          <Route path="doingu/scale" element={<PageWrapper><GioiThieuQuyMo /></PageWrapper>} />
+            <Route path="doingu/staff" element={<PageWrapper><GioiThieuDoiNgu /></PageWrapper>} />
           <Route path="events/upcoming" element={<PageWrapper><EventsUpcoming /></PageWrapper>} />
           <Route path="stories/inspiring" element={<PageWrapper><StoriesInspiring /></PageWrapper>} />
           <Route path="stories/inspiring/:storyId" element={<PageWrapper><StoryDetail /></PageWrapper>} />
           <Route path="posts/:postId" element={<PageWrapper><PublicPostDetail /></PageWrapper>} />
-          <Route path="nhanvat/honors" element={<PageWrapper><HonorsYearly /></PageWrapper>} />
+          <Route path="doingu/honors" element={<PageWrapper><HonorsYearly /></PageWrapper>} />
 
           <Route path="phanmon/van" element={<PageWrapper><PhanMonVan /></PageWrapper>} />
           <Route path="phanmon/ktpl" element={<PageWrapper><PhanMonKTPL /></PageWrapper>} />
@@ -90,10 +104,10 @@ const AnimatedRoutes = () => {
           <Route path="gioithieu/quy-mo" element={<PageWrapper><GioiThieuQuyMo /></PageWrapper>} />
           <Route path="gioithieu/doi-ngu" element={<PageWrapper><GioiThieuDoiNgu /></PageWrapper>} />
 
-          <Route path="gioithieu/*" element={<Navigate to="/nhanvat/scale" replace />} />
+          <Route path="gioithieu/*" element={<Navigate to="/doingu/scale" replace />} />
           <Route path="sukien/*" element={<Navigate to="/events/upcoming" replace />} />
           <Route path="cau-chuyen/*" element={<Navigate to="/stories/inspiring" replace />} />
-          <Route path="nhanvat/*" element={<Navigate to="/nhanvat/scale" replace />} />
+          <Route path="doingu/*" element={<Navigate to="/doingu/scale" replace />} />
           <Route path="phanmon/*" element={<Navigate to="/phanmon/van/an-pham" replace />} />
 
           <Route path="ngoaikhoa" element={<div className="text-center py-32 text-gray-400 font-black italic uppercase tracking-widest animate-pulse">Trang Hoạt động ngoại khoá đang cập nhật...</div>} />
@@ -113,20 +127,22 @@ const AnimatedRoutes = () => {
           </ProtectedRoute>
         }>
           <Route path="dashboard" element={<PageWrapper><AdminDashboard /></PageWrapper>} />
-          <Route path="publications" element={<PageWrapper><AdminPublications /></PageWrapper>} />
-          <Route path="publications/new" element={<PageWrapper><AdminPostDesigner /></PageWrapper>} />
-          <Route path="publications/:publicationId/edit" element={<PageWrapper><AdminPostDesigner /></PageWrapper>} />
-          <Route path="events" element={<PageWrapper><AdminEvents /></PageWrapper>} />
-          <Route path="cms" element={<Navigate to="/admin/cms/stories" replace />} />
-          <Route path="cms/stories" element={<PageWrapper><AdminStories /></PageWrapper>} />
-          <Route path="cms/nhanvat" element={<PageWrapper><AdminNhanVatCMS /></PageWrapper>} />
-          <Route path="cms/submissions" element={<PageWrapper><AdminSubmissions /></PageWrapper>} />
-          <Route path="stories" element={<Navigate to="/admin/cms/stories" replace />} />
-          <Route path="nhanvat" element={<Navigate to="/admin/cms/nhanvat" replace />} />
+          <Route path="publications" element={<RoleProtectedRoute allowedRoles={WEBSITE_MANAGER_ROLES}><PageWrapper><AdminPublications /></PageWrapper></RoleProtectedRoute>} />
+          <Route path="vinh-danh" element={<RoleProtectedRoute allowedRoles={WEBSITE_MANAGER_ROLES}><PageWrapper><AdminVinhDanh /></PageWrapper></RoleProtectedRoute>} />
+          <Route path="vinh-danh/:subject" element={<RoleProtectedRoute allowedRoles={WEBSITE_MANAGER_ROLES}><PageWrapper><AdminVinhDanh /></PageWrapper></RoleProtectedRoute>} />
+          <Route path="events" element={<RoleProtectedRoute allowedRoles={WEBSITE_MANAGER_ROLES}><PageWrapper><AdminEvents /></PageWrapper></RoleProtectedRoute>} />
+          <Route path="publications/new" element={<RoleProtectedRoute allowedRoles={WEBSITE_MANAGER_ROLES}><PageWrapper><AdminPostDesigner /></PageWrapper></RoleProtectedRoute>} />
+          <Route path="publications/:publicationId/edit" element={<RoleProtectedRoute allowedRoles={WEBSITE_MANAGER_ROLES}><PageWrapper><AdminPostDesigner /></PageWrapper></RoleProtectedRoute>} />
+          <Route path="cms/stories" element={<Navigate to="/admin/publications" replace />} />
+          <Route path="cms/doingu" element={<RoleProtectedRoute allowedRoles={WEBSITE_MANAGER_ROLES}><PageWrapper><AdminNhanVatCMS /></PageWrapper></RoleProtectedRoute>} />
+          <Route path="cms/submissions" element={<RoleProtectedRoute allowedRoles={SUBMISSION_REVIEW_ROLES}><PageWrapper><AdminSubmissions /></PageWrapper></RoleProtectedRoute>} />
+          <Route path="cms-editor" element={<RoleProtectedRoute allowedRoles={WEBSITE_MANAGER_ROLES}><PageWrapper><AdminCMSEditorFramework /></PageWrapper></RoleProtectedRoute>} />
+          <Route path="stories" element={<Navigate to="/admin/publications" replace />} />
+          <Route path="doingu" element={<Navigate to="/admin/cms/doingu" replace />} />
           <Route path="submissions" element={<Navigate to="/admin/cms/submissions" replace />} />
-          <Route path="users" element={<PageWrapper><AdminUsers /></PageWrapper>} />
-          <Route path="cms-editor" element={<PageWrapper><AdminCMSEditorFramework /></PageWrapper>} />
-          <Route path="ai-knowledge" element={<div className="text-center py-20 text-gray-500 font-black italic">Tính năng AI Knowledge đang phát triển...</div>} />
+          <Route path="users" element={<RoleProtectedRoute allowedRoles={new Set(['admin'])}><PageWrapper><AdminUsers /></PageWrapper></RoleProtectedRoute>} />
+          <Route path="ai-knowledge" element={<RoleProtectedRoute allowedRoles={new Set(['admin'])}><PageWrapper><AdminAIKnowledge /></PageWrapper></RoleProtectedRoute>} />
+          <Route path="auth-overview" element={<RoleProtectedRoute allowedRoles={new Set(['admin'])}><PageWrapper><AdminAuthOverview /></PageWrapper></RoleProtectedRoute>} />
           <Route index element={<Navigate to="/admin/dashboard" replace />} />
         </Route>
       </Routes>
@@ -145,7 +161,23 @@ const ProtectedRoute = ({ children }) => {
     role = null
   }
 
-  if (!token || role !== 'admin') return <Navigate to="/login" replace />
+  if (!token || !ADMIN_PANEL_ROLES.has(role)) return <Navigate to="/login" replace />
+  return children
+}
+
+const RoleProtectedRoute = ({ children, allowedRoles }) => {
+  const token = localStorage.getItem('token')
+
+  let role = null
+  try {
+    const rawUser = localStorage.getItem('user')
+    role = rawUser ? JSON.parse(rawUser)?.role : null
+  } catch (e) {
+    role = null
+  }
+
+  if (!token) return <Navigate to="/login" replace />
+  if (!allowedRoles?.has(role)) return <Navigate to="/admin/dashboard" replace />
   return children
 }
 
@@ -153,6 +185,64 @@ const UserProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('token')
   if (!token) return <Navigate to="/login" replace />
   return children
+}
+
+const TransitionOverlay = ({ active }) => (
+  <div
+    className={`pointer-events-none fixed inset-0 z-[90] transition-all duration-200 ${active ? 'opacity-100' : 'opacity-0'}`}
+    aria-hidden="true"
+  >
+    <div className="absolute left-0 top-0 h-[2px] w-full overflow-hidden bg-transparent">
+      <motion.div
+        className="h-full w-2/5 bg-fpt-orange shadow-[0_0_8px_rgba(242,112,36,0.8)]"
+        animate={{ x: ['-42%', '158%'] }}
+        transition={{ duration: 0.62, ease: 'easeOut', repeat: Infinity }}
+      />
+    </div>
+    <div className="absolute inset-0 bg-white/5 backdrop-blur-[2px]" />
+  </div>
+)
+
+const AppShell = () => {
+  const location = useLocation()
+  const [isRouteTransitioning, setIsRouteTransitioning] = useState(false)
+
+  useEffect(() => {
+    window.requestAnimationFrame(() => {
+      try {
+        if (typeof window !== 'undefined' && window.__AI_SUPPRESS_SCROLL) {
+          // AI-initiated navigation requested to skip the automatic scroll-to-top
+          try { delete window.__AI_SUPPRESS_SCROLL } catch (e) {}
+          return
+        }
+      } catch (e) {
+        // ignore
+      }
+
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+    })
+  }, [location.pathname, location.search])
+
+  useEffect(() => {
+    setIsRouteTransitioning(true)
+    const timer = setTimeout(() => {
+      setIsRouteTransitioning(false)
+    }, 260)
+
+    return () => clearTimeout(timer)
+  }, [location.pathname])
+
+  return (
+    <div className="relative min-h-screen">
+      <div className={`transition-opacity duration-200 ${isRouteTransitioning ? 'opacity-90' : 'opacity-100'}`}>
+        <Suspense fallback={null}>
+          <AnimatedRoutes />
+        </Suspense>
+      </div>
+      <TransitionOverlay active={isRouteTransitioning} />
+      <NotificationPermissionPrompt />
+    </div>
+  )
 }
 
 function App() {
@@ -166,9 +256,7 @@ function App() {
 
   return (
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <Suspense fallback={<RouteLoading />}>
-        <AnimatedRoutes />
-      </Suspense>
+      <AppShell />
     </BrowserRouter>
   )
 }

@@ -1,17 +1,20 @@
-import { useEffect, useState } from 'react'
-import axios from 'axios'
-import { Card } from '@/components/UI'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Card } from '@/components/ui/core'
 import { Calendar, MapPin, ArrowRight, Bell, Sparkles } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 const toPlainText = (value) => (value || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
 
 export const EventsUpcoming = () => {
+    const navigate = useNavigate()
     const [events, setEvents] = useState([])
     const [loading, setLoading] = useState(false)
     const [currentMonth, setCurrentMonth] = useState(new Date())
     const [selectedDate, setSelectedDate] = useState(null)
+    const [highlightedEventId, setHighlightedEventId] = useState(null)
+    const eventCardRefs = useRef({})
 
     const monthStart = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1)
     const monthEnd = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0)
@@ -29,12 +32,12 @@ export const EventsUpcoming = () => {
         return `${y}-${m}-${day}`
     }
 
-    const eventMap = events.reduce((acc, item) => {
+    const eventMap = useMemo(() => events.reduce((acc, item) => {
         const key = formatDateKey(item.event_date)
         if (!acc[key]) acc[key] = []
         acc[key].push(item)
         return acc
-    }, {})
+    }, {}), [events])
 
     const selectedDateKey = selectedDate ? formatDateKey(selectedDate) : null
     const selectedDateEvents = selectedDateKey ? (eventMap[selectedDateKey] || []) : []
@@ -56,11 +59,19 @@ export const EventsUpcoming = () => {
     }
 
     useEffect(() => {
+        const controller = new AbortController()
+
         const fetchEvents = async () => {
             setLoading(true)
             try {
-                const res = await axios.get(`${API_URL}/public/events/upcoming`)
-                const fetched = res.data || []
+                const response = await fetch(`${API_URL}/public/events/upcoming`, {
+                    signal: controller.signal,
+                    headers: {
+                        Accept: 'application/json',
+                    },
+                })
+                if (!response.ok) throw new Error(`HTTP ${response.status}`)
+                const fetched = (await response.json()) || []
                 setEvents(fetched)
 
                 if (fetched.length > 0) {
@@ -71,12 +82,16 @@ export const EventsUpcoming = () => {
                     setSelectedDate(new Date())
                 }
             } catch (error) {
-                console.error('Error fetching upcoming events:', error)
+                if (error?.name !== 'AbortError') {
+                    console.error('Error fetching upcoming events:', error)
+                }
             } finally {
                 setLoading(false)
             }
         }
         fetchEvents()
+
+        return () => controller.abort()
     }, [])
 
     const goPrevMonth = () => {
@@ -85,6 +100,21 @@ export const EventsUpcoming = () => {
 
     const goNextMonth = () => {
         setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))
+    }
+
+    const scrollToEventCard = (eventId) => {
+        const target = eventCardRefs.current[eventId]
+        if (!target) return
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        setHighlightedEventId(eventId)
+        window.setTimeout(() => {
+            setHighlightedEventId((prev) => (prev === eventId ? null : prev))
+        }, 1400)
+    }
+
+    const openEventPost = (linkedPostId) => {
+        if (!linkedPostId) return
+        navigate(`/posts/${linkedPostId}`)
     }
 
     return (
@@ -105,7 +135,7 @@ export const EventsUpcoming = () => {
                         className="text-6xl md:text-8xl font-black italic leading-tight uppercase text-fpt-blue"
                     >
                         SỰ KIỆN <br />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-fpt-orange to-orange-500 not-italic">SẮP DIỄN RA</span>
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-fpt-orange to-orange-500 not-italic inline-block pt-1 md:pt-2 gradient-text-fix">SẮP DIỄN RA</span>
                     </motion.h1>
                     <motion.p
                         initial={{ opacity: 0 }}
@@ -119,7 +149,7 @@ export const EventsUpcoming = () => {
             </section>
 
             <div className="page-content-wrap">
-                <section className="mb-16">
+                <section className="mb-16 cv-auto">
                     <Card className="page-panel p-8">
                         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
                             <h2 className="text-2xl md:text-3xl font-black text-fpt-blue uppercase italic">Lịch sự kiện theo tháng</h2>
@@ -127,7 +157,7 @@ export const EventsUpcoming = () => {
                                 <button
                                     type="button"
                                     onClick={goPrevMonth}
-                                    className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-black text-xs uppercase tracking-widest"
+                                    className="tap-target rounded-xl bg-gray-100 px-4 py-2 text-xs font-black uppercase tracking-widest text-gray-700 hover:bg-gray-200"
                                 >
                                     Tháng trước
                                 </button>
@@ -137,7 +167,7 @@ export const EventsUpcoming = () => {
                                 <button
                                     type="button"
                                     onClick={goNextMonth}
-                                    className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-black text-xs uppercase tracking-widest"
+                                    className="tap-target rounded-xl bg-gray-100 px-4 py-2 text-xs font-black uppercase tracking-widest text-gray-700 hover:bg-gray-200"
                                 >
                                     Tháng sau
                                 </button>
@@ -170,7 +200,7 @@ export const EventsUpcoming = () => {
                                                         <button
                                                             type="button"
                                                             onClick={() => setSelectedDate(cell)}
-                                                            className={`w-full h-full rounded-xl text-left p-2 transition-all ${isSelected ? 'bg-blue-50 ring-2 ring-fpt-blue/20 shadow-sm' : 'hover:bg-gray-50'}`}
+                                                            className={`tap-target h-full w-full rounded-xl p-2 text-left transition-all ${isSelected ? 'bg-blue-50 ring-2 ring-fpt-blue/20 shadow-sm' : 'hover:bg-gray-50'}`}
                                                         >
                                                             <div className="flex items-start justify-between">
                                                                 <span className={`text-sm font-black ${isSelected ? 'text-fpt-blue' : 'text-gray-700'}`}>
@@ -183,9 +213,23 @@ export const EventsUpcoming = () => {
                                                                 )}
                                                             </div>
                                                             {hasEvents && (
-                                                                <p className="mt-2 text-[10px] text-gray-500 font-bold uppercase tracking-widest truncate">
-                                                                    {eventMap[cellKey][0].title}
-                                                                </p>
+                                                                <div
+                                                                    title={eventMap[cellKey].map((ev, idx) => `${idx + 1}. ${ev.title}`).join('\n')}
+                                                                    aria-label={`${eventMap[cellKey].length} sự kiện`}
+                                                                    className="mt-3 flex items-center gap-1.5"
+                                                                >
+                                                                    {eventMap[cellKey].slice(0, 3).map((ev, idx) => (
+                                                                        <span
+                                                                            key={`${cellKey}-${ev.id || idx}`}
+                                                                            className={`inline-block h-1.5 w-1.5 rounded-full ${isSelected ? 'bg-fpt-blue' : 'bg-fpt-orange'}`}
+                                                                        />
+                                                                    ))}
+                                                                    {eventMap[cellKey].length > 3 && (
+                                                                        <span className="text-[9px] font-black uppercase tracking-wider text-gray-500">
+                                                                            +{eventMap[cellKey].length - 3}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
                                                             )}
                                                         </button>
                                                     </td>
@@ -197,14 +241,32 @@ export const EventsUpcoming = () => {
                             </table>
                         </div>
 
-                        <div className="mt-6 p-4 rounded-2xl bg-gray-50 border border-gray-100">
+                        <div className="mt-6 p-5 rounded-2xl bg-gradient-to-r from-orange-50/70 via-white to-blue-50/70 border border-orange-100">
                             <p className="text-xs font-black uppercase tracking-widest text-gray-500 mb-3">
                                 {selectedDate ? `Sự kiện ngày ${new Date(selectedDate).toLocaleDateString('vi-VN')}` : 'Chọn một ngày trong lịch'}
                             </p>
                             {selectedDate && selectedDateEvents.length > 0 ? (
-                                <ul className="space-y-2">
+                                <ul className="space-y-2.5">
                                     {selectedDateEvents.map((ev) => (
-                                        <li key={ev.id} className="text-sm text-gray-700 font-semibold">• {ev.title}</li>
+                                        <li key={ev.id}>
+                                            <button
+                                                type="button"
+                                                onClick={() => scrollToEventCard(ev.id)}
+                                                className="tap-target w-full rounded-xl border border-white bg-white/90 px-3 py-2.5 text-left transition-all hover:border-fpt-orange/40 hover:shadow-sm"
+                                            >
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <div className="min-w-0">
+                                                        <p className="truncate text-sm font-black text-slate-700">{ev.title}</p>
+                                                        <p className="mt-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                                                            {new Date(ev.event_date).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} · {ev.location}
+                                                        </p>
+                                                    </div>
+                                                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-orange-100 text-fpt-orange">
+                                                        <ArrowRight size={14} />
+                                                    </span>
+                                                </div>
+                                            </button>
+                                        </li>
                                     ))}
                                 </ul>
                             ) : (
@@ -214,7 +276,7 @@ export const EventsUpcoming = () => {
                     </Card>
                 </section>
 
-                <div className="space-y-12">
+                <div className="space-y-12 cv-auto">
                     {loading && (
                         <div className="grid grid-cols-1 gap-8">
                             {[1, 2].map((i) => <div key={i} className="h-72 bg-white rounded-[40px] animate-pulse" />)}
@@ -224,19 +286,42 @@ export const EventsUpcoming = () => {
                     {!loading && events.map((event, i) => (
                         <motion.div
                             key={event.id}
+                            id={`event-card-${event.id}`}
+                            ref={(node) => {
+                                eventCardRefs.current[event.id] = node
+                            }}
                             initial={{ opacity: 0, x: -50 }}
                             whileInView={{ opacity: 1, x: 0 }}
                             transition={{ delay: i * 0.1 }}
                             viewport={{ once: true }}
                         >
-                            <Card className="p-0 border border-white/60 bg-white/95 backdrop-blur shadow-[0_24px_70px_-35px_rgba(15,23,42,0.35)] rounded-[36px] overflow-hidden group flex flex-col lg:flex-row gap-0 transition-all duration-500 hover:-translate-y-1">
+                            <Card
+                                onClick={() => openEventPost(event.linked_post_id)}
+                                onKeyDown={(e) => {
+                                    if (!event.linked_post_id) return
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault()
+                                        openEventPost(event.linked_post_id)
+                                    }
+                                }}
+                                role={event.linked_post_id ? 'button' : undefined}
+                                tabIndex={event.linked_post_id ? 0 : undefined}
+                                className={`group flex flex-col gap-0 overflow-hidden rounded-[36px] border bg-white shadow-[0_24px_70px_-35px_rgba(15,23,42,0.35)] transition-all duration-500 hover:-translate-y-1 lg:flex-row ${event.linked_post_id ? 'cursor-pointer border-white/60 hover:border-fpt-orange/40' : 'border-white/60'} ${highlightedEventId === event.id ? 'ring-2 ring-fpt-orange/40' : ''}`}
+                            >
                                 <div className="lg:w-2/5 relative overflow-hidden aspect-video lg:aspect-auto">
-                                    <img src={event.image_url} alt={event.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                                    <img src={event.image_url} alt={event.title} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" />
                                     <div className="absolute top-6 left-6">
                                         <span className="bg-black/65 backdrop-blur text-white text-[10px] font-black px-4 py-2 rounded-full uppercase tracking-widest border border-white/20">
                                             {event.status === 'registration' ? 'Mở đăng ký' : 'Sắp diễn ra'}
                                         </span>
                                     </div>
+                                    {event.linked_post_id && (
+                                        <div className="absolute top-6 right-6">
+                                            <span className="bg-white/95 text-fpt-blue text-[10px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest border border-blue-100">
+                                                Xem chi tiết
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="lg:w-3/5 p-10 lg:p-12 space-y-6 flex flex-col justify-center">
                                     <div className="space-y-4">
@@ -255,7 +340,15 @@ export const EventsUpcoming = () => {
                                     </div>
                                     <div className="pt-4 border-t border-gray-100 flex items-center justify-between">
                                         <span className="inline-flex items-center rounded-full bg-gray-100 text-gray-600 px-3 py-1 text-[10px] font-black uppercase tracking-widest">Tổ xã hội</span>
-                                        <button className="w-14 h-14 rounded-full bg-gray-50 flex items-center justify-center group-hover:bg-fpt-orange group-hover:text-white text-fpt-blue transition-all duration-300 shadow-inner group-hover:translate-x-2">
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.stopPropagation()
+                                                openEventPost(event.linked_post_id)
+                                            }}
+                                            disabled={!event.linked_post_id}
+                                            className={`tap-target flex h-14 w-14 items-center justify-center rounded-full text-fpt-blue shadow-inner transition-all duration-300 ${event.linked_post_id ? 'bg-gray-50 group-hover:translate-x-2 group-hover:bg-fpt-orange group-hover:text-white' : 'cursor-not-allowed bg-gray-100 text-gray-300'}`}
+                                        >
                                             <ArrowRight size={24} />
                                         </button>
                                     </div>
@@ -272,13 +365,20 @@ export const EventsUpcoming = () => {
                     )}
                 </div>
 
-                <section className="mt-24 p-12 bg-gray-100 rounded-[50px] border-4 border-dashed border-gray-200 flex flex-col items-center text-center space-y-8">
-                    <div className="w-20 h-20 bg-white rounded-[32px] shadow-xl flex items-center justify-center text-fpt-orange">
-                        <Sparkles size={40} />
+                <section className="cv-auto mt-24 rounded-[40px] border border-orange-100 bg-gradient-to-r from-orange-50 via-white to-blue-50 p-8 md:p-12">
+                    <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
+                        <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-orange-200 bg-white text-fpt-orange shadow-sm">
+                            <Sparkles size={30} />
+                        </div>
+                        <p className="mb-3 text-[11px] font-black uppercase tracking-[0.18em] text-fpt-orange">Đề xuất hoạt động</p>
+                        <h2 className="text-2xl md:text-4xl font-black text-slate-800 tracking-tight">Bạn đang ấp ủ một ý tưởng sự kiện?</h2>
+                        <p className="mt-4 max-w-2xl text-base leading-relaxed text-slate-600">
+                            Đừng ngần ngại chia sẻ với chúng tôi. Tổ Xã hội luôn sẵn sàng đồng hành để hiện thực hóa những sáng kiến sáng tạo từ học sinh, sinh viên.
+                        </p>
+                        <button type="button" className="tap-target mt-7 rounded-xl bg-fpt-blue px-7 py-3 text-xs font-black uppercase tracking-[0.12em] text-white shadow-lg transition-all hover:-translate-y-0.5 hover:bg-fpt-orange">
+                            Gửi đề xuất ngay
+                        </button>
                     </div>
-                    <h2 className="text-3xl font-black text-gray-800 uppercase italic tracking-tighter">Bạn đang ấp ủ một ý tưởng sự kiện?</h2>
-                    <p className="text-gray-500 font-medium max-w-xl text-lg">Đừng ngần ngại chia sẻ với chúng tôi. Tổ Xã hội luôn sẵn sàng hỗ trợ và hiện thực hóa những sáng kiến sáng tạo từ sinh viên.</p>
-                    <button className="bg-fpt-blue text-white px-10 py-5 font-black rounded-2xl shadow-xl hover:scale-105 transition-all text-sm tracking-widest uppercase">Gửi đề xuất ngay</button>
                 </section>
             </div>
         </div>

@@ -8,10 +8,15 @@ export interface EditorCommand {
   execute: () => EditorAction
 }
 
-export const createInsertCommand = (type: BlockType, parentId: string | null, index: number): EditorCommand => ({
+export const createInsertCommand = (
+  type: BlockType,
+  parentId: string | null,
+  index: number,
+  displayName?: string,
+): EditorCommand => ({
   id: `insert-${type}`,
-  title: `Insert ${type}`,
-  keywords: ['insert', type],
+  title: `Chèn ${displayName || type}`,
+  keywords: ['chèn', 'chen', 'insert', type, displayName || ''],
   execute: () => ({
     type: 'INSERT_BLOCK',
     payload: {

@@ -1,13 +1,16 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Card, Button, Input } from '@/components/UI'
+import { GoogleLogin } from '@react-oauth/google'
 import ReCAPTCHA from 'react-google-recaptcha'
 import { ShieldCheck } from 'lucide-react'
 import { useRef } from 'react'
 import { apiClient } from '@/lib/apiClient'
-import { toastError, toastSuccess } from '@/lib/notify'
+import { toastError, toastInfo, toastSuccess } from '@/lib/notify'
 
 const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY || ''
+const GOOGLE_OAUTH_CLIENT_ID = import.meta.env.VITE_GOOGLE_OAUTH_CLIENT_ID || ''
+const ADMIN_PANEL_ROLES = new Set(['admin', 'website_manager', 'submission_judge'])
 
 const getRecaptchaTokenSafely = async (recaptchaRef) => {
   if (!RECAPTCHA_SITE_KEY || !recaptchaRef.current) return null
@@ -32,6 +35,19 @@ export const Login = () => {
   const navigate = useNavigate()
   const recaptchaRef = useRef(null)
 
+  const completeLogin = (payload) => {
+    localStorage.setItem('token', payload.access_token)
+    localStorage.setItem('user', JSON.stringify(payload.user))
+    toastSuccess('Đăng nhập thành công.')
+
+    if (ADMIN_PANEL_ROLES.has(payload.user.role)) {
+      navigate('/admin/dashboard')
+      return
+    }
+
+    navigate('/')
+  }
+
   const handleLogin = async (e) => {
     e.preventDefault()
     setLoading(true)
@@ -46,18 +62,32 @@ export const Login = () => {
       if (recaptchaToken) formData.append('recaptcha_token', recaptchaToken)
 
       const response = await apiClient.post('/auth/login', formData)
-      localStorage.setItem('token', response.data.access_token)
-      localStorage.setItem('user', JSON.stringify(response.data.user))
-      toastSuccess('Đăng nhập thành công.')
-
-      if (response.data.user.role === 'admin') {
-        navigate('/admin/dashboard')
-        return
-      }
-
-      navigate('/')
+      completeLogin(response.data)
     } catch (err) {
       const message = err?.response?.data?.detail || 'Đăng nhập thất bại. Vui lòng thử lại.'
+      setError(message)
+      toastError(message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleGoogleLogin = async (credentialResponse) => {
+    const credential = credentialResponse?.credential
+    if (!credential) {
+      toastInfo('Không nhận được token Google. Vui lòng thử lại.')
+      return
+    }
+
+    setLoading(true)
+    setError('')
+    try {
+      const response = await apiClient.post('/auth/google', {
+        id_token: credential,
+      })
+      completeLogin(response.data)
+    } catch (err) {
+      const message = err?.response?.data?.detail || 'Đăng nhập Google thất bại.'
       setError(message)
       toastError(message)
     } finally {
@@ -105,6 +135,19 @@ export const Login = () => {
           </Button>
           {RECAPTCHA_SITE_KEY && <ReCAPTCHA ref={recaptchaRef} size="invisible" sitekey={RECAPTCHA_SITE_KEY} />}
         </form>
+
+        {GOOGLE_OAUTH_CLIENT_ID ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="h-px flex-1 bg-slate-200" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">hoặc</span>
+              <div className="h-px flex-1 bg-slate-200" />
+            </div>
+            <div className="flex justify-center">
+              <GoogleLogin onSuccess={handleGoogleLogin} onError={() => toastError('Đăng nhập Google thất bại.')} />
+            </div>
+          </div>
+        ) : null}
 
         <div className="text-center text-sm text-gray-500 space-y-2">
           <p>

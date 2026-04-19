@@ -1,0 +1,31 @@
+[
+  {
+    "id": "site-static:van-rules-2026",
+    "title": "Thể lệ Nhái Bén 2026",
+    "path": "/phanmon/van?tab=the-le",
+    "target": null,
+    "snippet": "Thể lệ sáng tác Nhái Bén 2026: sáng tác mới 100%, chủ đề Nhịp đập số - Khát vọng vươn tầm, và quy định thể loại/độ dài.",
+    "aliases": [
+      "thể lệ nhái bén",
+      "the le nhai ben",
+      "nhái bén 2026",
+      "quy định nhái bén",
+      "phân môn văn"
+    ],
+    "body": "THỂ LỆ NHÁI BÉN 2026. 1) Tác phẩm tham gia phải là sáng tác mới 100%, chưa từng công bố trên phương tiện truyền thông hoặc mạng xã hội. 2) Chủ đề năm 2026: Nhip dap so - Khat vong vuon tam. 3) Thể loại chấp nhận: Truyện ngắn tối đa 3000 chữ; Tản văn/Ghi chép tối đa 1500 chữ; Thơ tự do hoặc thơ có luật. 4) Đối tượng tham gia: toàn thể học sinh, sinh viên trong hệ thống giáo dục FPT yêu thích văn chương. Trang xem chi tiết: /phanmon/van?tab=the-le"
+  },
+  {
+    "id": "site-static:van-submit",
+    "title": "Gửi bài sáng tác Nhái Bén",
+    "path": "/phanmon/van?tab=sang-tac",
+    "target": null,
+    "snippet": "Khu vực gửi bài sáng tác Nhái Bén, theo dõi trạng thái chờ duyệt/đã duyệt.",
+    "aliases": [
+      "gửi bài nhái bén",
+      "nop bai nhai ben",
+      "submit nhai ben",
+      "sáng tác ngữ văn"
+    ],
+    "body": "Khu vực gửi bài sáng tác Nhái Bén tại /phanmon/van?tab=sang-tac. Người dùng có thể nhập tiêu đề, nội dung, thông tin tác giả và đính kèm PDF để nộp bài."
+  }
+]

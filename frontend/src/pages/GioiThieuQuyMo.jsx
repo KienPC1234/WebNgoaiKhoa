@@ -14,7 +14,7 @@ export const GioiThieuQuyMo = () => {
     const fetchScale = async () => {
       setLoading(true)
       try {
-        const res = await axios.get(`${API_URL}/public/nhanvat/scale`)
+        const res = await axios.get(`${API_URL}/public/doingu/scale`)
         setScale(res.data)
       } catch (error) {
         console.error('Error fetching social scale:', error)
@@ -49,11 +49,12 @@ export const GioiThieuQuyMo = () => {
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-6xl md:text-8xl font-black italic leading-tight uppercase"
+            className="text-6xl md:text-8xl font-black leading-tight uppercase pt-3 md:pt-6 bg-clip-text text-transparent bg-gradient-to-r from-orange-200 to-yellow-100"
+            style={{ WebkitTextFillColor: 'transparent', WebkitBackgroundClip: 'text' }}
           >
-            {scale?.hero_title || 'TỔ XÃ HỘI'} <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-200 to-yellow-100 not-italic">QUY MỌ & PHÁT TRIỂN</span>
+            QUY MÔ & PHÁT TRIỂN <br />
           </motion.h1>
+          
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

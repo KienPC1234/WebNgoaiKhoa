@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { cn } from '../../components/UI'
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table"
-import { Users, FileText, Send, PieChart, Clock, AlertCircle, ArrowUpRight, TrendingUp, Calendar, Zap } from 'lucide-react'
+import { Users, FileText, Send, AlertCircle, TrendingUp, Calendar, Zap } from 'lucide-react'
 import { cmsService } from '@/lib/cmsService'
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  BarChart, Bar, Cell, Pie, Pie as RePie, Legend
 } from 'recharts'
 
 const data = [
@@ -20,19 +20,30 @@ const data = [
 ];
 
 export const AdminDashboard = () => {
+  const navigate = useNavigate()
   const [stats, setStats] = useState({ users: 0, publications: 0, submissions: 0, pending_submissions: 0 })
   const [recentSubmissions, setRecentSubmissions] = useState([])
+  const [overview, setOverview] = useState(null)
+  const [aiOverview, setAiOverview] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [statsRes, subsRes] = await Promise.all([
+        const overviewPromise = typeof cmsService.getAdminOverview === 'function'
+          ? cmsService.getAdminOverview()
+          : Promise.resolve(null)
+
+        const [statsRes, subsRes, overviewRes, aiOverviewRes] = await Promise.all([
           cmsService.getStats(),
           cmsService.getRecentSubmissions(),
+          overviewPromise,
+          cmsService.getAIKnowledgeOverview(),
         ])
-        setStats(statsRes)
+        setStats(overviewRes?.stats || statsRes)
         setRecentSubmissions((subsRes || []).slice(0, 5))
+        setOverview(overviewRes || null)
+        setAiOverview(aiOverviewRes || null)
       } catch (err) {
         console.error('Error fetching dashboard data:', err)
       } finally {
@@ -43,23 +54,22 @@ export const AdminDashboard = () => {
   }, [])
 
   if (loading) return (
-    <div className="flex items-center justify-center h-full">
-      <div className="flex flex-col items-center gap-4">
-        <div className="w-16 h-16 border-4 border-fpt-orange border-t-transparent rounded-full animate-spin"></div>
-        <p className="font-black text-fpt-blue uppercase tracking-widest text-xs animate-pulse">Khởi tạo dữ liệu hệ thống...</p>
+    <div className="flex h-full items-center justify-center">
+      <div className="flex flex-col items-center gap-3">
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-slate-300 border-t-slate-700"></div>
+        <p className="text-sm font-medium text-slate-500">Đang tải dữ liệu quản trị...</p>
       </div>
     </div>
   )
 
   return (
-    <div className="space-y-8 animate-fadeIn pb-10">
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className="space-y-6 pb-8">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard 
           icon={Users} 
           label="Thành viên" 
           value={stats.users} 
-          color="from-blue-500 to-blue-600" 
+          tone="default"
           trend="+5.2%"
           description="Tăng trưởng tuần này"
         />
@@ -67,7 +77,7 @@ export const AdminDashboard = () => {
           icon={FileText} 
           label="Bài viết" 
           value={stats.publications} 
-          color="from-orange-500 to-orange-600" 
+          tone="default"
           trend="+2"
           description="Đã xuất bản hôm nay"
         />
@@ -75,7 +85,7 @@ export const AdminDashboard = () => {
           icon={Send} 
           label="Bài dự thi" 
           value={stats.submissions} 
-          color="from-emerald-500 to-emerald-600" 
+          tone="default"
           trend="92%"
           description="Tỉ lệ hoàn thành"
         />
@@ -83,116 +93,119 @@ export const AdminDashboard = () => {
           icon={AlertCircle} 
           label="Chờ duyệt" 
           value={stats.pending_submissions} 
-          color={stats.pending_submissions > 0 ? "from-red-500 to-red-600" : "from-gray-400 to-gray-500"} 
+          tone={stats.pending_submissions > 0 ? 'danger' : 'default'}
           trend="Cần xử lý"
           description="Yêu cầu đang đợi"
           isAlert={stats.pending_submissions > 0}
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Activity Chart */}
-        <Card className="lg:col-span-2 border-none shadow-2xl shadow-gray-100 rounded-[40px] overflow-hidden bg-white p-8">
-          <div className="flex justify-between items-center mb-8">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <Card className="lg:col-span-2 rounded-2xl border border-slate-200 shadow-sm">
+          <CardHeader className="border-b border-slate-100 pb-4">
+            <CardTitle className="flex items-center gap-2 text-base font-semibold text-slate-800">
+              <TrendingUp size={16} className="text-slate-500" /> Hiệu suất hệ thống
+            </CardTitle>
+            <p className="text-xs text-slate-500">Lượt truy cập và bài nộp trong tuần</p>
+          </CardHeader>
+          <CardContent className="pt-4">
             <div>
-              <h3 className="text-xl font-black text-fpt-blue uppercase tracking-tight italic flex items-center gap-2">
-                <TrendingUp size={20} className="text-fpt-orange" /> Hiệu suất hệ thống
-              </h3>
-              <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">Lượt truy cập & Bài nộp theo tuần</p>
+              <div className="mb-4 flex gap-4 text-xs text-slate-500">
+                <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-slate-400" />Views</span>
+                <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-slate-700" />Submissions</span>
+              </div>
             </div>
-            <div className="flex gap-2">
-              <span className="flex items-center gap-1.5 text-[10px] font-black text-blue-500 uppercase tracking-widest"><div className="w-2 h-2 rounded-full bg-blue-500"></div> Views</span>
-              <span className="flex items-center gap-1.5 text-[10px] font-black text-orange-500 uppercase tracking-widest"><div className="w-2 h-2 rounded-full bg-orange-500"></div> Subs</span>
-            </div>
-          </div>
-          <div className="h-[300px] w-full min-w-0">
-            <ResponsiveContainer width="100%" height={300} minWidth={0} minHeight={280}>
+            <div className="h-[280px] w-full min-w-0">
+              <ResponsiveContainer width="100%" height={280} minWidth={0} minHeight={240}>
               <AreaChart data={data}>
                 <defs>
                   <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/>
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#475569" stopOpacity={0.15}/>
+                    <stop offset="95%" stopColor="#475569" stopOpacity={0}/>
                   </linearGradient>
                   <linearGradient id="colorSubs" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#f97316" stopOpacity={0.1}/>
-                    <stop offset="95%" stopColor="#f97316" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#0f172a" stopOpacity={0.18}/>
+                    <stop offset="95%" stopColor="#0f172a" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 'bold', fill: '#94a3b8'}} dy={10} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 11, fill: '#64748b'}} dy={8} />
                 <YAxis hide />
                 <Tooltip 
-                  contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', padding: '12px'}}
-                  itemStyle={{fontSize: '12px', fontWeight: '900', textTransform: 'uppercase'}}
+                  contentStyle={{borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 6px 16px -8px rgb(15 23 42 / 0.3)', padding: '10px'}}
+                  itemStyle={{fontSize: '12px', fontWeight: '600'}}
                 />
-                <Area type="monotone" dataKey="views" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorViews)" />
-                <Area type="monotone" dataKey="submissions" stroke="#f97316" strokeWidth={3} fillOpacity={1} fill="url(#colorSubs)" />
+                <Area type="monotone" dataKey="views" stroke="#475569" strokeWidth={2.2} fillOpacity={1} fill="url(#colorViews)" />
+                <Area type="monotone" dataKey="submissions" stroke="#0f172a" strokeWidth={2.2} fillOpacity={1} fill="url(#colorSubs)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
+          </CardContent>
         </Card>
 
-        {/* AI System Status */}
-        <Card className="border-none shadow-2xl shadow-gray-100 rounded-[40px] bg-fpt-blue text-white overflow-hidden relative group">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-fpt-orange opacity-10 blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-          <div className="p-8 h-full flex flex-col justify-between relative z-10">
-            <div className="space-y-6">
-              <div className="flex justify-between items-center">
-                <div className="p-3 bg-white/10 rounded-2xl backdrop-blur-md border border-white/20">
-                  <Zap size={24} className="text-fpt-orange" />
-                </div>
-                <div className="text-right">
-                  <div className="flex items-center gap-2 justify-end">
-                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-green-400">Online</span>
-                  </div>
-                  <p className="text-[10px] font-bold opacity-60 uppercase tracking-widest mt-1">AI Engine Status</p>
-                </div>
+        <Card className="rounded-2xl border border-slate-200 shadow-sm">
+          <CardHeader className="space-y-2">
+            <CardTitle className="flex items-center gap-2 text-base font-semibold text-slate-800">
+              <Zap size={16} className="text-slate-500" /> Trạng thái AI
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-slate-700">AI Knowledge Core</span>
+                <span className={cn(
+                  'rounded-full px-2 py-1 text-xs font-medium',
+                  overview?.ai_status === 'ok' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                )}>
+                  {overview?.ai_status === 'ok' ? 'Online' : 'Degraded'}
+                </span>
               </div>
-              
-              <div>
-                <h3 className="text-3xl font-black italic">gpt-oss:120b</h3>
-                <p className="text-sm font-medium opacity-70 mt-2 leading-relaxed">Hệ thống AI đang hoạt động với độ trễ 142ms. Sẵn sàng xử lý các yêu cầu ngoại khóa.</p>
-              </div>
+              <p className="mt-2 text-sm text-slate-600">
+                {(aiOverview?.documents_total ?? overview?.ai_documents ?? 0)} vector docs · core {(aiOverview?.documents_core ?? 0)} · static {(aiOverview?.source_counts?.site_static ?? 0)} · uploaded {(aiOverview?.documents_uploaded ?? 0)} chunks from {(aiOverview?.knowledge_assets ?? overview?.knowledge_assets ?? 0)} files
+              </p>
             </div>
 
-            <div className="space-y-4">
-              <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
-                <div className="h-full bg-fpt-orange w-3/4 rounded-full shadow-[0_0_10px_rgba(242,112,36,0.8)]"></div>
-              </div>
-              <div className="flex justify-between text-[10px] font-black uppercase tracking-widest opacity-60">
-                <span>Memory usage</span>
-                <span>75% / 128GB</span>
-              </div>
-              <button className="w-full py-4 bg-white/10 hover:bg-white/20 transition-all rounded-2xl border border-white/10 font-black text-xs uppercase tracking-[0.2em]">Cấu hình AI Core</button>
+            <div className="grid grid-cols-3 gap-3">
+              <MiniInfo label="Knowledge files" value={String(aiOverview?.knowledge_assets ?? overview?.knowledge_assets ?? 0)} />
+              <MiniInfo label="Uploaded chunks" value={String(aiOverview?.documents_uploaded ?? 0)} />
+              <MiniInfo label="Pending" value={String(stats.pending_submissions || 0)} />
             </div>
-          </div>
+
+            <button
+              onClick={() => navigate('/admin/ai-knowledge')}
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100"
+            >
+              Mở AI Knowledge
+            </button>
+          </CardContent>
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Recent Submissions */}
-        <Card className="lg:col-span-2 overflow-hidden border-none shadow-2xl shadow-gray-100 rounded-[40px] bg-white">
-          <CardHeader className="flex flex-row justify-between items-center bg-white border-b border-gray-50 p-8 space-y-0">
-            <CardTitle className="font-black text-fpt-blue uppercase tracking-tight flex items-center gap-3 text-xl italic">
-              <div className="p-2 bg-orange-50 rounded-xl text-fpt-orange"><Clock size={20} /></div> Bài thi mới nhất
-            </CardTitle>
-            <button className="text-[10px] font-black text-fpt-blue hover:text-fpt-orange transition-all bg-gray-50 px-4 py-2 rounded-full uppercase tracking-widest border border-gray-100 shadow-sm">Xem tất cả</button>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <Card className="lg:col-span-2 rounded-2xl border border-slate-200 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between border-b border-slate-100 pb-3">
+            <CardTitle className="text-base font-semibold text-slate-800">Bài dự thi mới nhất</CardTitle>
+            <button
+              onClick={() => navigate('/admin/submissions')}
+              className="rounded-md border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+            >
+              Xem tất cả
+            </button>
           </CardHeader>
           <CardContent className="p-0">
             <Table>
-              <TableHeader className="bg-gray-50/30">
-                <TableRow className="border-none">
-                  <TableHead className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Sinh viên</TableHead>
-                  <TableHead className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Tác phẩm</TableHead>
-                  <TableHead className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Trạng thái</TableHead>
-                  <TableHead className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Ngày nộp</TableHead>
+              <TableHeader className="bg-slate-50/70">
+                <TableRow>
+                  <TableHead className="px-6 py-3 text-xs text-slate-500">Sinh viên</TableHead>
+                  <TableHead className="px-6 py-3 text-xs text-slate-500">Tác phẩm</TableHead>
+                  <TableHead className="px-6 py-3 text-xs text-slate-500">Trạng thái</TableHead>
+                  <TableHead className="px-6 py-3 text-xs text-slate-500">Ngày nộp</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {recentSubmissions.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="px-8 py-20 text-center text-gray-400 italic font-medium">Hệ thống đang chờ bài nộp đầu tiên...</TableCell>
+                    <TableCell colSpan={4} className="px-6 py-12 text-center text-sm text-slate-500">Chưa có bài nộp mới.</TableCell>
                   </TableRow>
                 ) : (
                   recentSubmissions.map((sub) => {
@@ -200,30 +213,26 @@ export const AdminDashboard = () => {
                     const studentEmail = sub.student_email || 'Không có email'
 
                     return (
-                    <TableRow key={sub.id} className="hover:bg-orange-50/20 transition-all group border-b border-gray-50/50 cursor-pointer">
-                      <TableCell className="px-8 py-5">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 font-black text-xs border-2 border-white shadow-sm">{studentName.charAt(0)}</div>
-                          <div>
-                            <p className="font-black text-gray-800 text-sm leading-tight group-hover:text-fpt-orange transition-colors">{studentName}</p>
-                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter mt-0.5">{studentEmail}</p>
+                      <TableRow key={sub.id} className="hover:bg-slate-50/80">
+                        <TableCell className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600">
+                              {studentName.charAt(0)}
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-slate-800">{studentName}</p>
+                              <p className="text-xs text-slate-500">{studentEmail}</p>
+                            </div>
                           </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="px-8 py-5 font-bold text-gray-600 text-sm">{sub.title}</TableCell>
-                      <TableCell className="px-8 py-5">
-                        <span className={`text-[9px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest shadow-sm ${
-                          sub.status === 'approved' ? 'bg-green-100 text-green-600' :
-                          sub.status === 'rejected' ? 'bg-red-100 text-red-600' :
-                          'bg-orange-100 text-fpt-orange'
-                        }`}>
-                          {sub.status === 'approved' ? 'Đã duyệt' : sub.status === 'rejected' ? 'Từ chối' : 'Chờ duyệt'}
-                        </span>
-                      </TableCell>
-                      <TableCell className="px-8 py-5 text-xs font-black text-gray-400 uppercase tracking-widest">
-                        {new Date(sub.created_at).toLocaleDateString('vi-VN')}
-                      </TableCell>
-                    </TableRow>
+                        </TableCell>
+                        <TableCell className="px-6 py-4 text-sm text-slate-700">{sub.title}</TableCell>
+                        <TableCell className="px-6 py-4">
+                          <StatusPill status={sub.status} />
+                        </TableCell>
+                        <TableCell className="px-6 py-4 text-sm text-slate-500">
+                          {new Date(sub.created_at).toLocaleDateString('vi-VN')}
+                        </TableCell>
+                      </TableRow>
                     )
                   })
                 )}
@@ -232,64 +241,83 @@ export const AdminDashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Quick Actions Card */}
-        <Card className="p-8 border-none shadow-2xl shadow-gray-100 rounded-[40px] bg-white flex flex-col justify-between">
-          <div>
-            <h3 className="text-xl font-black text-fpt-blue uppercase tracking-tight italic mb-8 border-b-2 border-gray-50 pb-4 flex items-center gap-3">
-              <div className="p-2 bg-blue-50 rounded-xl text-fpt-blue"><TrendingUp size={20} /></div> Hoạt động nhanh
-            </h3>
-            <div className="space-y-4">
-              <ActionButton icon={FileText} label="Viết học liệu mới" color="hover:bg-fpt-orange" />
-              <ActionButton icon={Send} label="Phê duyệt bài nộp" color="hover:bg-fpt-blue" />
-              <ActionButton icon={Users} label="Cấp quyền quản trị" color="hover:bg-emerald-500" />
-              <ActionButton icon={Calendar} label="Lên lịch sự kiện" color="hover:bg-purple-500" />
-            </div>
-          </div>
-          
-          <div className="mt-8 p-6 bg-gradient-to-br from-orange-50 to-orange-100 rounded-[32px] border border-orange-200/50">
-            <h4 className="text-[10px] font-black text-fpt-orange uppercase tracking-[0.2em] mb-2 flex items-center gap-2"><PieChart size={14} /> Tóm tắt</h4>
-            <p className="text-xs font-bold text-gray-600 leading-relaxed italic">"Hệ thống ghi nhận sự gia tăng 20% bài dự thi trong 24h qua."</p>
-          </div>
+        <Card className="rounded-2xl border border-slate-200 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-base font-semibold text-slate-800">Thao tác nhanh</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <ActionButton onClick={() => navigate('/admin/publications/new')} icon={FileText} label="Viết học liệu mới" />
+            <ActionButton onClick={() => navigate('/admin/submissions')} icon={Send} label="Phê duyệt bài nộp" />
+            <ActionButton onClick={() => navigate('/admin/users')} icon={Users} label="Quản lý người dùng" />
+            <ActionButton onClick={() => navigate('/admin/events')} icon={Calendar} label="Lên lịch sự kiện" />
+            <ActionButton onClick={() => navigate('/admin/ai-knowledge')} icon={Zap} label="Quản trị AI Knowledge" />
+          </CardContent>
         </Card>
       </div>
     </div>
   )
 }
 
-const StatCard = ({ icon: Icon, label, value, color, trend, description, isAlert }) => (
-  <Card className={cn(
-    "p-0 border-none shadow-2xl shadow-gray-100 rounded-[40px] group relative overflow-hidden transition-all duration-500 hover:-translate-y-2 bg-white",
-    isAlert ? 'ring-2 ring-red-100' : ''
-  )}>
-    <div className="p-8">
-      <div className="flex justify-between items-start relative z-10">
-        <div className={cn("p-4 rounded-3xl text-white shadow-xl transition-transform duration-500 group-hover:rotate-12 bg-gradient-to-br", color)}>
-          <Icon size={28} />
+const StatCard = ({ icon: Icon, label, value, trend, description, isAlert, tone = 'default' }) => (
+  <Card className={cn('rounded-2xl border shadow-sm', tone === 'danger' ? 'border-red-200' : 'border-slate-200')}>
+    <CardContent className="p-4">
+      <div className="flex items-start justify-between">
+        <div className={cn(
+          'rounded-lg p-2',
+          tone === 'danger' ? 'bg-red-50 text-red-600' : 'bg-slate-100 text-slate-700'
+        )}>
+          <Icon size={18} />
         </div>
         <div className="text-right">
-          <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">{label}</p>
-          <h3 className="text-5xl font-black text-fpt-blue tracking-tighter">{value}</h3>
+          <p className="text-xs font-medium text-slate-500">{label}</p>
+          <h3 className="text-2xl font-semibold text-slate-900">{value}</h3>
         </div>
       </div>
-      <div className="mt-8 space-y-1 relative z-10">
-        <div className="flex items-center gap-2">
-          <span className={cn("text-xs font-black px-2 py-0.5 rounded-lg", isAlert ? "bg-red-50 text-red-500" : "bg-green-50 text-green-600")}>{trend}</span>
-          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{description}</span>
-        </div>
+      <div className="mt-4 flex items-center gap-2 text-xs">
+        <span className={cn(
+          'rounded px-1.5 py-0.5 font-medium',
+          isAlert ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'
+        )}>
+          {trend}
+        </span>
+        <span className="text-slate-500">{description}</span>
       </div>
-    </div>
-    <Icon className="absolute -bottom-10 -left-10 text-gray-50/50 group-hover:text-gray-100/80 transition-all duration-700 group-hover:scale-110" size={180} strokeWidth={1} />
+    </CardContent>
   </Card>
 )
 
-const ActionButton = ({ icon: Icon, label, color }) => (
-  <button className={cn(
-    "flex items-center gap-4 w-full p-4 rounded-3xl bg-gray-50 transition-all duration-300 group border border-transparent hover:border-white hover:shadow-xl hover:text-white",
-    color
-  )}>
-    <div className="p-3 bg-white rounded-2xl text-gray-400 group-hover:bg-white/20 group-hover:text-white shadow-sm transition-colors">
-      <Icon size={20} />
-    </div>
-    <span className="text-sm font-black uppercase tracking-widest">{label}</span>
+const ActionButton = ({ icon: Icon, label, onClick }) => (
+  <button
+    onClick={onClick}
+    className="flex w-full items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+  >
+    <Icon size={16} className="text-slate-500" />
+    <span>{label}</span>
   </button>
+)
+
+const StatusPill = ({ status }) => {
+  const map = {
+    approved: 'bg-emerald-100 text-emerald-700',
+    rejected: 'bg-red-100 text-red-700',
+    pending: 'bg-amber-100 text-amber-700',
+  }
+  const labelMap = {
+    approved: 'Đã duyệt',
+    rejected: 'Từ chối',
+    pending: 'Chờ duyệt',
+  }
+
+  return (
+    <span className={cn('rounded-full px-2 py-1 text-xs font-medium', map[status] || 'bg-slate-100 text-slate-700')}>
+      {labelMap[status] || status}
+    </span>
+  )
+}
+
+const MiniInfo = ({ label, value }) => (
+  <div className="rounded-lg border border-slate-200 bg-white px-3 py-3 flex flex-col justify-between min-h-[56px]">
+    <div className="text-xs text-slate-500 leading-tight">{label}</div>
+    <div className="text-sm font-semibold text-slate-800 leading-none">{value}</div>
+  </div>
 )

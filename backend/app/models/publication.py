@@ -1,4 +1,4 @@
-from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.sql import func
 from app.db.session import Base
 import enum
@@ -44,6 +44,7 @@ class Event(Base):
     location = Column(String(255), nullable=False)
     image_url = Column(String(500), nullable=True)
     status = Column(String(50), nullable=False, default="upcoming")
+    linked_post_id = Column(Integer, ForeignKey("publications.id"), nullable=True)
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -102,10 +103,23 @@ class Submission(Base):
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(255), nullable=False)
     content = Column(Text, nullable=False)
+    attachment_url = Column(String(500), nullable=True)
     student_name = Column(String(255))
     student_email = Column(String(255))
     status = Column(String(50), default="pending") # pending, approved, rejected
     votes = Column(Integer, default=0)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class SubmissionVote(Base):
+    __tablename__ = "submission_votes"
+    __table_args__ = (
+        UniqueConstraint("submission_id", "user_id", name="uq_submission_vote_submission_user"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    submission_id = Column(Integer, ForeignKey("submissions.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 class Comment(Base):
