@@ -398,6 +398,13 @@
   line-height: 1.7;
 }
 
+/* Per Google guidance: if the badge is hidden, include visible branding text
+   and use visibility:hidden rather than display:none so the element remains
+   detectable by the reCAPTCHA script. */
+.grecaptcha-badge {
+  visibility: hidden !important;
+}
+
 .cms-ckeditor-content p,
 .cms-ckeditor-content ul,
 .cms-ckeditor-content ol,

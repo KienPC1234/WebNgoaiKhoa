@@ -1,13 +1,16 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Card, Button, Input } from '@/components/UI'
+import { GoogleLogin } from '@react-oauth/google'
 import ReCAPTCHA from 'react-google-recaptcha'
 import { ShieldCheck } from 'lucide-react'
 import { useRef } from 'react'
 import { apiClient } from '@/lib/apiClient'
-import { toastError, toastSuccess } from '@/lib/notify'
+import { toastError, toastInfo, toastSuccess } from '@/lib/notify'
 
 const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY || ''
+const GOOGLE_OAUTH_CLIENT_ID = import.meta.env.VITE_GOOGLE_OAUTH_CLIENT_ID || ''
+const ADMIN_PANEL_ROLES = new Set(['admin', 'website_manager', 'submission_judge'])
 
 const getRecaptchaTokenSafely = async (recaptchaRef) => {
   if (!RECAPTCHA_SITE_KEY || !recaptchaRef.current) return null
@@ -25,6 +28,7 @@ const getRecaptchaTokenSafely = async (recaptchaRef) => {
 }
 
 export const Register = () => {
+  const navigate = useNavigate()
   const [form, setForm] = useState({
     full_name: '',
     email: '',
@@ -35,6 +39,19 @@ export const Register = () => {
   const [success, setSuccess] = useState('')
   const [loading, setLoading] = useState(false)
   const recaptchaRef = useRef(null)
+
+  const completeLogin = (payload) => {
+    localStorage.setItem('token', payload.access_token)
+    localStorage.setItem('user', JSON.stringify(payload.user))
+    toastSuccess('Đăng nhập bằng Google thành công.')
+
+    if (ADMIN_PANEL_ROLES.has(payload.user.role)) {
+      navigate('/admin/dashboard')
+      return
+    }
+
+    navigate('/')
+  }
 
   const submit = async (e) => {
     e.preventDefault()
@@ -59,9 +76,37 @@ export const Register = () => {
       })
       setSuccess('Đăng ký thành công. Vui lòng nhập OTP đã gửi qua email để xác minh tài khoản.')
       toastSuccess('Đăng ký thành công. Vui lòng kiểm tra OTP trong email.')
+      const nextEmail = form.email
       setForm({ full_name: '', email: '', password: '', confirmPassword: '' })
+      navigate(`/verify-email?email=${encodeURIComponent(nextEmail)}`)
     } catch (err) {
       const message = err?.response?.data?.detail || 'Đăng ký thất bại.'
+      setError(message)
+      toastError(message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleGoogleRegister = async (credentialResponse) => {
+    const credential = credentialResponse?.credential
+    if (!credential) {
+      toastInfo('Không nhận được token Google. Vui lòng thử lại.')
+      return
+    }
+
+    setLoading(true)
+    setError('')
+    setSuccess('')
+
+    try {
+      const response = await apiClient.post('/auth/google', {
+        id_token: credential,
+        full_name: form.full_name || undefined,
+      })
+      completeLogin(response.data)
+    } catch (err) {
+      const message = err?.response?.data?.detail || 'Đăng ký/đăng nhập Google thất bại.'
       setError(message)
       toastError(message)
     } finally {
@@ -94,6 +139,23 @@ export const Register = () => {
           </Button>
           {RECAPTCHA_SITE_KEY && <ReCAPTCHA ref={recaptchaRef} size="invisible" sitekey={RECAPTCHA_SITE_KEY} />}
         </form>
+
+        <p className="text-center text-xs text-gray-400 mt-2">
+          Trang này được bảo vệ bởi reCAPTCHA. <a href="https://policies.google.com/privacy" target="_blank" rel="noreferrer" className="underline">Chính sách bảo mật</a> và <a href="https://policies.google.com/terms" target="_blank" rel="noreferrer" className="underline">Điều khoản</a> của Google áp dụng.
+        </p>
+
+        {GOOGLE_OAUTH_CLIENT_ID ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="h-px flex-1 bg-slate-200" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">hoặc</span>
+              <div className="h-px flex-1 bg-slate-200" />
+            </div>
+            <div className="flex justify-center">
+              <GoogleLogin onSuccess={handleGoogleRegister} onError={() => toastError('Đăng ký Google thất bại.')} />
+            </div>
+          </div>
+        ) : null}
 
         <p className="text-center text-sm text-gray-500">
           Đã có tài khoản? <Link to="/login" className="text-fpt-blue font-black">Đăng nhập</Link>
