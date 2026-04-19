@@ -606,6 +606,14 @@
   box-shadow: none;
 }
 
+/* Fullscreen chat safe-area padding */
+.ai-chat-fullscreen {
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
 .ai-chat-table th,
 .ai-chat-table td {
   border: 1px solid rgba(148, 163, 184, 0.3);
