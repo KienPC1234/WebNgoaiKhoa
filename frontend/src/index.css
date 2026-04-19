@@ -656,5 +656,7 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: geometricPrecision;
+  /* Prevent inherited `text-transform: uppercase` from altering glyph composition */
+  text-transform: none !important;
 }
 

@@ -57,7 +57,7 @@ export const StoriesInspiring = () => {
                         className="text-6xl md:text-8xl font-black italic leading-tight uppercase text-fpt-blue"
                     >
                         CÂU CHUYỆN <br />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-fpt-orange to-orange-500 not-italic gradient-text-fix">TRUYỀN CẢM HỨNG</span>
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-fpt-orange to-orange-500 not-italic inline-block pt-1 md:pt-2 gradient-text-fix">TRUYỀN CẢM HỨNG</span>
                     </motion.h1>
                     <motion.p
                         initial={{ opacity: 0 }}

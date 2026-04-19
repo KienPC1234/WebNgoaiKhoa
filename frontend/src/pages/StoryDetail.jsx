@@ -80,28 +80,11 @@ export const StoryDetail = () => {
       </section>
 
       <div className="mx-auto mt-8 max-w-5xl space-y-8 px-4 cv-auto">
-        {story.image_url && (
-          <Card className="overflow-hidden rounded-[28px] border-none shadow-xl">
-            <img src={story.image_url} alt={story.title} loading="lazy" decoding="async" className="h-[360px] w-full object-cover" />
-          </Card>
-        )}
-
-        {story.snippet && (
-          <Card className="p-6 rounded-3xl border-none shadow-lg bg-red-50 text-red-700 font-semibold italic">
-            <div dangerouslySetInnerHTML={{ __html: story.snippet }} />
-          </Card>
-        )}
-
         {document?.blocks?.length > 0 && (
           <Card className="p-6 rounded-3xl border-none shadow-lg space-y-4">
-            <h3 className="text-lg font-black text-red-500 uppercase tracking-widest">Bố cục câu chuyện</h3>
-            <PublicDocumentView document={document} />
+            <PublicDocumentView document={document} context={{ story }} />
           </Card>
         )}
-
-        <Card className="p-8 rounded-3xl border-none shadow-lg prose prose-slate max-w-none">
-          <div dangerouslySetInnerHTML={{ __html: story.content || '' }} />
-        </Card>
       </div>
     </div>
   )

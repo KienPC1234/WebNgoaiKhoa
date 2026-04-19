@@ -821,7 +821,7 @@ export const PhanMonVan = () => {
                     </div>
                     <div className="flex gap-6 items-start group">
                       <div className="bg-orange-50 text-fpt-orange w-12 h-12 rounded-2xl flex items-center justify-center font-black text-xl flex-shrink-0 group-hover:bg-fpt-orange group-hover:text-white transition-colors shadow-sm">02</div>
-                      <p className="pt-2">Chủ đề xuyên suốt năm nay: <span className="text-transparent bg-clip-text bg-gradient-to-r from-fpt-orange to-red-500 font-black text-2xl ml-2 gradient-text-fix">"Nhịp đập số - Khát vọng vươn tầm"</span>.</p>
+                      <p className="pt-2">Chủ đề xuyên suốt năm nay: <span className="text-transparent bg-clip-text bg-gradient-to-r from-fpt-orange to-red-500 font-black text-2xl ml-2 inline-block gradient-text-fix pt-3 md:pt-6">"NHỊP ĐẬP SỐ - KHÁT VỌNG VƯƠN TẦM"</span>.</p>
                     </div>
                     <div className="flex gap-6 items-start group">
                       <div className="bg-orange-50 text-fpt-orange w-12 h-12 rounded-2xl flex items-center justify-center font-black text-xl flex-shrink-0 group-hover:bg-fpt-orange group-hover:text-white transition-colors shadow-sm">03</div>

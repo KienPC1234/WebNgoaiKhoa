@@ -52,6 +52,7 @@ const VerifyEmail = lazyNamed(() => import('@/pages/VerifyEmail'), 'VerifyEmail'
 const AdminDashboard = lazyNamed(() => import('@/pages/Admin/Dashboard'), 'AdminDashboard')
 const AdminNhanVatCMS = lazyNamed(() => import('@/pages/Admin/NhanVatCMS'), 'AdminNhanVatCMS')
 const AdminPublications = lazyNamed(() => import('@/pages/Admin/Publications'), 'AdminPublications')
+const AdminVinhDanh = lazyNamed(() => import('@/pages/Admin/VinhDanh'), 'AdminVinhDanh')
 const AdminEvents = lazyNamed(() => import('@/pages/Admin/Events'), 'AdminEvents')
 const AdminSubmissions = lazyNamed(() => import('@/pages/Admin/Submissions'), 'AdminSubmissions')
 const AdminUsers = lazyNamed(() => import('@/pages/Admin/Users'), 'AdminUsers')
@@ -127,6 +128,8 @@ const AnimatedRoutes = () => {
         }>
           <Route path="dashboard" element={<PageWrapper><AdminDashboard /></PageWrapper>} />
           <Route path="publications" element={<RoleProtectedRoute allowedRoles={WEBSITE_MANAGER_ROLES}><PageWrapper><AdminPublications /></PageWrapper></RoleProtectedRoute>} />
+          <Route path="vinh-danh" element={<RoleProtectedRoute allowedRoles={WEBSITE_MANAGER_ROLES}><PageWrapper><AdminVinhDanh /></PageWrapper></RoleProtectedRoute>} />
+          <Route path="vinh-danh/:subject" element={<RoleProtectedRoute allowedRoles={WEBSITE_MANAGER_ROLES}><PageWrapper><AdminVinhDanh /></PageWrapper></RoleProtectedRoute>} />
           <Route path="events" element={<RoleProtectedRoute allowedRoles={WEBSITE_MANAGER_ROLES}><PageWrapper><AdminEvents /></PageWrapper></RoleProtectedRoute>} />
           <Route path="publications/new" element={<RoleProtectedRoute allowedRoles={WEBSITE_MANAGER_ROLES}><PageWrapper><AdminPostDesigner /></PageWrapper></RoleProtectedRoute>} />
           <Route path="publications/:publicationId/edit" element={<RoleProtectedRoute allowedRoles={WEBSITE_MANAGER_ROLES}><PageWrapper><AdminPostDesigner /></PageWrapper></RoleProtectedRoute>} />

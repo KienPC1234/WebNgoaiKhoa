@@ -47,7 +47,7 @@ export const PhanMonKTPL = () => {
             </div>
             <h1 className="text-6xl md:text-8xl font-black italic leading-tight drop-shadow-xl">
               KINH TẾ <br/>
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-200 not-italic gradient-text-fix">PHÁP LUẬT</span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-200 not-italic inline-block pt-1 md:pt-2 gradient-text-fix">PHÁP LUẬT</span>
             </h1>
             <p className="text-xl text-blue-100 max-w-xl font-medium leading-relaxed">
               Kiến tạo nền tảng tư duy kinh tế và ý thức pháp luật vững vàng cho thế hệ công dân số FPT trong kỷ nguyên công nghệ.

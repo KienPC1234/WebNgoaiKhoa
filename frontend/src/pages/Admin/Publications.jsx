@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Card, Button } from '@/components/UI'
-import { Plus, Trash2, Edit, Search, Calendar, BookHeart, Mail, BellRing, RefreshCw } from 'lucide-react'
+import { Plus, Trash2, Edit, Search, Calendar, BookHeart, Mail, BellRing, RefreshCw, Award } from 'lucide-react'
 import { cmsService } from '@/lib/cmsService'
 import { confirmAction, showApiError, toastSuccess } from '@/lib/notify'
 
@@ -25,7 +25,7 @@ const toSubjectLabel = (subject) => {
 
 const mapPublication = (item) => ({
   id: item.id,
-  entityType: 'publication',
+  entityType: item.content_type === 'vinh-danh' ? 'vinh-danh' : 'publication',
   title: item.title,
   content: item.content,
   image_url: item.image_url,
@@ -69,7 +69,13 @@ export const AdminPublications = () => {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
-  const [entityFilter, setEntityFilter] = useState('publication')
+  const [entityFilter, setEntityFilter] = useState(() => {
+    try {
+      return searchParams.get('entity') || 'publication'
+    } catch (e) {
+      return 'publication'
+    }
+  })
   
   const subjectFilter = searchParams.get('subject') || 'all'
 
@@ -121,6 +127,16 @@ export const AdminPublications = () => {
   useEffect(() => {
     fetchItems()
   }, [subjectFilter]) // Re-fetch when subject filter changes
+
+  // Sync entity filter from query param when the URL changes (so links like ?entity=story work)
+  useEffect(() => {
+    try {
+      const qEntity = searchParams.get('entity')
+      if (qEntity) setEntityFilter(qEntity)
+    } catch (e) {
+      // ignore
+    }
+  }, [searchParams])
 
   useEffect(() => {
     const fetchPushConfig = async () => {
@@ -180,13 +196,25 @@ export const AdminPublications = () => {
   }, [items, searchTerm, entityFilter, subjectFilter])
 
   const subjectBuckets = useMemo(() => {
-    if (entityFilter !== 'publication' || subjectFilter !== 'all') return []
+    if ((entityFilter !== 'publication' && entityFilter !== 'vinh-danh') || subjectFilter !== 'all') return []
 
-    return SUBJECT_CONFIG.map((config) => ({
+    // Build buckets for the selected entity type (publication or vinh-danh)
+    const publicationBuckets = SUBJECT_CONFIG.map((config) => ({
       ...config,
-      items: filteredItems.filter((item) => item.entityType === 'publication' && item.subject === config.value),
+      items: items.filter((item) => item.entityType === entityFilter && item.subject === config.value),
     })).filter((bucket) => bucket.items.length > 0)
-  }, [entityFilter, subjectFilter, filteredItems])
+
+    // When viewing publications, also show a combined "Câu chuyện" bucket containing all stories
+    const buckets = [...publicationBuckets]
+    if (entityFilter === 'publication') {
+      const storyItems = items.filter((it) => it.entityType === 'story')
+      if (storyItems.length > 0) {
+        buckets.push({ value: 'story', label: 'Câu chuyện', items: storyItems })
+      }
+    }
+
+    return buckets
+  }, [entityFilter, subjectFilter, items])
 
   const handleSendNewsletter = async () => {
     if (!newsletterForm.title.trim() || !newsletterForm.body.trim()) return
@@ -242,11 +270,12 @@ export const AdminPublications = () => {
             >
               <option value="all">Tất cả loại</option>
               <option value="publication">Bài viết</option>
+              <option value="vinh-danh">Vinh danh</option>
               <option value="story">Câu chuyện</option>
               <option value="event">Sự kiện</option>
             </select>
 
-            {entityFilter === 'publication' && (
+            {(entityFilter === 'publication' || entityFilter === 'vinh-danh') && (
               <select
                 value={subjectFilter}
                 onChange={(e) => updateSubjectFilter(e.target.value)}
@@ -285,6 +314,12 @@ export const AdminPublications = () => {
               className="rounded-md border border-slate-300 bg-white px-3 py-2 text-xs normal-case tracking-normal text-slate-700 hover:bg-slate-50"
             >
               <Calendar size={14} className="mr-1" /> Sự kiện
+            </Button>
+            <Button
+              onClick={() => navigate('/admin/publications/new?content_type=vinh-danh')}
+              className="rounded-md border border-slate-300 bg-white px-3 py-2 text-xs normal-case tracking-normal text-slate-700 hover:bg-slate-50"
+            >
+              <Award size={14} className="mr-1" /> Vinh danh
             </Button>
           </div>
         </div>

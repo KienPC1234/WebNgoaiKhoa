@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Card, Button, RichTextEditor } from '@/components/UI'
 import { CalendarDays, Plus, Save, Trash2, Mail, BellRing } from 'lucide-react'
+import PostLinkModal from '@/components/Admin/PostLinkModal'
 import { cmsService } from '@/lib/cmsService'
 import { confirmAction, showApiError, toastError, toastSuccess } from '@/lib/notify'
 
@@ -21,6 +22,8 @@ export const AdminEvents = () => {
   const [form, setForm] = useState(emptyForm)
   const [viewMode, setViewMode] = useState('upcoming')
   const [pushConfig, setPushConfig] = useState(null)
+  const [linkModalOpen, setLinkModalOpen] = useState(false)
+  const [linkModalContext, setLinkModalContext] = useState(null)
   const [newsletterForm, setNewsletterForm] = useState({
     title: '',
     body: '',
@@ -93,6 +96,27 @@ export const AdminEvents = () => {
     }
   }
 
+  const openLinkModalForForm = () => {
+    setLinkModalContext({ mode: 'form' })
+    setLinkModalOpen(true)
+  }
+
+  const openLinkModalForRow = (id) => {
+    setLinkModalContext({ mode: 'row', id })
+    setLinkModalOpen(true)
+  }
+
+  const handleModalSelect = (pub) => {
+    if (!pub) return
+    if (linkModalContext?.mode === 'form') {
+      setForm((prev) => ({ ...prev, linked_post_id: pub.id }))
+    } else if (linkModalContext?.mode === 'row' && linkModalContext.id) {
+      patchEvent(linkModalContext.id, 'linked_post_id', pub.id)
+    }
+    setLinkModalOpen(false)
+    setLinkModalContext(null)
+  }
+
   const removeEvent = async (id) => {
     const confirmed = await confirmAction({
       title: 'Xóa sự kiện này?',
@@ -162,14 +186,18 @@ export const AdminEvents = () => {
             <option value="upcoming">Sắp diễn ra</option>
             <option value="registration">Mở đăng ký</option>
           </select>
-          <input
-            type="number"
-            min="1"
-            className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm"
-            placeholder="ID bài viết liên kết (tùy chọn)"
-            value={form.linked_post_id}
-            onChange={(e) => setForm({ ...form, linked_post_id: e.target.value })}
-          />
+          <div className="flex items-center gap-2">
+            <input
+              readOnly
+              className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm"
+              placeholder="ID bài viết liên kết (tùy chọn)"
+              value={form.linked_post_id ? `ID ${form.linked_post_id}` : ''}
+            />
+            <Button onClick={openLinkModalForForm} className="rounded-md border border-slate-300 bg-white px-3 py-2 text-xs normal-case tracking-normal text-slate-700 hover:bg-slate-50">Link Post</Button>
+            {form.linked_post_id && (
+              <Button onClick={() => setForm({ ...form, linked_post_id: '' })} className="rounded-md border border-slate-300 bg-white px-3 py-2 text-xs normal-case tracking-normal text-slate-700 hover:bg-slate-50">Clear</Button>
+            )}
+          </div>
           <input className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm md:col-span-2" placeholder="Image URL" value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} />
           <RichTextEditor
             className="md:col-span-2"
@@ -261,14 +289,13 @@ export const AdminEvents = () => {
                   <option value="upcoming">Sắp diễn ra</option>
                   <option value="registration">Mở đăng ký</option>
                 </select>
-                <input
-                  type="number"
-                  min="1"
-                  className="md:col-span-2 rounded-md border border-slate-200 px-2.5 py-2 text-sm"
-                  value={item.linked_post_id ?? ''}
-                  onChange={(e) => patchEvent(item.id, 'linked_post_id', e.target.value === '' ? null : Number(e.target.value))}
-                  placeholder="ID bài viết"
-                />
+                <div className="md:col-span-2 flex items-center gap-2">
+                  <div className="flex-1 text-sm text-slate-700">{item.linked_post_id ? `ID ${item.linked_post_id}` : 'Chưa liên kết'}</div>
+                  <Button onClick={() => openLinkModalForRow(item.id)} className="rounded-md border border-slate-300 bg-white px-3 py-2 text-xs normal-case tracking-normal text-slate-700 hover:bg-slate-50">Link</Button>
+                  {item.linked_post_id && (
+                    <Button onClick={() => patchEvent(item.id, 'linked_post_id', null)} className="rounded-md border border-slate-300 bg-white px-3 py-2 text-xs normal-case tracking-normal text-slate-700 hover:bg-slate-50">Clear</Button>
+                  )}
+                </div>
                 <div className="md:col-span-3 flex justify-end gap-2">
                   <Button onClick={() => saveEvent(item)} className="rounded-md border border-slate-300 bg-white px-3 py-2 text-xs normal-case tracking-normal text-slate-700 hover:bg-slate-100"><Save size={13} className="mr-1" />Lưu</Button>
                   <Button onClick={() => removeEvent(item.id)} className="rounded-md border border-red-200 bg-white px-3 py-2 text-xs normal-case tracking-normal text-red-700 hover:bg-red-50"><Trash2 size={13} className="mr-1" />Xóa</Button>
@@ -285,6 +312,7 @@ export const AdminEvents = () => {
           </div>
         )}
       </Card>
+      <PostLinkModal open={linkModalOpen} onClose={() => { setLinkModalOpen(false); setLinkModalContext(null) }} onSelect={handleModalSelect} />
     </div>
   )
 }

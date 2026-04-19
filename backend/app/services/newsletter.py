@@ -6,6 +6,8 @@ from email.message import EmailMessage
 from pathlib import Path
 from typing import Dict, List, Optional
 
+from app.services.email_templates import get_newsletter_html
+
 try:
     import firebase_admin
     from firebase_admin import credentials, messaging
@@ -186,6 +188,9 @@ def send_newsletter_email(to_email: str, unsubscribe_token: str, subject: str, b
     )
 
     msg.set_content("\n".join(lines))
+
+    html_content = get_newsletter_html(subject, body, action_url, unsubscribe_link)
+    msg.add_alternative(html_content, subtype="html")
 
     if not SMTP_HOST:
         print(f"[NEWSLETTER_EMAIL_SIMULATION] {to_email} -> {subject}")

@@ -24,6 +24,7 @@ export const AdminDashboard = () => {
   const [stats, setStats] = useState({ users: 0, publications: 0, submissions: 0, pending_submissions: 0 })
   const [recentSubmissions, setRecentSubmissions] = useState([])
   const [overview, setOverview] = useState(null)
+  const [aiOverview, setAiOverview] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -33,14 +34,16 @@ export const AdminDashboard = () => {
           ? cmsService.getAdminOverview()
           : Promise.resolve(null)
 
-        const [statsRes, subsRes, overviewRes] = await Promise.all([
+        const [statsRes, subsRes, overviewRes, aiOverviewRes] = await Promise.all([
           cmsService.getStats(),
           cmsService.getRecentSubmissions(),
           overviewPromise,
+          cmsService.getAIKnowledgeOverview(),
         ])
         setStats(overviewRes?.stats || statsRes)
         setRecentSubmissions((subsRes || []).slice(0, 5))
         setOverview(overviewRes || null)
+        setAiOverview(aiOverviewRes || null)
       } catch (err) {
         console.error('Error fetching dashboard data:', err)
       } finally {
@@ -158,12 +161,13 @@ export const AdminDashboard = () => {
                 </span>
               </div>
               <p className="mt-2 text-sm text-slate-600">
-                {overview?.ai_documents || 0} vector docs từ {overview?.knowledge_assets || 0} file tri thức.
+                {(aiOverview?.documents_total ?? overview?.ai_documents ?? 0)} vector docs · core {(aiOverview?.documents_core ?? 0)} · static {(aiOverview?.source_counts?.site_static ?? 0)} · uploaded {(aiOverview?.documents_uploaded ?? 0)} chunks from {(aiOverview?.knowledge_assets ?? overview?.knowledge_assets ?? 0)} files
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <MiniInfo label="Knowledge files" value={String(overview?.knowledge_assets || 0)} />
+            <div className="grid grid-cols-3 gap-3">
+              <MiniInfo label="Knowledge files" value={String(aiOverview?.knowledge_assets ?? overview?.knowledge_assets ?? 0)} />
+              <MiniInfo label="Uploaded chunks" value={String(aiOverview?.documents_uploaded ?? 0)} />
               <MiniInfo label="Pending" value={String(stats.pending_submissions || 0)} />
             </div>
 
@@ -312,8 +316,8 @@ const StatusPill = ({ status }) => {
 }
 
 const MiniInfo = ({ label, value }) => (
-  <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
-    <p className="text-xs text-slate-500">{label}</p>
-    <p className="text-sm font-semibold text-slate-800">{value}</p>
+  <div className="rounded-lg border border-slate-200 bg-white px-3 py-3 flex flex-col justify-between min-h-[56px]">
+    <div className="text-xs text-slate-500 leading-tight">{label}</div>
+    <div className="text-sm font-semibold text-slate-800 leading-none">{value}</div>
   </div>
 )

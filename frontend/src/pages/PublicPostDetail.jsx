@@ -172,8 +172,7 @@ export const PublicPostDetail = () => {
 
       <div className="mx-auto mt-8 w-full max-w-5xl space-y-8 px-4 cv-auto">
         {cmsDocument?.blocks?.length > 0 && (
-            <Card className="p-6 rounded-3xl border-none shadow-lg space-y-4">
-            <h3 className="text-lg font-black text-fpt-blue uppercase tracking-widest">Bố cục nội dung</h3>
+          <Card className="p-6 rounded-3xl border-none shadow-lg space-y-4">
             <PublicDocumentView document={cmsDocument} context={{ publication: post }} />
           </Card>
         )}

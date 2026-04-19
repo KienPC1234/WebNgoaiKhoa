@@ -18,6 +18,7 @@ import uuid
 from app.db.session import get_db
 from app.models.user import User
 from app.services import newsletter as newsletter_service
+from app.services.email_templates import get_otp_html
 from app.schemas.schemas import PushConfigOut, PushTokenIn, PushTokenOut
 
 router = APIRouter()
@@ -192,6 +193,9 @@ def send_otp_email(to_email: str, otp: str) -> None:
         f"Huy dang ky tai day: {unsubscribe_link}"
     )
     msg.set_content(body)
+
+    html_content = get_otp_html(otp, OTP_EXPIRE_MINUTES, unsubscribe_link)
+    msg.add_alternative(html_content, subtype="html")
 
     if not SMTP_HOST:
         print(f"[OTP_EMAIL_SIMULATION] {to_email} -> OTP: {otp}")

@@ -224,6 +224,25 @@ export const AdminPostDesigner = () => {
     loadEntity()
   }, [isEditing, isStory, isEvent, entity, publicationId, navigate, buildPdfPreview])
 
+  // Prefill form when creating a new publication via query params (e.g. ?content_type=vinh-danh&subject=van)
+  useEffect(() => {
+    if (isEditing) return
+    try {
+      const ct = searchParams.get('content_type')
+      const subj = searchParams.get('subject') || searchParams.get('category')
+      if (ct || subj) {
+        setFormData((prev) => ({
+          ...prev,
+          content_type: ct || prev.content_type,
+          subject: subj || prev.subject,
+          category: subj || prev.category,
+        }))
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, [isEditing, searchParams])
+
   const handleDocChange = useCallback((nextDocument) => {
     latestDocumentRef.current = nextDocument
   }, [])

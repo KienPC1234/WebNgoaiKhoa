@@ -30,7 +30,14 @@ const normalizeMarkdownText = (value = '') =>
 const linkifyInternalPaths = (line = '') => {
   if (!line || typeof line !== 'string') return line
 
-  return line.replace(/(^|\s)(\/[^\s`<>\)\]]+)/g, (m, prefix, path) => {
+  // Handle HTML-escaped code tags: &lt;code&gt;/path&lt;/code&gt;
+  line = line.replace(/&lt;code&gt;((?:\/|\.\.|\.\/|\?|#)[^&<\s`]+)&lt;\/code&gt;/gi, (_, p) => `[${p}](${p})`)
+
+  // Handle raw HTML code tags: <code>/path</code>
+  line = line.replace(/<code>((?:\/|\.\.|\.\/|\?|#)[^<\s`]+)<\/code>/gi, (_, p) => `[${p}](${p})`)
+
+  // General replacement for bare paths preceded by start or whitespace or '>' (covers cases after tags)
+  return line.replace(/(^|\s|>)(\/(?:[^\s`<>\)\]]+))/g, (m, prefix, path) => {
     let trailing = ''
     if (/[.,;:!?]$/.test(path)) {
       trailing = path.slice(-1)
@@ -269,7 +276,7 @@ const MarkdownTable = ({ header = [], rows = [], alignments = [], markdownCompon
   return (
     <div className="ai-chat-table-wrap">
       <table className="ai-chat-table">
-        {Array.isArray(header) && header.length > 0 && (
+              {Array.isArray(header) && header.length > 0 && (
           <thead>
             <tr>
               {header.map((cell, index) => (
@@ -279,7 +286,7 @@ const MarkdownTable = ({ header = [], rows = [], alignments = [], markdownCompon
                     rehypePlugins={[rehypeKatex]}
                     components={markdownComponents}
                   >
-                    {normalizeMarkdownText(cell)}
+                          {normalizeMarkdownText(linkifyInternalPaths(cell))}
                   </ReactMarkdown>
                 </th>
               ))}
@@ -296,7 +303,7 @@ const MarkdownTable = ({ header = [], rows = [], alignments = [], markdownCompon
                     rehypePlugins={[rehypeKatex]}
                     components={markdownComponents}
                   >
-                    {normalizeMarkdownText(row[colIndex] ?? '')}
+                          {normalizeMarkdownText(linkifyInternalPaths(row[colIndex] ?? ''))}
                   </ReactMarkdown>
                 </td>
               ))}
@@ -336,7 +343,7 @@ const MarkdownMessage = ({ content, role, navigate, isMobile = false }) => {
 
 const DEFAULT_WELCOME = { 
   role: 'assistant', 
-  content: 'Chào bạn! Tôi là trợ lý AI của **Tổ xã hội**. Tôi có thể giúp bạn tìm hiểu về các hoạt động ngoại khóa, hướng dẫn gửi bài cho ấn phẩm **Nhái Bén**, hoặc giải đáp các thắc mắc về câu lạc bộ. \n\nBạn có thể hỏi tôi về: \n- Cách đăng ký tham gia CLB Văn học? \n- Thể lệ cuộc thi sáng tác mới nhất?' 
+  content: 'Chào bạn! Tôi là trợ lý AI của **Tổ xã hội**. Tôi có thể giúp bạn tìm hiểu về các hoạt động ngoại khóa, hướng dẫn gửi bài cho ấn phẩm **Nhái Bén**, hoặc giải đáp các thắc mắc về câu lạc bộ.' 
 }
 
 const TOOL_REASON_MESSAGES = {

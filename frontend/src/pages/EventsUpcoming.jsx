@@ -135,7 +135,7 @@ export const EventsUpcoming = () => {
                         className="text-6xl md:text-8xl font-black italic leading-tight uppercase text-fpt-blue"
                     >
                         SỰ KIỆN <br />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-fpt-orange to-orange-500 not-italic gradient-text-fix">SẮP DIỄN RA</span>
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-fpt-orange to-orange-500 not-italic inline-block pt-1 md:pt-2 gradient-text-fix">SẮP DIỄN RA</span>
                     </motion.h1>
                     <motion.p
                         initial={{ opacity: 0 }}

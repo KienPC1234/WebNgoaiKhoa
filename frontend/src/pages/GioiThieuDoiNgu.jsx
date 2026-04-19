@@ -46,7 +46,7 @@ export const GioiThieuDoiNgu = () => {
           >
             ĐỘI NGŨ <br />
             <span
-              className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-200 not-italic gradient-text-fix"
+              className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-200 not-italic gradient-text-fix pt-3 md:pt-6"
               style={{ WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}
             >
               GIÁO VIÊN TÂM HUYẾT
@@ -123,7 +123,7 @@ export const GioiThieuDoiNgu = () => {
             <div className="space-y-8">
                 <h2 className="text-4xl md:text-5xl font-black italic uppercase tracking-tighter leading-tight">
                 Triết lý giáo dục <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-fpt-orange to-yellow-400 not-italic gradient-text-fix">SÁNG TẠO & NHÂN VĂN</span>
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-fpt-orange to-yellow-400 not-italic inline-block pt-1 md:pt-2 gradient-text-fix">SÁNG TẠO & NHÂN VĂN</span>
               </h2>
               <div className="space-y-6">
                 <div className="flex gap-5">

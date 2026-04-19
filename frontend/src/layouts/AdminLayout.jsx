@@ -6,6 +6,7 @@ import {
   Database,
   CalendarDays,
   Sparkles,
+  Award,
   LogOut,
   Bell,
   User,
@@ -59,10 +60,12 @@ export const AdminLayout = () => {
     { title: 'Lịch sử', path: '/admin/publications?subject=lich-su' },
     { title: 'Địa lí', path: '/admin/publications?subject=dia-li' },
     { title: 'Vovinam', path: '/admin/publications?subject=vovinam' },
+    { title: 'Câu chuyện', path: '/admin/publications?entity=story' },
   ]
 
   const cmsItems = [
     ...(canManageWebsite ? [{ title: 'Tất cả bài viết', path: '/admin/publications', icon: FileText }] : []),
+    ...(canManageWebsite ? [{ title: 'Vinh danh', path: '/admin/vinh-danh', icon: Award }] : []),
     ...(canManageWebsite ? [{ title: 'Đội ngũ', path: '/admin/doingu', icon: Users2 }] : []),
     ...(canReviewSubmissions ? [{ title: 'Duyệt bài', path: '/admin/submissions', icon: Send }] : []),
     ...(canManageWebsite ? [{ title: 'CMS Editor', path: '/admin/cms-editor', icon: Sparkles }] : []),
@@ -149,7 +152,9 @@ export const AdminLayout = () => {
                         {publicationsOpen && (
                           <div id="admin-publications-dropdown" className="ml-3 mt-1 space-y-1">
                             {subjectItems.map((s) => {
-                              const active = location.pathname === '/admin/publications' && new URLSearchParams(location.search).get('subject') === s.path.split('=')[1]
+                              const params = new URLSearchParams(location.search)
+                              const keyVal = s.path.split('=')[1]
+                              const active = location.pathname === '/admin/publications' && (params.get('subject') === keyVal || params.get('entity') === keyVal)
                               return (
                                 <Link key={s.path} to={s.path} onClick={() => setMobileSidebarOpen(false)} className={cn('flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-medium transition-colors', active ? 'bg-slate-100 text-slate-900' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900')}>
                                   <div className={cn('h-1.5 w-1.5 rounded-full', active ? 'bg-fpt-orange' : 'bg-slate-300')} />
@@ -164,7 +169,7 @@ export const AdminLayout = () => {
                   }
 
                   // Make Đội ngũ / Duyệt bài / CMS Editor larger to match other main menu items
-                  const largeButtons = ['/admin/doingu', '/admin/submissions', '/admin/cms-editor']
+                  const largeButtons = ['/admin/doingu', '/admin/submissions', '/admin/cms-editor', '/admin/vinh-danh']
                   if (largeButtons.includes(item.path)) {
                     const active = location.pathname === item.path
                     return (

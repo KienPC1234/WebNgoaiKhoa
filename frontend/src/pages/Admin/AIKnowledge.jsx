@@ -148,15 +148,20 @@ export const AdminAIKnowledge = () => {
         </div>
 
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-6">
-          <MetaCell label="Total docs" value={String(knowledgeOverview?.documents_total || 0)} />
-          <MetaCell label="Core docs" value={String(knowledgeOverview?.documents_core || 0)} />
-          <MetaCell label="Uploaded docs" value={String(knowledgeOverview?.documents_uploaded || 0)} />
-          <MetaCell label="Publications" value={String(knowledgeOverview?.source_counts?.publication || 0)} />
-          <MetaCell label="Stories" value={String(knowledgeOverview?.source_counts?.story || 0)} />
-          <MetaCell label="Events" value={String(knowledgeOverview?.source_counts?.event || 0)} />
-          <MetaCell label="Approved subs" value={String(knowledgeOverview?.source_counts?.submission || 0)} />
-          <MetaCell label="Knowledge files" value={String(knowledgeOverview?.source_counts?.knowledge_file || 0)} />
+          <MetaCell label="Total vector docs" value={String(knowledgeOverview?.documents_total ?? 0)} />
+          <MetaCell label="Core docs (pub/story/event/sub)" value={String(knowledgeOverview?.documents_core ?? 0)} />
+          <MetaCell label="Site static docs" value={String(knowledgeOverview?.source_counts?.site_static ?? 0)} />
+          <MetaCell label="Uploaded chunks (vector docs)" value={String(knowledgeOverview?.documents_uploaded ?? 0)} />
+          <MetaCell label="Knowledge files (uploaded)" value={String(knowledgeOverview?.knowledge_assets ?? 0)} />
+          <MetaCell label="Publications" value={String(knowledgeOverview?.source_counts?.publication ?? 0)} />
+          <MetaCell label="Stories" value={String(knowledgeOverview?.source_counts?.story ?? 0)} />
+          <MetaCell label="Events" value={String(knowledgeOverview?.source_counts?.event ?? 0)} />
+          <MetaCell label="Approved subs" value={String(knowledgeOverview?.source_counts?.submission ?? 0)} />
         </div>
+
+        <p className="mt-3 text-xs text-slate-500">
+          Chú thích: <strong>Total vector docs</strong> là tổng số document đang lưu trong Chroma. <strong>Core docs</strong> = publications / stories / events / approved submissions. <strong>Site static</strong> là các mục tri thức tĩnh (intents/static entries). <strong>Uploaded chunks</strong> là số đoạn (chunks) được vector hoá từ file upload; <strong>Knowledge files</strong> là số file đã upload vào hệ thống.
+        </p>
       </Card>
 
       <Card className="rounded-2xl border border-slate-200 p-5 shadow-sm">
@@ -280,8 +285,8 @@ const StatusBox = ({ label, value, tone = 'info' }) => {
 }
 
 const MetaCell = ({ label, value }) => (
-  <div className="rounded-md bg-slate-50 p-2">
-    <p className="text-[11px] text-slate-500">{label}</p>
-    <p className="mt-1 truncate text-xs font-medium text-slate-700">{value}</p>
+  <div className="rounded-md bg-slate-50 p-3 flex flex-col justify-between min-h-[64px]">
+    <div className="text-[11px] text-slate-500 leading-tight">{label}</div>
+    <div className="mt-1 text-lg font-semibold text-slate-900 leading-none">{value}</div>
   </div>
 )
