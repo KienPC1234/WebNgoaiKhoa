@@ -62,6 +62,10 @@ export const AdminDashboard = () => {
     </div>
   )
 
+  const chartData = (overview && Array.isArray(overview.weekly_metrics) && overview.weekly_metrics.length)
+    ? overview.weekly_metrics.map((m) => ({ name: m.name, views: m.views || 0, submissions: m.submissions || 0 }))
+    : data
+
   return (
     <div className="space-y-6 pb-8">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -117,7 +121,7 @@ export const AdminDashboard = () => {
             </div>
             <div className="h-[280px] w-full min-w-0">
               <ResponsiveContainer width="100%" height={280} minWidth={0} minHeight={240}>
-              <AreaChart data={data}>
+                <AreaChart data={chartData}>
                 <defs>
                   <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#475569" stopOpacity={0.15}/>

@@ -8,6 +8,7 @@ import os
 import re
 import time
 import unicodedata
+import logging
 from collections import deque
 from typing import Optional, Dict, List, Any, Tuple, Deque
 from dotenv import load_dotenv
@@ -25,6 +26,9 @@ from app.models.publication import Event, Publication, Story, Submission
 load_dotenv()
 
 router = APIRouter()
+
+# Module logger for recording internal errors without exposing details to clients
+logger = logging.getLogger(__name__)
 
 class ChatRequestHistoryItem(BaseModel):
     role: str
@@ -89,13 +93,33 @@ AI_MAX_HISTORY_MESSAGES = 8
 AI_MAX_USER_MESSAGE_CHARS = max(200, int(os.getenv("AI_MAX_USER_MESSAGE_CHARS", "2400")))
 AI_MAX_HISTORY_MESSAGE_CHARS = max(120, int(os.getenv("AI_MAX_HISTORY_MESSAGE_CHARS", "1200")))
 
-AI_RATE_LIMIT_CHAT_COUNT = max(1, int(os.getenv("AI_RATE_LIMIT_CHAT_COUNT", "20")))
+# Configurable constants for chunking, snippets and retrieval behavior
+AI_CHUNK_SIZE_DEFAULT = int(os.getenv("AI_CHUNK_SIZE", "600"))
+AI_CHUNK_OVERLAP_DEFAULT = int(os.getenv("AI_CHUNK_OVERLAP", "180"))
+AI_RETRIEVE_PER_DOC_CHARS = int(os.getenv("AI_RETRIEVE_PER_DOC_CHARS", "600"))
+AI_SEARCH_SNIPPET_CHARS = int(os.getenv("AI_SEARCH_SNIPPET_CHARS", "240"))
+AI_RETRIEVE_MAX_TOTAL_CHARS = int(os.getenv("AI_RETRIEVE_MAX_TOTAL_CHARS", "4000"))
+AI_RETRIEVE_MAX_DOCS = int(os.getenv("AI_RETRIEVE_MAX_DOCS", "6"))
+AI_RETRIEVE_ASSEMBLE_DOCS = os.getenv("AI_RETRIEVE_ASSEMBLE_DOCS", "true").lower() in ("1","true","yes")
+
+# Truncation constants for other places
+AI_NAV_BODY_TRUNC = int(os.getenv("AI_NAV_BODY_TRUNC", "900"))
+AI_EVENT_SNIPPET_TRUNC = int(os.getenv("AI_EVENT_SNIPPET_TRUNC", "260"))
+AI_TITLE_TRUNC = int(os.getenv("AI_TITLE_TRUNC", "250"))
+AI_PATH_TRUNC = int(os.getenv("AI_PATH_TRUNC", "180"))
+AI_META_CATEGORY_TRUNC = int(os.getenv("AI_META_CATEGORY_TRUNC", "80"))
+AI_META_STUDENT_NAME_TRUNC = int(os.getenv("AI_META_STUDENT_NAME_TRUNC", "160"))
+AI_META_STATUS_TRUNC = int(os.getenv("AI_META_STATUS_TRUNC", "40"))
+AI_META_UPLOADED_BY_TRUNC = int(os.getenv("AI_META_UPLOADED_BY_TRUNC", "120"))
+AI_NAV_MATCH_SNIPPET_TRUNC = int(os.getenv("AI_NAV_MATCH_SNIPPET_TRUNC", "220"))
+
+AI_RATE_LIMIT_CHAT_COUNT = max(1, int(os.getenv("AI_RATE_LIMIT_CHAT_COUNT", "8")))
 AI_RATE_LIMIT_CHAT_WINDOW_SECONDS = max(1, int(os.getenv("AI_RATE_LIMIT_CHAT_WINDOW_SECONDS", "60")))
-AI_RATE_LIMIT_CHAT_BASIC_COUNT = max(1, int(os.getenv("AI_RATE_LIMIT_CHAT_BASIC_COUNT", "12")))
+AI_RATE_LIMIT_CHAT_BASIC_COUNT = max(1, int(os.getenv("AI_RATE_LIMIT_CHAT_BASIC_COUNT", "8")))
 AI_RATE_LIMIT_CHAT_BASIC_WINDOW_SECONDS = max(1, int(os.getenv("AI_RATE_LIMIT_CHAT_BASIC_WINDOW_SECONDS", "60")))
-AI_RATE_LIMIT_NAV_SEARCH_COUNT = max(1, int(os.getenv("AI_RATE_LIMIT_NAV_SEARCH_COUNT", "45")))
+AI_RATE_LIMIT_NAV_SEARCH_COUNT = max(1, int(os.getenv("AI_RATE_LIMIT_NAV_SEARCH_COUNT", "6")))
 AI_RATE_LIMIT_NAV_SEARCH_WINDOW_SECONDS = max(1, int(os.getenv("AI_RATE_LIMIT_NAV_SEARCH_WINDOW_SECONDS", "60")))
-AI_RATE_LIMIT_KNOWLEDGE_SEARCH_COUNT = max(1, int(os.getenv("AI_RATE_LIMIT_KNOWLEDGE_SEARCH_COUNT", "30")))
+AI_RATE_LIMIT_KNOWLEDGE_SEARCH_COUNT = max(1, int(os.getenv("AI_RATE_LIMIT_KNOWLEDGE_SEARCH_COUNT", "8")))
 AI_RATE_LIMIT_KNOWLEDGE_SEARCH_WINDOW_SECONDS = max(1, int(os.getenv("AI_RATE_LIMIT_KNOWLEDGE_SEARCH_WINDOW_SECONDS", "60")))
 
 RATE_LIMIT_STATE: Dict[str, Deque[float]] = {}
@@ -766,8 +790,8 @@ def _build_static_site_knowledge_documents() -> Tuple[List[str], List[str], List
             {
                 "source_type": "site_static",
                 "source_id": static_id,
-                "title": static_title[:250],
-                "path": static_path[:180],
+                "title": static_title[:AI_TITLE_TRUNC],
+                "path": static_path[:AI_PATH_TRUNC],
             }
         )
         fingerprint_payload.append(
@@ -851,7 +875,7 @@ def _build_navigation_content_index(db: Session) -> List[Dict[str, Any]]:
                 "entity_id": pub.id,
                 "title": title,
                 "snippet": snippet,
-                "body": f"{title}\n{snippet}\n{_normalize_text(pub.content)[:900]}",
+                "body": f"{title}\n{snippet}\n{_normalize_text(pub.content)[:AI_NAV_BODY_TRUNC]}",
                 "aliases": aliases,
                 "path": f"/posts/{pub.id}",
                 "target": None,
@@ -876,7 +900,7 @@ def _build_navigation_content_index(db: Session) -> List[Dict[str, Any]]:
                 "entity_id": story.id,
                 "title": title,
                 "snippet": snippet,
-                "body": f"{title}\n{snippet}\n{_normalize_text(story.content)[:900]}",
+                "body": f"{title}\n{snippet}\n{_normalize_text(story.content)[:AI_NAV_BODY_TRUNC]}",
                 "aliases": aliases,
                 "path": f"/stories/inspiring/{story.id}",
                 "target": None,
@@ -900,7 +924,7 @@ def _build_navigation_content_index(db: Session) -> List[Dict[str, Any]]:
                 "entity_type": "event",
                 "entity_id": event.id,
                 "title": title,
-                "snippet": description[:260],
+                "snippet": description[:AI_EVENT_SNIPPET_TRUNC],
                 "body": f"{title}\n{description}",
                 "aliases": aliases,
                 "path": "/events/upcoming",
@@ -1043,8 +1067,8 @@ def _sync_knowledge_base(db: Session, force: bool = False):
             {
                 "source_type": "publication",
                 "source_id": pub.id,
-                "title": title[:250],
-                "category": _normalize_text(pub.category)[:80],
+                "title": title[:AI_TITLE_TRUNC],
+                "category": _normalize_text(pub.category)[:AI_META_CATEGORY_TRUNC],
             }
         )
 
@@ -1059,8 +1083,8 @@ def _sync_knowledge_base(db: Session, force: bool = False):
             {
                 "source_type": "submission",
                 "source_id": sub.id,
-                "title": title[:250],
-                "student_name": _normalize_text(sub.student_name)[:160],
+                "title": title[:AI_TITLE_TRUNC],
+                "student_name": _normalize_text(sub.student_name)[:AI_META_STUDENT_NAME_TRUNC],
             }
         )
 
@@ -1076,8 +1100,8 @@ def _sync_knowledge_base(db: Session, force: bool = False):
             {
                 "source_type": "story",
                 "source_id": story.id,
-                "title": title[:250],
-                "category": _normalize_text(story.category)[:80],
+                "title": title[:AI_TITLE_TRUNC],
+                "category": _normalize_text(story.category)[:AI_META_CATEGORY_TRUNC],
             }
         )
 
@@ -1094,8 +1118,8 @@ def _sync_knowledge_base(db: Session, force: bool = False):
             {
                 "source_type": "event",
                 "source_id": event.id,
-                "title": title[:250],
-                "status": _normalize_text(event.status)[:40],
+                "title": title[:AI_TITLE_TRUNC],
+                "status": _normalize_text(event.status)[:AI_META_STATUS_TRUNC],
             }
         )
 
@@ -1183,7 +1207,20 @@ def _retrieve_context(query: str, n_results: int = 4) -> str:
         source_type = meta.get("source_type", "unknown")
         source_id = meta.get("source_id", "?")
         title = meta.get("title", "Không rõ tiêu đề")
-        snippet = _normalize_text(doc)[:500]
+
+        # By default use a short snippet from the matching chunk
+        snippet = _normalize_text(doc)[:AI_RETRIEVE_PER_DOC_CHARS]
+
+        # Optionally attempt to assemble full knowledge-file text for the top match
+        if AI_RETRIEVE_ASSEMBLE_DOCS and idx == 0 and source_type == "knowledge_file" and source_id:
+            try:
+                assembled = assemble_full_asset_text(source_id, max_chars=AI_RETRIEVE_MAX_TOTAL_CHARS)
+                if assembled.get("ok") and assembled.get("full_text"):
+                    snippet = assembled.get("full_text")
+            except Exception:
+                # Keep the original short snippet on failure and log for operators
+                logger.exception("Failed to assemble full asset for source_id=%s", source_id)
+
         chunks.append(
             f"[{idx + 1}] ({source_type}#{source_id}) {title}\n{snippet}"
         )
@@ -1205,7 +1242,7 @@ def _search_knowledge_records(query: str, n_results: int = 5) -> List[Dict[str, 
     for idx, doc in enumerate(docs[0]):
         meta = metas[0][idx] if metas and metas[0] and idx < len(metas[0]) else {}
         distance = distances[0][idx] if distances and distances[0] and idx < len(distances[0]) else None
-        snippet = _normalize_text(doc)[:240]
+        snippet = _normalize_text(doc)[:AI_SEARCH_SNIPPET_CHARS]
 
         items.append(
             {
@@ -1255,17 +1292,30 @@ def _is_element_focus_intent(normalized_query: str) -> bool:
 def _is_smalltalk_query(normalized_query: str) -> bool:
     if not normalized_query:
         return True
-    return normalized_query in {
-        "hi",
-        "hello",
-        "helo",
-        "xin chao",
-        "xin chào",
-        "chao",
-        "chào",
-        "cam on",
-        "cảm ơn",
-    }
+
+    # Be tolerant to punctuation/spacing/diacritics by tokenizing the input.
+    tokens = _tokenize_for_match(normalized_query)
+    if not tokens:
+        return False
+
+    # Only treat short messages as smalltalk to avoid false positives.
+    if len(tokens) > 4 or len(normalized_query) > 100:
+        return False
+
+    token_set = set(tokens)
+
+    # Simple greeting tokens
+    if token_set & {"hi", "hello", "helo", "hey", "alo", "chao"}:
+        return True
+
+    # Common two-word smalltalk phrases (e.g., "xin chao", "cam on")
+    if "xin" in token_set and "chao" in token_set:
+        return True
+    if "cam" in token_set and "on" in token_set:
+        return True
+    # No special-case heuristics for typed variants (keep detection simple)
+
+    return False
 
 
 def _is_website_scope_query(normalized_query: str) -> bool:
@@ -1300,7 +1350,7 @@ def _build_search_context(db: Session, query: str) -> str:
             if target:
                 line += f" | target: {target}"
             if snippet:
-                line += f" | mô tả: {snippet[:220]}"
+                line += f" | mô tả: {snippet[:AI_NAV_MATCH_SNIPPET_TRUNC]}"
             lines.append(line)
         parts.append("\n".join(lines))
 
@@ -1385,12 +1435,26 @@ def _resolve_chat_strategy(question: str, enable_tools: bool) -> Dict[str, Any]:
 def _prepare_chat_runtime(question: str, db: Session, enable_tools: bool) -> Dict[str, Any]:
     strategy = _resolve_chat_strategy(question, enable_tools)
 
+    # If strategy requests heavy context, perform a full sync and build search context.
     if strategy["use_heavy_context"]:
         try:
             _sync_knowledge_base(db)
             strategy["context"] = _build_search_context(db, question)
         except Exception:
             strategy["context"] = ""
+    else:
+        # For all other strategies, still attempt a lightweight retrieval from AI knowledge
+        # to enrich context so the model can answer earlier turns.
+        try:
+            knowledge_context = _retrieve_context(question)
+            if knowledge_context:
+                existing = strategy.get("context", "") or ""
+                if existing:
+                    strategy["context"] = existing + "\n\n" + "KẾT QUẢ TỪ AI KNOWLEDGE:\n" + knowledge_context
+                else:
+                    strategy["context"] = "KẾT QUẢ TỪ AI KNOWLEDGE:\n" + knowledge_context
+        except Exception:
+            logger.exception("Failed to retrieve lightweight context for question=%s", question)
 
     return strategy
 
@@ -1591,7 +1655,7 @@ def _extract_text_by_extension(file_name: str, content_bytes: bytes) -> str:
     raise ValueError("Chỉ hỗ trợ: .pdf, .txt, .md, .doc, .docx")
 
 
-def _split_chunks(text: str, chunk_size: int = 1200, overlap: int = 180) -> List[str]:
+def _split_chunks(text: str, chunk_size: int = AI_CHUNK_SIZE_DEFAULT, overlap: int = AI_CHUNK_OVERLAP_DEFAULT) -> List[str]:
     clean_text = _normalize_text(text)
     if not clean_text:
         return []
@@ -1624,10 +1688,10 @@ def ingest_knowledge_file(file_name: str, content_bytes: bytes, uploaded_by: str
         {
             "source_type": "knowledge_file",
             "source_id": asset_id,
-            "title": _normalize_text(file_name)[:250],
-            "file_name": _normalize_text(file_name)[:250],
+            "title": _normalize_text(file_name)[:AI_TITLE_TRUNC],
+            "file_name": _normalize_text(file_name)[:AI_TITLE_TRUNC],
             "chunk_index": index,
-            "uploaded_by": _normalize_text(uploaded_by)[:120],
+            "uploaded_by": _normalize_text(uploaded_by)[:AI_META_UPLOADED_BY_TRUNC],
             "uploaded_at": now_iso,
         }
         for index in range(len(chunks))
@@ -1654,6 +1718,62 @@ def list_knowledge_files() -> List[dict]:
     return sorted(items, key=lambda x: x.get("uploaded_at", ""), reverse=True)
 
 
+def assemble_full_asset_text(asset_id: str, max_chars: Optional[int] = None) -> Dict[str, Any]:
+    """Assemble full text for a knowledge asset by concatenating its chunks.
+
+    Returns a dict with keys: ok (bool), full_text (str), truncated (bool), total_chars (int), chunks (int)
+    """
+    assets = _load_knowledge_assets()
+    target = next((item for item in assets if item.get("id") == asset_id), None)
+    if not target:
+        return {"ok": False, "reason": "not_found"}
+
+    total_chunks = int(target.get("chunks") or 0)
+    if total_chunks <= 0:
+        return {"ok": True, "full_text": "", "truncated": False, "total_chars": 0, "chunks": 0}
+
+    collection = _get_chroma_collection()
+    ids = [f"knowledge:{asset_id}:{i}" for i in range(total_chunks)]
+    try:
+        data = collection.get(ids=ids, include=["documents", "metadatas"]) or {}
+    except Exception:
+        logger.exception("Failed to assemble asset from chroma for asset_id=%s", asset_id)
+        return {"ok": False, "reason": "chroma_error"}
+
+    docs = data.get("documents", []) or []
+    metas = data.get("metadatas", []) or []
+
+    # Handle nested list shapes returned by query vs get
+    if docs and isinstance(docs[0], list):
+        docs = docs[0]
+    if metas and isinstance(metas[0], list):
+        metas = metas[0]
+
+    parts: List[str] = []
+    # Prefer ordering by metadata.chunk_index when available
+    if metas and all(isinstance(m, dict) and "chunk_index" in m for m in metas):
+        paired = []
+        for idx, m in enumerate(metas):
+            chunk_idx = int(m.get("chunk_index") or idx)
+            text_piece = docs[idx] if idx < len(docs) else ""
+            paired.append((chunk_idx, text_piece))
+        paired.sort(key=lambda x: x[0])
+        parts = [p[1] or "" for p in paired]
+    else:
+        parts = [d or "" for d in docs]
+
+    full_text = " ".join([_normalize_text(p) for p in parts if p])
+    total_chars = len(full_text)
+    truncated = False
+    if max_chars and total_chars > max_chars:
+        result_text = full_text[:max_chars]
+        truncated = True
+    else:
+        result_text = full_text
+
+    return {"ok": True, "full_text": result_text, "truncated": truncated, "total_chars": total_chars, "chunks": total_chunks}
+
+
 def delete_knowledge_file(asset_id: str) -> bool:
     assets = _load_knowledge_assets()
     target = next((item for item in assets if item.get("id") == asset_id), None)
@@ -1676,8 +1796,6 @@ def get_ai_health_snapshot(db: Session) -> Dict[str, Any]:
     collection = _get_chroma_collection()
     return {
         "status": "ok",
-        "ollama_base_url": OLLAMA_BASE_URL,
-        "default_model": DEFAULT_MODEL,
         "chroma": {
             "available": True,
             "path": CHROMA_DB_PATH,
@@ -1931,15 +2049,19 @@ async def ollama_stream(
             json=payload,
         ) as response:
             if response.status_code != 200:
-                error_text = (
-                    f"Lỗi: Server AI phản hồi trạng thái {response.status_code}. "
-                    f"Vui lòng kiểm tra lại cấu hình mô hình {model}."
+                # Log internal details for operators, but return a generic message to the user
+                logger.error(
+                    "Upstream AI server returned non-200 status %s for model %s at %s",
+                    response.status_code,
+                    model,
+                    OLLAMA_BASE_URL,
                 )
-                yield json.dumps({"type": "chunk", "text": error_text}, ensure_ascii=False) + "\n"
+                user_error = "Lỗi: dịch vụ AI tạm thời không khả dụng. Vui lòng thử lại sau."
+                yield json.dumps({"type": "chunk", "text": user_error}, ensure_ascii=False) + "\n"
                 yield json.dumps(
                     {
                         "type": "meta",
-                        "assistant_text": error_text,
+                        "assistant_text": user_error,
                         "tool_calls": [],
                         "warnings": ["upstream_http_error"],
                     },
@@ -1997,15 +2119,14 @@ async def ollama_stream(
             ) + "\n"
             yield json.dumps({"type": "done"}, ensure_ascii=False) + "\n"
     except Exception as e:
-        error_text = (
-            f"Lỗi kết nối tới AI: {str(e)}. "
-            f"Hãy đảm bảo server AI đang chạy tại {OLLAMA_BASE_URL}."
-        )
-        yield json.dumps({"type": "chunk", "text": error_text}, ensure_ascii=False) + "\n"
+        # Log the exception details for debugging, but avoid leaking internals to users
+        logger.exception("Error while streaming from upstream AI (%s): %s", OLLAMA_BASE_URL, str(e))
+        user_error = "Lỗi kết nối tới dịch vụ AI. Vui lòng thử lại sau."
+        yield json.dumps({"type": "chunk", "text": user_error}, ensure_ascii=False) + "\n"
         yield json.dumps(
             {
                 "type": "meta",
-                "assistant_text": error_text,
+                "assistant_text": user_error,
                 "tool_calls": [],
                 "warnings": ["upstream_connection_error"],
             },
@@ -2020,22 +2141,6 @@ async def chat_with_ai(request: Request, payload: ChatRequest, db: Session = Dep
     message_to_use = _sanitize_message_content(payload.message, AI_MAX_USER_MESSAGE_CHARS)
     if not message_to_use:
         raise HTTPException(status_code=400, detail="message is required")
-
-    if not _is_website_scope_query(_normalize_for_match(message_to_use)):
-        async def blocked_scope_stream():
-            yield json.dumps({"type": "chunk", "text": AI_WEBSITE_SCOPE_FALLBACK}, ensure_ascii=False) + "\n"
-            yield json.dumps(
-                {
-                    "type": "meta",
-                    "assistant_text": AI_WEBSITE_SCOPE_FALLBACK,
-                    "tool_calls": [],
-                    "warnings": ["off_topic_blocked"],
-                },
-                ensure_ascii=False,
-            ) + "\n"
-            yield json.dumps({"type": "done"}, ensure_ascii=False) + "\n"
-
-        return StreamingResponse(blocked_scope_stream(), media_type="application/x-ndjson")
 
     model_to_use = payload.model if payload.model else DEFAULT_MODEL
     runtime = _prepare_chat_runtime(message_to_use, db, bool(payload.enable_tools))
@@ -2062,29 +2167,7 @@ async def chat_basic(request: Request, request_payload: ChatRequest, db: Session
     message_to_use = _sanitize_message_content(request_payload.message, AI_MAX_USER_MESSAGE_CHARS)
     if not message_to_use:
         raise HTTPException(status_code=400, detail="message is required")
-
-    if not _is_website_scope_query(_normalize_for_match(message_to_use)):
-        user_msg = {
-            "id": str(uuid4()),
-            "role": "user",
-            "content": message_to_use,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-        }
-        assistant_msg = {
-            "id": str(uuid4()),
-            "role": "assistant",
-            "content": AI_WEBSITE_SCOPE_FALLBACK,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-        }
-        session_id = request_payload.session_id or str(uuid4())
-        chat_sessions.setdefault(session_id, []).extend([user_msg, assistant_msg])
-        return {
-            "session_id": session_id,
-            "message": assistant_msg,
-            "tool_calls": [],
-            "warnings": ["off_topic_blocked"],
-        }
-
+    
     model_to_use = request_payload.model if request_payload.model else DEFAULT_MODEL
     session_id = request_payload.session_id or str(uuid4())
 
@@ -2123,7 +2206,8 @@ async def chat_basic(request: Request, request_payload: ChatRequest, db: Session
         message = data.get("message") or {}
         answer = message.get("content") or "Xin lỗi, tôi chưa thể trả lời lúc này."
     except Exception as e:
-        raise HTTPException(status_code=503, detail=f"AI service error: {str(e)}")
+        logger.exception("AI service error (chat/basic) when calling %s: %s", OLLAMA_BASE_URL, str(e))
+        raise HTTPException(status_code=503, detail="Dịch vụ AI tạm thời không khả dụng. Vui lòng thử lại sau.")
 
     user_msg = {
         "id": str(uuid4()),
@@ -2173,16 +2257,15 @@ async def ai_health(db: Session = Depends(get_db)):
     try:
         return get_ai_health_snapshot(db)
     except Exception as e:
+        logger.exception("AI health check failed: %s", str(e))
         return {
             "status": "degraded",
-            "ollama_base_url": OLLAMA_BASE_URL,
-            "default_model": DEFAULT_MODEL,
             "chroma": {
                 "available": False,
                 "path": CHROMA_DB_PATH,
                 "collection": CHROMA_COLLECTION_NAME,
                 "documents": 0,
-                "error": str(e),
+                "error": "internal_error",
             },
         }
 
@@ -2200,7 +2283,8 @@ async def ai_knowledge_search(
         _sync_knowledge_base(db)
         items = _search_knowledge_records(query, n_results)
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Không thể tìm AI knowledge: {str(exc)}")
+        logger.exception("Error searching AI knowledge for query=%s: %s", query, str(exc))
+        raise HTTPException(status_code=500, detail="Không thể truy vấn AI knowledge lúc này. Vui lòng thử lại sau.")
 
     return {
         "query": query,
@@ -2221,7 +2305,8 @@ async def ai_navigation_search(
     try:
         matches = _search_navigation_content(db, query=query, limit=n_results)
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Không thể tìm nội dung điều hướng: {str(exc)}")
+        logger.exception("Error searching navigation content for query=%s: %s", query, str(exc))
+        raise HTTPException(status_code=500, detail="Không thể thực hiện tìm điều hướng lúc này. Vui lòng thử lại sau.")
 
     return {
         "query": query,

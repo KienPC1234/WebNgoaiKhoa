@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks, Query
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 import os
 import uuid
@@ -37,6 +37,9 @@ from app.schemas.schemas import (
     NewsletterDispatchOut,
 )
 from typing import List, Optional
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -660,18 +663,62 @@ async def get_admin_overview(db: Session = Depends(get_db), admin: User = Depend
         ai_documents = 0
         knowledge_assets = 0
 
+    # Build simple weekly metrics for the last 7 days (used by admin chart)
+    try:
+        today = datetime.now(timezone.utc).date()
+        name_map = {0: 'T2', 1: 'T3', 2: 'T4', 3: 'T5', 4: 'T6', 5: 'T7', 6: 'CN'}
+        weekly_metrics = []
+        for days_back in range(6, -1, -1):
+            day = today - timedelta(days=days_back)
+            start = datetime(day.year, day.month, day.day, tzinfo=timezone.utc)
+            end = start + timedelta(days=1)
+
+            submissions_count = db.query(Submission).filter(Submission.created_at >= start, Submission.created_at < end).count()
+            publications_count = db.query(Publication).filter(Publication.created_at >= start, Publication.created_at < end).count()
+
+            weekly_metrics.append({
+                "name": name_map.get(day.weekday(), day.strftime('%a')),
+                "date": day.isoformat(),
+                "views": publications_count,
+                "submissions": submissions_count,
+            })
+    except Exception:
+        weekly_metrics = []
+
     return {
         "stats": stats,
         "ai_status": ai_status,
         "ai_documents": ai_documents,
         "knowledge_assets": knowledge_assets,
         "recent_activity": _collect_recent_activity(db),
+        "weekly_metrics": weekly_metrics,
     }
 
 
 @router.get("/ai-knowledge/assets", response_model=List[AIKnowledgeAssetOut])
 async def get_ai_knowledge_assets(admin: User = Depends(get_current_admin)):
     return ai_module.list_knowledge_files()
+
+
+@router.get("/ai-knowledge/assets/{asset_id}/content")
+async def get_ai_knowledge_asset_content(asset_id: str, admin: User = Depends(get_current_admin)):
+    """Admin-only endpoint to retrieve assembled full text for a knowledge asset (with truncation guard)."""
+    max_chars = getattr(ai_module, "AI_RETRIEVE_MAX_TOTAL_CHARS", None)
+    result = ai_module.assemble_full_asset_text(asset_id, max_chars=max_chars)
+    if not result.get("ok"):
+        reason = result.get("reason", "not_found")
+        if reason == "not_found":
+            raise HTTPException(status_code=404, detail="Knowledge asset not found")
+        raise HTTPException(status_code=500, detail="failed to fetch asset content")
+
+    return {
+        "ok": True,
+        "asset_id": asset_id,
+        "full_text": result.get("full_text", ""),
+        "truncated": result.get("truncated", False),
+        "total_chars": result.get("total_chars", 0),
+        "chunks": result.get("chunks", 0),
+    }
 
 
 @router.get("/ai-knowledge/overview")
@@ -696,10 +743,11 @@ async def upload_ai_knowledge_files(
             item = ai_module.ingest_knowledge_file(upload.filename or "unknown", content, uploader)
             uploaded.append(item)
         except Exception as exc:
+            logger.exception("Failed to ingest AI knowledge file %s: %s", upload.filename or "unknown", str(exc))
             failed.append(
                 {
                     "file_name": upload.filename or "unknown",
-                    "error": str(exc),
+                    "error": "ingest_failed",
                 }
             )
 

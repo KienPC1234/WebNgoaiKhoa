@@ -36,8 +36,8 @@ const linkifyInternalPaths = (line = '') => {
   // Handle raw HTML code tags: <code>/path</code>
   line = line.replace(/<code>((?:\/|\.\.|\.\/|\?|#)[^<\s`]+)<\/code>/gi, (_, p) => `[${p}](${p})`)
 
-  // General replacement for bare paths preceded by start or whitespace or '>' (covers cases after tags)
-  return line.replace(/(^|\s|>)(\/(?:[^\s`<>\)\]]+))/g, (m, prefix, path) => {
+  // General replacement for bare paths preceded by start or whitespace or '(' or '>' (covers cases after tags and parentheses)
+  return line.replace(/(^|[\s(>])(\/(?:[^\s`<>\)\]]+))/g, (m, prefix, path) => {
     let trailing = ''
     if (/[.,;:!?]$/.test(path)) {
       trailing = path.slice(-1)

@@ -4,6 +4,7 @@ import {
   Compass,
   GraduationCap,
   Sparkles,
+  BarChart,
   ChevronDown,
   ArrowUp,
   Bell,
@@ -28,13 +29,13 @@ const introMenu = [
     to: '/doingu/scale',
     title: 'Tổ xã hội - quy mô',
     subtitle: 'Sứ mệnh, quy mô và định hướng',
-    icon: Users,
+    icon: BarChart,
   },
   {
     to: '/doingu/staff',
     title: 'Đội ngũ giáo viên',
     subtitle: 'Danh sách và hồ sơ giảng dạy',
-    icon: BookOpen,
+    icon: Users,
   },
 ]
 

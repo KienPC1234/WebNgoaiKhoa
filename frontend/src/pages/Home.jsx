@@ -65,7 +65,7 @@ export const Home = () => {
     const fetchLatest = async () => {
       setLoading(true)
       try {
-        const response = await fetch(`${API_URL}/public/publications`, {
+        const response = await fetch(`${API_URL}/public/publications?subject=van&content_type=an-pham`, {
           signal: controller.signal,
           headers: {
             Accept: 'application/json',

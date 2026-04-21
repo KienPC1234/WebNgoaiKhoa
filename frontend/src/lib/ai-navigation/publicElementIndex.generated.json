@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-04-19T02:23:45.784Z",
+  "generatedAt": "2026-04-19T13:57:12.061Z",
   "version": 2,
   "total": 242,
   "elements": [
@@ -1600,7 +1600,7 @@
     {
       "route": "/phanmon/van",
       "kind": "span",
-      "text": "\"Nhịp đập số - Khát vọng vươn tầm\"",
+      "text": "\"NHỊP ĐẬP SỐ - KHÁT VỌNG VƯƠN TẦM\"",
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",

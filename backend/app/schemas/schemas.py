@@ -199,6 +199,7 @@ class AdminOverview(BaseModel):
     ai_documents: int
     knowledge_assets: int
     recent_activity: List[AdminActivityItem]
+    weekly_metrics: Optional[List[Dict[str, Any]]] = None
 
 
 class AIKnowledgeAssetOut(BaseModel):

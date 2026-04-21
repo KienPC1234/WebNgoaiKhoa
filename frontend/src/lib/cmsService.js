@@ -9,6 +9,7 @@ export const cmsService = {
 
   getPublications: async (params = {}) => (await apiClient.get('/admin/publications', { params })).data,
   getPublicationById: async (id) => (await apiClient.get(`/admin/publications/${id}`)).data,
+  getPublicSubjects: async () => (await apiClient.get('/public/subjects')).data,
   uploadPublicationPdf: async (file) => {
     const formData = new FormData()
     formData.append('file', file)

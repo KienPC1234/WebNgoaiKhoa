@@ -21,7 +21,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 { 'id': 101, 'title': f'Sample {subject} A', 'subject': subject, 'category': subject, 'image_url': '', 'created_at': now },
                 { 'id': 102, 'title': f'Sample {subject} B', 'subject': subject, 'category': subject, 'image_url': '', 'created_at': now },
                 { 'id': 103, 'title': f'Sample {subject} C', 'subject': subject, 'category': subject, 'image_url': '', 'created_at': now },
-            ]
+            ]r
             body = json.dumps(sample).encode('utf-8')
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
