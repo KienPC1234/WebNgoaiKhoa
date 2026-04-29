@@ -52,7 +52,7 @@ export const GioiThieuQuyMo = () => {
             className="text-6xl md:text-8xl font-black leading-tight uppercase pt-3 md:pt-6 bg-clip-text text-transparent bg-gradient-to-r from-orange-200 to-yellow-100"
             style={{ WebkitTextFillColor: 'transparent', WebkitBackgroundClip: 'text' }}
           >
-            QUY MÔ & PHÁT TRIỂN <br />
+            {scale?.hero_title} <br />
           </motion.h1>
           
           <motion.p
@@ -88,7 +88,7 @@ export const GioiThieuQuyMo = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div className="space-y-8">
               <h2 className="text-4xl font-black text-fpt-blue uppercase italic tracking-tighter border-l-8 border-fpt-orange pl-6">
-                Quy mô hoạt động
+                Sứ mệnh
               </h2>
               <p className="text-gray-600 text-lg leading-relaxed font-medium">
                 {scale?.vision || 'Thông tin đang được cập nhật.'}

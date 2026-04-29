@@ -17,3 +17,5 @@ python-docx
 firebase-admin
 google-auth
 google-auth-oauthlib
+Pillow
+python-dateutil

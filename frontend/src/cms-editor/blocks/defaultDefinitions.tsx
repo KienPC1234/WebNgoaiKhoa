@@ -1,7 +1,12 @@
-import React from 'react'
+import React, { useRef, useState } from 'react'
+import { FileText, Download } from 'lucide-react'
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 import ReactMarkdown from 'react-markdown'
 import { CmsParagraphRichTextEditor } from '../editor/CmsParagraphRichTextEditor'
+import { useImageUpload } from '../hooks/useImageUpload'
+import { useFileUpload } from '../hooks/useFileUpload'
+import { useMediaLibrary } from '@/lib/mediaLibrary'
+import { useSubjects } from '../hooks/useSubjects'
 import type { BlockDefinition, CMSBlock } from '../core/types'
 import { blockRegistry } from '../core/registry'
 import { createBlock } from '../core/model'
@@ -64,6 +69,15 @@ const CanvasPreviewShell: React.FC<{
       },
     })
   }
+
+  const { imageInputRef, imageUploading, handleImageFile, triggerImageFile } = useImageUpload((url: string) => {
+    updateProp('src', url)
+  })
+  
+  
+  
+  
+  
 
   React.useEffect(() => {
     setColSpanDraft(String(currentColSpan))
@@ -140,7 +154,13 @@ const InlineSelectedEditor: React.FC<{
       },
     })
   }
-
+  const { imageInputRef, imageUploading, handleImageFile, triggerImageFile } = useImageUpload((url: string) => {
+    updateProp('src', url)
+  })
+  const { fileInputRef, fileUploading, handleFile, triggerFile } = useFileUpload((url: string) => {
+    updateProp('url', url)
+  })
+  const { openMediaLibrary } = useMediaLibrary()
   if (block.type === 'paragraph') {
     return (
       <div className="mt-3 rounded-lg border border-blue-100 bg-white p-3" onClick={(event) => event.stopPropagation()}>
@@ -157,15 +177,47 @@ const InlineSelectedEditor: React.FC<{
 
   if (block.type === 'image') {
     return (
-      <div className="mt-3 grid grid-cols-1 gap-2 rounded-lg border border-blue-100 bg-white p-3" onClick={(event) => event.stopPropagation()}>
+      <>
+        <div className="mt-3 grid grid-cols-1 gap-2 rounded-lg border border-blue-100 bg-white p-3" onClick={(event) => event.stopPropagation()}>
         <p className="text-[10px] font-black uppercase tracking-widest text-blue-500">Thiết lập ảnh</p>
-        <input
-          value={String(block.props.src || '')}
-          onChange={(event) => updateProp('src', event.target.value)}
-          className="rounded-md border border-blue-100 bg-white px-2 py-2 text-xs"
-          placeholder="URL ảnh"
-          aria-label="URL ảnh"
-        />
+        <div className="flex items-center gap-2">
+          <input
+            value={String(block.props.src || '')}
+            onChange={(event) => updateProp('src', event.target.value)}
+            className="flex-1 rounded-md border border-blue-100 bg-white px-2 py-2 text-xs"
+            placeholder="URL ảnh"
+            aria-label="URL ảnh"
+          />
+          <input
+            ref={(el) => (imageInputRef.current = el)}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleImageFile}
+          />
+          <button
+            type="button"
+            onClick={() => imageInputRef.current?.click()}
+            className="rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-600"
+          >
+            {imageUploading ? 'Đang tải...' : 'Tải ảnh'}
+          </button>
+            <button
+              type="button"
+              onClick={async () => {
+                console.log('[CMS] open media modal', 'context=image')
+                try {
+                  const asset = await openMediaLibrary({ accept: 'image/*', multi: false })
+                  if (asset) updateProp('src', asset.url)
+                } catch (err) {
+                  console.error('[CMS] openMediaLibrary failed', err)
+                }
+              }}
+              className="rounded-md border border-blue-100 bg-white px-3 py-2 text-xs text-blue-600"
+            >
+              Chọn từ Thư viện
+            </button>
+        </div>
         <input
           type="text"
           value={String(block.props.width || '')}
@@ -189,7 +241,8 @@ const InlineSelectedEditor: React.FC<{
           placeholder="Chú thích"
           aria-label="Chú thích ảnh"
         />
-      </div>
+        </div>
+      </>
     )
   }
 
@@ -199,7 +252,8 @@ const InlineSelectedEditor: React.FC<{
       : ''
 
     return (
-      <div className="mt-3 grid grid-cols-1 gap-2 rounded-lg border border-blue-100 bg-white p-3" onClick={(event) => event.stopPropagation()}>
+      <>
+        <div className="mt-3 grid grid-cols-1 gap-2 rounded-lg border border-blue-100 bg-white p-3" onClick={(event) => event.stopPropagation()}>
         <p className="text-[10px] font-black uppercase tracking-widest text-blue-500">Thiết lập thư viện ảnh</p>
         <textarea
           value={galleryValue}
@@ -212,7 +266,8 @@ const InlineSelectedEditor: React.FC<{
           placeholder="Mỗi dòng một URL ảnh"
           aria-label="URL thư viện ảnh"
         />
-      </div>
+        </div>
+      </>
     )
   }
 
@@ -356,7 +411,7 @@ const InlineSelectedEditor: React.FC<{
 
   if (block.type === 'document') {
     return (
-      <div className="mt-3 grid grid-cols-1 gap-2 rounded-lg border border-blue-100 bg-white p-3" onClick={(event) => event.stopPropagation()}>
+      <div className="mt-0 grid grid-cols-1 gap-2 rounded-lg border border-blue-100 bg-white p-2" onClick={(event) => event.stopPropagation()}>
         <p className="text-[10px] font-black uppercase tracking-widest text-blue-500">Thiết lập tài liệu</p>
         <input
           value={String(block.props.text || '')}
@@ -372,10 +427,42 @@ const InlineSelectedEditor: React.FC<{
           placeholder="https://..."
           aria-label="URL tài liệu"
         />
+        <div className="flex items-center gap-2">
+          <input
+            ref={(el) => (fileInputRef.current = el)}
+            type="file"
+            accept=".pdf"
+            className="hidden"
+            onChange={handleFile}
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="rounded-md border border-blue-100 bg-blue-50 px-2 py-1 text-xs text-blue-600"
+          >
+            {fileUploading ? 'Đang tải...' : 'Tải tài liệu (PDF)'}
+          </button>
+          <button
+            type="button"
+            onClick={async () => {
+              console.log('[CMS] open media modal', 'context=document')
+              try {
+                const asset = await openMediaLibrary({ accept: '.pdf', multi: false })
+                if (asset) updateProp('url', asset.url)
+              } catch (err) {
+                console.error('[CMS] openMediaLibrary failed', err)
+              }
+            }}
+            className="rounded-md border border-blue-100 bg-white px-2 py-1 text-xs text-blue-600"
+          >
+            Chọn từ Thư viện
+          </button>
+          <div className="text-xs text-gray-500 truncate">{String(block.props.url || '')}</div>
+        </div>
         <textarea
           value={String(block.props.description || '')}
           onChange={(event) => updateProp('description', event.target.value)}
-          className="min-h-[88px] rounded-md border border-blue-100 bg-white px-2 py-2 text-xs"
+          className="min-h-[64px] rounded-md border border-blue-100 bg-white px-2 py-2 text-xs"
           placeholder="Mô tả"
           aria-label="Mô tả tài liệu"
         />
@@ -420,6 +507,8 @@ const InlineSelectedEditor: React.FC<{
   }
 
   if (block.type === 'related-posts') {
+    const { subjects } = useSubjects()
+
     return (
       <div className="mt-3 grid grid-cols-1 gap-2 rounded-lg border border-blue-100 bg-white p-3" onClick={(event) => event.stopPropagation()}>
         <p className="text-[10px] font-black uppercase tracking-widest text-blue-500">Thiết lập bài liên quan</p>
@@ -442,13 +531,22 @@ const InlineSelectedEditor: React.FC<{
           className="rounded-md border border-blue-100 bg-white px-2 py-2 text-xs"
           aria-label="Số lượng bài liên quan"
         />
-        <input
-          value={String(block.props.category || '')}
-          onChange={(event) => updateProp('category', event.target.value)}
-          className="rounded-md border border-blue-100 bg-white px-2 py-2 text-xs"
-          placeholder="Danh mục"
-          aria-label="Danh mục bài liên quan"
-        />
+        <div>
+          <input
+            list={`related-posts-subjects-${block.id}`}
+            value={String(block.props.category || '')}
+            onChange={(event) => updateProp('category', event.target.value)}
+            className="w-full rounded-md border border-blue-100 bg-white px-2 py-2 text-xs"
+            placeholder="Danh mục"
+            aria-label="Danh mục bài liên quan"
+          />
+          <datalist id={`related-posts-subjects-${block.id}`}>
+            <option value="">Tất cả môn</option>
+            {subjects.map((s) => (
+              <option key={s} value={s}>{s.replace(/-/g, ' ').replace(/\b\w/g, (m) => m.toUpperCase())}</option>
+            ))}
+          </datalist>
+        </div>
       </div>
     )
   }
@@ -701,7 +799,7 @@ const MinimalRenderer: React.FC<{ block: CMSBlock; renderContext?: MinimalRender
 
         const list = await resp.json()
         const filtered = Array.isArray(list)
-          ? list.filter((p) => !(publication && p.id === publication.id))
+          ? list.filter((p) => !(publication && String(p.id) === String(publication.id)))
           : []
 
         if (!cancelled) setRelatedItems(filtered.slice(0, count))
@@ -833,10 +931,30 @@ const MinimalRenderer: React.FC<{ block: CMSBlock; renderContext?: MinimalRender
   }
 
   if (block.type === 'document') {
+    const fileUrl = String(url || block.props.url || '')
+    const ext = (fileUrl.split('.').pop() || '').toLowerCase()
+    const description = String(block.props.description || '')
+
     return (
       <div className="rounded-lg border border-gray-200 bg-transparent p-3">
-        <p className="text-sm font-semibold text-gray-700">{text || 'Tài liệu'}</p>
-        <p className="mt-1 truncate text-xs text-gray-500">{url || 'URL tài liệu'}</p>
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded bg-gray-100 text-xs font-bold text-gray-700">
+            {ext === 'pdf' ? 'PDF' : <FileText size={18} />}
+          </div>
+          <div className="flex-1">
+            <a
+              href={fileUrl || '#'}
+              download
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-gray-700 hover:underline"
+            >
+              {text || 'Tài liệu'}
+              <Download size={14} className="text-gray-400" />
+            </a>
+            <p className="mt-1 line-clamp-2 text-xs text-gray-500">{description || 'Mô tả tài liệu'}</p>
+          </div>
+        </div>
       </div>
     )
   }
@@ -877,35 +995,29 @@ const MinimalRenderer: React.FC<{ block: CMSBlock; renderContext?: MinimalRender
       )
     }
 
-    // Publish mode: render fetched related items
+    // Publish mode: if still loading or no results, collapse the block so it only
+    // occupies space for the actual number of returned posts.
+    if (relatedLoading || relatedItems === null) return null
+    if (!Array.isArray(relatedItems) || relatedItems.length === 0) return null
+
     return (
       <div className="rounded-lg border border-gray-200 bg-transparent p-3">
         <p className="mb-2 text-xs font-semibold text-gray-500">{String(block.props.title || text || 'Bài viết liên quan')}</p>
-        {relatedLoading ? (
-          <div className="space-y-2">
-            {Array.from({ length: count }).map((_, idx) => (
-              <div key={`related-loading-${idx}`} className="h-7 rounded border border-gray-200 bg-white" />
-            ))}
-          </div>
-        ) : relatedItems && relatedItems.length > 0 ? (
-          <ul className="space-y-3">
-            {relatedItems.map((item) => (
-              <li key={item.id} className="flex items-center gap-3">
-                {item.image_url ? (
-                  <img src={item.image_url} alt={item.title} className="h-12 w-20 rounded object-cover" />
-                ) : (
-                  <div className="h-12 w-20 rounded bg-gray-100" />
-                )}
-                <div className="flex-1">
-                  <a href={`/posts/${item.id}`} className="font-semibold text-sm text-slate-800 hover:underline">{item.title}</a>
-                  <p className="text-xs text-gray-500">{new Date(item.created_at).toLocaleDateString('vi-VN')}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-xs text-gray-500">Không tìm thấy bài liên quan.</p>
-        )}
+        <ul className="space-y-3">
+          {relatedItems.map((item) => (
+            <li key={item.id} className="flex items-center gap-3">
+              {item.image_url ? (
+                <img src={item.image_url} alt={item.title} className="h-12 w-20 rounded object-cover" />
+              ) : (
+                <div className="h-12 w-20 rounded bg-gray-100" />
+              )}
+              <div className="flex-1">
+                <a href={`/posts/${item.id}`} className="font-semibold text-sm text-slate-800 hover:underline">{item.title}</a>
+                <p className="text-xs text-gray-500">{new Date(item.created_at).toLocaleDateString('vi-VN')}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
       </div>
     )
   }

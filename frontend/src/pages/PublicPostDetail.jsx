@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Calendar, FileText, Layers3, User } from 'lucide-react'
 import { Card } from '@/components/ui/core'
 import { PublicDocumentView } from '@/cms-editor/renderer/PublicDocumentView'
 import { normalizeLayoutMetadataToDocument } from '@/cms-editor/core/legacy'
 import { PageFlip } from 'page-flip'
 import * as pdfjsLib from 'pdfjs-dist'
+import CommentsSection from '@/components/comments/CommentsSection'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString()
@@ -15,6 +16,8 @@ export const PublicPostDetail = () => {
   const [post, setPost] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [showError, setShowError] = useState(false)
+  const navigate = useNavigate()
   const [pdfPreviewPages, setPdfPreviewPages] = useState([])
   const [pdfPreviewLoading, setPdfPreviewLoading] = useState(false)
   const [flipSize, setFlipSize] = useState({ width: 390, height: 552 })
@@ -50,6 +53,20 @@ export const PublicPostDetail = () => {
 
     return () => controller.abort()
   }, [postId])
+
+  // Delay showing the error UI briefly to avoid transient flashes
+  useEffect(() => {
+    let t = null
+    if (!loading && !post) {
+      // show error only after a short delay (avoids transient failures)
+      t = setTimeout(() => setShowError(true), 300)
+    } else {
+      setShowError(false)
+    }
+    return () => {
+      if (t) clearTimeout(t)
+    }
+  }, [loading, post])
 
   const cmsDocument = useMemo(() => normalizeLayoutMetadataToDocument(post?.layout_metadata, post?.title || 'Publication'), [post])
   const pdfAttachmentUrl = cmsDocument?.metadata?.pdf_attachment_url || ''
@@ -135,19 +152,27 @@ export const PublicPostDetail = () => {
     }
   }, [pdfPreviewPages, flipSize])
 
-  if (loading) {
+  // While loading, or while we've finished loading but the error debounce
+  // delay hasn't elapsed yet, show the loading state. Only show the error
+  // panel when `showError` is true (debounced). This prevents transient
+  // flashes where `post` is still null but the main UI tries to access it.
+  if (loading || (!post && !showError)) {
     return <div className="min-h-screen flex items-center justify-center text-gray-400 font-black">Đang tải bài viết...</div>
   }
 
-  if (!post || error) {
+  if (!post && showError) {
     return (
       <div className="min-h-screen bg-gray-50/50 py-16 px-4">
         <div className="max-w-4xl mx-auto">
           <Card className="p-8 rounded-3xl bg-white border border-red-100">
             <p className="font-black text-red-500">{error || 'Không thể tải bài viết.'}</p>
-            <Link to="/" className="inline-flex mt-4 items-center gap-2 text-fpt-blue font-black">
-              <ArrowLeft size={16} /> Quay lại trang chủ
-            </Link>
+            <button
+              type="button"
+              onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/'))}
+              className="inline-flex mt-4 items-center gap-2 text-fpt-blue font-black"
+            >
+              <ArrowLeft size={16} /> Quay lại
+            </button>
           </Card>
         </div>
       </div>
@@ -158,9 +183,13 @@ export const PublicPostDetail = () => {
     <div className="page-shell-public bg-gray-50/50">
       <section className="page-hero page-hero-caro text-slate-700">
         <div className="max-w-5xl mx-auto space-y-6">
-          <Link to="/" className="tap-target inline-flex items-center gap-2 rounded-full border border-orange-200 bg-white/90 px-4 py-2 text-xs font-black uppercase tracking-widest text-fpt-blue">
+          <button
+            type="button"
+            onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/'))}
+            className="tap-target inline-flex items-center gap-2 rounded-full border border-orange-200 bg-white/90 px-4 py-2 text-xs font-black uppercase tracking-widest text-fpt-blue"
+          >
             <ArrowLeft size={14} /> Quay lại
-          </Link>
+          </button>
           <h1 className="text-4xl md:text-6xl font-black italic leading-tight text-fpt-blue">{post.title}</h1>
           <div className="flex flex-wrap gap-4 text-xs font-black uppercase tracking-widest text-slate-500">
             <span className="inline-flex items-center gap-1.5"><Calendar size={14} /> {new Date(post.created_at).toLocaleDateString('vi-VN')}</span>
@@ -230,6 +259,10 @@ export const PublicPostDetail = () => {
             )}
           </Card>
         )}
+
+        <Card className="p-6 rounded-3xl border-none shadow-lg space-y-4">
+          <CommentsSection publicationId={post.id} commentsEnabled={post.comments_enabled !== false} />
+        </Card>
 
       </div>
     </div>

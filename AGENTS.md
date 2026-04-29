@@ -21,6 +21,8 @@ Core site is production-stable as of 2026-04-14:
 
 ## Active Tasks
 
+- 2026-04-25: Event CMS refactor (recurrence, attachments, calendar UI) — in-progress by `ag-ev1`. See `backend/app/models/publication.py`, `backend/app/api/admin.py`, `backend/app/schemas/schemas.py`, `frontend/src/pages/Admin/Events.jsx`, `frontend/src/components/Admin/CalendarView.jsx`, `frontend/src/components/Admin/SeriesEditor.jsx`.
+
 ## Blockers
 _(none)_
 

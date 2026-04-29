@@ -22,18 +22,21 @@ import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ShimmerButton } from '@/components/aceternity'
 import { AiChatWidget } from '@/components/AiChatWidget'
+import NotificationButton from '@/components/NotificationButton'
 import { cn } from '@/lib/utils'
+import aiSitemap from '@/lib/aiSitemap.json'
+import { roleHasPermission } from '@/lib/rolePolicy'
 
 const introMenu = [
   {
     to: '/doingu/scale',
-    title: 'Tổ xã hội - quy mô',
+    title: 'Quy mô',
     subtitle: 'Sứ mệnh, quy mô và định hướng',
     icon: BarChart,
   },
   {
     to: '/doingu/staff',
-    title: 'Đội ngũ giáo viên',
+    title: 'Đội ngũ',
     subtitle: 'Danh sách và hồ sơ giảng dạy',
     icon: Users,
   },
@@ -68,10 +71,19 @@ const subjects = [
   { name: 'Vovinam', slug: 'vovinam' },
 ]
 
+const subjectTextClasses = {
+  'van': 'text-fpt-orange',
+  'ktpl': 'text-emerald-600',
+  'lich-su': 'text-amber-700',
+  'dia-li': 'text-emerald-600',
+  'vovinam': 'text-blue-700',
+}
+
 const subjectContent = [
   { label: 'Ấn phẩm học tập', slug: 'an-pham', icon: BookOpen },
   { label: 'Tài liệu tham khảo', slug: 'tai-lieu', icon: Compass },
   { label: 'Vinh danh năm học', slug: 'vinh-danh', icon: Award },
+  { label: 'Cuộc thi', slug: 'cuoc-thi', icon: Award },
 ]
 
 // use subject name itself as the link target (remove separate "Trang môn" entry)
@@ -93,21 +105,24 @@ export const MainLayout = () => {
   const [isLowSpecDevice, setIsLowSpecDevice] = useState(false)
   const [isScrollPerfMode, setIsScrollPerfMode] = useState(false)
   const [pendingAiOpen, setPendingAiOpen] = useState(false)
+  const [authHoverOpen, setAuthHoverOpen] = useState(false)
+  const authCloseTimerRef = useRef(null)
   const [notifications, setNotifications] = useState([])
   const navRef = useRef(null)
   const floatingBottom = 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)'
   const FLOATING_BOTTOM_OFFSET = 'calc(env(safe-area-inset-bottom, 0px) + 1.25rem)'
 
   const token = localStorage.getItem('token')
-  let isAdmin = false
+  let hasAdminPanel = false
   try {
     const rawUser = localStorage.getItem('user')
     if (rawUser) {
       const parsedUser = JSON.parse(rawUser)
-      isAdmin = parsedUser?.role === 'admin'
+      const role = parsedUser?.role
+      hasAdminPanel = roleHasPermission(role, 'admin_panel')
     }
   } catch {
-    isAdmin = false
+    hasAdminPanel = false
   }
 
   const isActive = (path) => location.pathname === path
@@ -144,8 +159,14 @@ export const MainLayout = () => {
         setShowBackToTop((prev) => (prev === nextShowValue ? prev : nextShowValue))
 
         // Keep mode stable to avoid blur/shadow flashing while scrolling.
-        const nextPerfMode = Boolean(isLowSpecDevice && window.scrollY > 120)
-        setIsScrollPerfMode((prev) => (prev === nextPerfMode ? prev : nextPerfMode))
+        // Use a small hysteresis window so the mode isn't toggled rapidly
+        // when the scroll position hovers near the threshold.
+        setIsScrollPerfMode((prev) => {
+          const enableThreshold = 160
+          const disableThreshold = 100
+          const shouldEnable = Boolean(isLowSpecDevice && window.scrollY > (prev ? disableThreshold : enableThreshold))
+          return prev === shouldEnable ? prev : shouldEnable
+        })
 
         rafId = 0
       })
@@ -170,79 +191,9 @@ export const MainLayout = () => {
   }, [])
 
   useEffect(() => {
-    let ws
-    let reconnectTimeout
-    let closedByApp = false
-    let retryCount = 0
-    const wsBase = import.meta.env.VITE_WS_URL || ''
-    const isLocalHost = ['localhost', '127.0.0.1'].includes(window.location.hostname)
-    const shouldConnectWs = Boolean(wsBase) || isLocalHost
-
-    if (!shouldConnectWs) {
-      return undefined
-    }
-
-    const connectWS = () => {
-      if (closedByApp) return
-
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-      const wsUrl = wsBase
-        ? `${wsBase.replace(/\/$/, '')}/notifications`
-        : `${protocol}//${window.location.host}/ws/notifications`
-
-      try {
-        ws = new WebSocket(wsUrl)
-
-        ws.onopen = () => {
-          retryCount = 0
-        }
-
-        ws.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data)
-            const newNotif = { ...data, id: Date.now() }
-            setNotifications(prev => [newNotif, ...prev])
-
-            setTimeout(() => {
-              setNotifications(prev => prev.filter(n => n.id !== newNotif.id))
-            }, 8000)
-          } catch (e) {
-            console.error('Lỗi parse thông báo:', e)
-          }
-        }
-
-        ws.onclose = () => {
-          if (closedByApp) return
-          const reconnectDelay = Math.min(15000, 2000 * (2 ** retryCount))
-          retryCount += 1
-          reconnectTimeout = setTimeout(connectWS, reconnectDelay)
-        }
-
-        ws.onerror = () => {
-          // Browser already reports WebSocket handshake errors in DevTools.
-          // Keep runtime console clean to avoid noisy logs for expected network failures.
-        }
-      } catch (e) {
-        const reconnectDelay = Math.min(15000, 2000 * (2 ** retryCount))
-        retryCount += 1
-        reconnectTimeout = setTimeout(connectWS, reconnectDelay)
-      }
-    }
-
-    connectWS()
-
-    return () => {
-      closedByApp = true
-      if (ws) {
-        ws.onclose = null
-        ws.onerror = null
-        ws.onmessage = null
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.close(1000, 'Main layout unmount')
-        }
-      }
-      if (reconnectTimeout) clearTimeout(reconnectTimeout)
-    }
+    // Notifications websocket is provided by NotificationsProvider.
+    // MainLayout no longer manages its own WS to avoid creating multiple connections.
+    return undefined
   }, [])
 
   useEffect(() => {
@@ -304,6 +255,40 @@ export const MainLayout = () => {
       event.preventDefault()
     }
   }
+
+  const openAuth = () => {
+    if (authCloseTimerRef.current) {
+      clearTimeout(authCloseTimerRef.current)
+      authCloseTimerRef.current = null
+    }
+    setAuthHoverOpen(true)
+  }
+
+  const scheduleCloseAuth = (delay = 250) => {
+    if (authCloseTimerRef.current) clearTimeout(authCloseTimerRef.current)
+    authCloseTimerRef.current = setTimeout(() => {
+      setAuthHoverOpen(false)
+      authCloseTimerRef.current = null
+    }, delay)
+  }
+
+  const cancelCloseAuth = () => {
+    if (authCloseTimerRef.current) {
+      clearTimeout(authCloseTimerRef.current)
+      authCloseTimerRef.current = null
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      if (authCloseTimerRef.current) {
+        clearTimeout(authCloseTimerRef.current)
+        authCloseTimerRef.current = null
+      }
+    }
+  }, [])
+
+  // width-sync logic removed to avoid unnecessary reflows
 
   return (
     <div className={cn('app-shell relative overflow-x-clip', isScrollPerfMode && 'performance-scrolling')}>
@@ -367,14 +352,17 @@ export const MainLayout = () => {
                 <div className="w-[min(860px,calc(100vw-2.5rem))] p-3">
                   <DropdownHeading
                     title="Bản đồ chuyên môn"
-                    subtitle="Chọn phân môn và loại nội dung để đi nhanh tới tài nguyên cần học"
+                    subtitle="Chọn phân môn và loại nội dung để đi nhanh tới tài nguyên môn học"
                   />
                   <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {subjects.map((subject) => (
                       <div key={subject.slug} className="rounded-2xl border border-slate-200/80 bg-gradient-to-b from-slate-50 to-white p-3 shadow-[0_14px_30px_-24px_rgba(15,23,42,0.5)]">
                         <Link
                           to={`/phanmon/${subject.slug}`}
-                          className="mb-3 inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-fpt-blue hover:text-fpt-orange"
+                          className={cn(
+                            'mb-3 inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-widest hover:text-fpt-orange',
+                            subjectTextClasses[subject.slug] || 'text-fpt-blue'
+                          )}
                         >
                           {subject.name}
                           <GraduationCap size={14} className="text-slate-400" />
@@ -398,7 +386,7 @@ export const MainLayout = () => {
               </DesktopMenu>
 
               <DesktopMenu
-                label="Đội ngũ & sự kiện"
+                label="Tin tức"
                 icon={Menu}
                 menuKey="more"
                 openMenu={openMenu}
@@ -408,10 +396,6 @@ export const MainLayout = () => {
                 align="right"
               >
                 <div className="w-[min(380px,calc(100vw-2.5rem))] space-y-2 p-2">
-                  <DropdownHeading
-                    title="Liên kết nhanh"
-                    subtitle="Nhóm các mục mở rộng để thanh điều hướng luôn gọn"
-                  />
                   {overflowMenu.map((item) => (
                     <SubMenuCard key={item.to} item={item} />
                   ))}
@@ -420,7 +404,7 @@ export const MainLayout = () => {
             </nav>
 
             <div className="flex shrink-0 items-center gap-2 md:gap-2.5">
-              {token && isAdmin && (
+              {token && hasAdminPanel && (
                 <Link to="/admin/dashboard" className="btn-ghost hidden 2xl:inline-flex">
                   Admin
                 </Link>
@@ -442,12 +426,39 @@ export const MainLayout = () => {
                 </>
               ) : (
                 <>
-                  <Link to="/login" className="btn-ghost hidden 2xl:inline-flex">
-                    Đăng nhập
-                  </Link>
-                  <Link to="/register" className="btn-primary hidden 2xl:inline-flex">
-                    Đăng ký
-                  </Link>
+                  <div
+                    className="relative hidden 2xl:inline-flex"
+                    onMouseEnter={openAuth}
+                    onMouseLeave={() => scheduleCloseAuth()}
+                    onFocus={openAuth}
+                    onBlur={(e) => {
+                      if (!e.currentTarget.contains(e.relatedTarget)) scheduleCloseAuth()
+                    }}
+                  >
+                    <Link to="/register" className="btn-primary whitespace-nowrap">
+                      Đăng ký
+                    </Link>
+
+                    <AnimatePresence>
+                      {authHoverOpen && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -10, scale: 0.98 }}
+                          animate={{ opacity: 1, y: 6, scale: 1 }}
+                          exit={{ opacity: 0, y: -8, scale: 0.98 }}
+                          transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+                          className="absolute top-full mt-3 right-0 z-50 pointer-events-auto"
+                          onMouseEnter={cancelCloseAuth}
+                          onMouseLeave={() => scheduleCloseAuth()}
+                        >
+                          <div className="rounded-xl border border-transparent bg-transparent p-1 min-w-max pointer-events-auto shadow-sm">
+                            <Link to={{ pathname: '/login', state: { from: location.pathname } }} className="btn-ghost block text-left px-4 py-2 whitespace-nowrap">
+                              Đăng nhập
+                            </Link>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
                 </>
               )}
 
@@ -459,6 +470,10 @@ export const MainLayout = () => {
                 <Sparkles size={16} />
                 AI Chat
               </ShimmerButton>
+
+              <div className="hidden 2xl:inline-flex">
+                <NotificationButton />
+              </div>
 
               <button
                 type="button"
@@ -559,7 +574,7 @@ export const MainLayout = () => {
                   </MobileSection>
 
                   <MobileSection
-                    title="Đội ngũ & sự kiện"
+                    title="Tin tức"
                     sectionKey="stories"
                     openSection={mobileSectionOpen}
                     onToggle={setMobileSectionOpen}
@@ -570,7 +585,7 @@ export const MainLayout = () => {
                   </MobileSection>
 
                   <div className="mt-3 flex gap-2">
-                    {token && isAdmin && (
+                    {token && hasAdminPanel && (
                       <Link to="/admin/dashboard" className="btn-ghost flex-1" onClick={() => setMobileMenuOpen(false)}>
                         Admin Panel
                       </Link>
@@ -587,9 +602,9 @@ export const MainLayout = () => {
                       </>
                     ) : (
                       <>
-                        <Link to="/login" className="btn-ghost flex-1" onClick={() => setMobileMenuOpen(false)}>
-                          Đăng nhập
-                        </Link>
+                        <Link to={{ pathname: '/login', state: { from: location.pathname } }} className="btn-ghost flex-1" onClick={() => setMobileMenuOpen(false)}>
+                              Đăng nhập
+                            </Link>
                         <Link to="/register" className="btn-primary flex-1" onClick={() => setMobileMenuOpen(false)}>
                           Đăng ký
                         </Link>
@@ -612,7 +627,7 @@ export const MainLayout = () => {
         isScrollPerfMode && 'bg-white/90 backdrop-blur-0'
       )}>
         <div className="app-section">
-          <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-5">
             <div className="space-y-4 lg:col-span-2">
               <div className="flex items-center gap-2">
                 <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-orange-100 bg-white">
@@ -629,16 +644,29 @@ export const MainLayout = () => {
             <div>
               <h4 className="mb-3 text-xs font-black uppercase tracking-widest text-fpt-blue">Khám phá</h4>
               <ul className="space-y-2 text-sm font-semibold text-slate-500">
-                <li><Link to="/phanmon/van" className="hover:text-fpt-orange">Phân môn Văn</Link></li>
-                <li><Link to="/phanmon/ktpl" className="hover:text-fpt-orange">Kinh tế pháp luật</Link></li>
-                <li><Link to="/events/upcoming" className="hover:text-fpt-orange">Sự kiện sắp tới</Link></li>
+                {aiSitemap && aiSitemap.slice(0, 6).map((item) => (
+                  <li key={item.path}>
+                    <Link to={item.path} className="hover:text-fpt-orange">{item.title}</Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="mb-3 text-xs font-black uppercase tracking-widest text-fpt-blue">Phân môn</h4>
+              <ul className="space-y-2 text-sm font-semibold text-slate-500">
+                {subjects.map((s) => (
+                  <li key={s.slug}>
+                    <Link to={`/phanmon/${s.slug}`} className="hover:text-fpt-orange">{s.name}</Link>
+                  </li>
+                ))}
               </ul>
             </div>
 
             <div>
               <h4 className="mb-3 text-xs font-black uppercase tracking-widest text-fpt-blue">Hệ thống</h4>
               <ul className="space-y-2 text-sm font-semibold text-slate-500">
-                <li><Link to={token ? '/profile' : '/login'} className="hover:text-fpt-orange">{token ? 'Hồ sơ' : 'Đăng nhập'}</Link></li>
+                <li><Link to={token ? '/profile' : { pathname: '/login', state: { from: location.pathname } }} className="hover:text-fpt-orange">{token ? 'Hồ sơ' : 'Đăng nhập'}</Link></li>
                 <li><a href="#" className="hover:text-fpt-orange">Điều khoản sử dụng</a></li>
                 <li><a href="#" className="hover:text-fpt-orange">Chính sách bảo mật</a></li>
               </ul>
@@ -676,33 +704,7 @@ export const MainLayout = () => {
         </AnimatePresence>
       </div>
 
-      <div className="pointer-events-none fixed right-4 top-24 z-[100] flex flex-col gap-3 md:right-6">
-        <AnimatePresence>
-          {notifications.map((notif) => (
-            <motion.div
-              key={notif.id}
-              initial={{ opacity: 0, x: 50, scale: 0.9 }}
-              animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ opacity: 0, x: 20, scale: 0.9 }}
-              className={cn(
-                'glass-card pointer-events-auto flex min-w-[280px] max-w-sm items-start gap-4 rounded-2xl border-l-4 border-fpt-orange p-4',
-                isScrollPerfMode && 'bg-white/95 shadow-[0_14px_40px_-28px_rgba(29,42,87,0.35)] backdrop-blur-0'
-              )}
-            >
-              <div className="rounded-xl bg-orange-500 p-2.5 text-white shadow-lg shadow-orange-100">
-                <Bell size={20} />
-              </div>
-              <div className="flex-1">
-                <h4 className="text-sm font-black uppercase tracking-tight text-fpt-blue">{notif.title}</h4>
-                <p className="mt-1 text-xs font-medium leading-relaxed text-slate-500">{notif.message}</p>
-              </div>
-              <button onClick={() => removeNotification(notif.id)} className="p-1 text-slate-300 hover:text-red-500">
-                <X size={18} />
-              </button>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
+      {/* Toast toasts are rendered by NotificationsProvider via context; keep layout lean here. */}
     </div>
   )
 }
@@ -714,7 +716,7 @@ const NavItem = ({ to, icon: Icon, label, active }) => (
       'tap-target relative shrink-0 flex items-center gap-2 rounded-full border px-3.5 py-2 text-[11px] font-black uppercase tracking-[0.11em] transition-colors',
       active
         ? 'border-orange-200 bg-orange-100/80 text-fpt-orange'
-        : 'border-orange-100/80 bg-transparent text-slate-600 hover:border-orange-200 hover:bg-orange-50/70 hover:text-fpt-orange'
+        : 'border-orange-200 bg-transparent text-slate-600 hover:border-orange-200 hover:bg-orange-50/70 hover:text-fpt-orange'
     )}
   >
     <Icon size={16} />
@@ -757,7 +759,7 @@ const DesktopMenu = ({ label, icon: Icon, menuKey, openMenu, onOpen, onClose, ac
         'tap-target flex items-center gap-2 rounded-full border px-3.5 py-2 text-[11px] font-black uppercase tracking-[0.11em] transition-colors',
         (active || openMenu === menuKey)
           ? 'border-orange-200 bg-orange-100/80 text-fpt-orange'
-          : 'border-orange-100/80 bg-transparent text-slate-600 hover:border-orange-200 hover:bg-orange-50/70 hover:text-fpt-orange'
+          : 'border-orange-200 bg-transparent text-slate-600 hover:border-orange-200 hover:bg-orange-50/70 hover:text-fpt-orange'
       )}
     >
       <Icon size={16} />

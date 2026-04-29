@@ -22,7 +22,7 @@ export const PhanMonDiaLi = () => {
     const fetchPublications = async () => {
         setLoading(true)
         try {
-            const response = await axios.get(`${API_URL}/public/publications?category=dia-li`)
+            const response = await axios.get(`${API_URL}/public/publications?subject=dia-li`)
             setPublications(response.data)
         } catch (error) {
             console.error('Error fetching publications:', error)

@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { Card, Button, Input } from '@/components/UI'
 import ReCAPTCHA from 'react-google-recaptcha'
 import { useRef } from 'react'
 import { apiClient } from '@/lib/apiClient'
 import { toastError, toastSuccess } from '@/lib/notify'
+import { refreshAuthOverview, roleHasPermission } from '@/lib/rolePolicy'
 
 const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY || ''
 
@@ -32,6 +33,7 @@ export const VerifyEmail = () => {
   const [status, setStatus] = useState('idle')
   const [message, setMessage] = useState('')
   const recaptchaRef = useRef(null)
+  const navigate = useNavigate()
 
   useEffect(() => {
     const verify = async () => {
@@ -42,6 +44,19 @@ export const VerifyEmail = () => {
         setStatus('success')
         setMessage(res.data.message || 'Xác minh thành công')
         toastSuccess(res.data.message || 'Xác minh thành công')
+        if (res.data.access_token) {
+          localStorage.setItem('token', res.data.access_token)
+          localStorage.setItem('user', JSON.stringify(res.data.user || {}))
+          try { window.dispatchEvent(new Event('auth-changed')) } catch (e) {}
+          try {
+            await refreshAuthOverview()
+          } catch (e) {}
+          if (res.data.user && roleHasPermission(res.data.user.role, 'admin_panel')) {
+            navigate('/admin/dashboard')
+            return
+          }
+          navigate('/')
+        }
       } catch (err) {
         setStatus('error')
         const message = err?.response?.data?.detail || 'Xác minh thất bại'
@@ -83,6 +98,19 @@ export const VerifyEmail = () => {
       setStatus('success')
       setMessage(res.data.message || 'Xác minh thành công')
       toastSuccess(res.data.message || 'Xác minh thành công')
+        if (res.data.access_token) {
+          localStorage.setItem('token', res.data.access_token)
+          localStorage.setItem('user', JSON.stringify(res.data.user || {}))
+          try { window.dispatchEvent(new Event('auth-changed')) } catch (e) {}
+          try {
+            await refreshAuthOverview()
+          } catch (e) {}
+          if (res.data.user && roleHasPermission(res.data.user.role, 'admin_panel')) {
+            navigate('/admin/dashboard')
+            return
+          }
+          navigate('/')
+        }
     } catch (err) {
       setStatus('error')
       const message = err?.response?.data?.detail || 'Xác minh thất bại'
@@ -104,8 +132,8 @@ export const VerifyEmail = () => {
 
         {!token && (
           <div className="space-y-4">
-            <p className="text-gray-500 font-semibold">Nhập email và OTP để kích hoạt tài khoản.</p>
-            <Input label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <p className="text-gray-500 font-semibold">Nhập mã OTP để kích hoạt tài khoản.</p>
+            {!email && <Input label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />}
             <Input label="OTP" value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="Nhập mã 6 số" />
             <div className="flex gap-3">
               <Button variant="orange" onClick={verifyOtp} disabled={status === 'loading'}>Xác minh OTP</Button>

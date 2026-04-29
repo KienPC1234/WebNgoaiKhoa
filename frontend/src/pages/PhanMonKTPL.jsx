@@ -22,7 +22,7 @@ export const PhanMonKTPL = () => {
   const fetchPublications = async () => {
     setLoading(true)
     try {
-      const response = await axios.get(`${API_URL}/public/publications?category=ktpl`)
+      const response = await axios.get(`${API_URL}/public/publications?subject=ktpl`)
       setPublications(response.data)
     } catch (error) {
       console.error('Error fetching publications:', error)

@@ -22,7 +22,7 @@ export const PhanMonVovinam = () => {
     const fetchPublications = async () => {
         setLoading(true)
         try {
-            const response = await axios.get(`${API_URL}/public/publications?category=vovinam`)
+            const response = await axios.get(`${API_URL}/public/publications?subject=vovinam`)
             setPublications(response.data)
         } catch (error) {
             console.error('Error fetching publications:', error)

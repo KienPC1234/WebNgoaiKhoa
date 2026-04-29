@@ -16,15 +16,17 @@ const SUBJECT_LABELS = {
 }
 
 const CONTENT_TYPE_LABELS = {
-  'an-pham': 'Ấn phẩm/sp học tập',
+  'an-pham': 'Ấn phẩm/sản phẩm học tập',
   'tai-lieu': 'Tài liệu tham khảo',
   'vinh-danh': 'Vinh danh năm học',
+  'cuoc-thi': 'Cuộc thi',
 }
 
 const CONTENT_TYPE_ICON = {
   'an-pham': BookOpen,
   'tai-lieu': Compass,
   'vinh-danh': Award,
+  'cuoc-thi': Award,
 }
 
 export const SubjectContentHub = () => {
@@ -36,6 +38,13 @@ export const SubjectContentHub = () => {
   const subjectLabel = useMemo(() => SUBJECT_LABELS[subject] || subject, [subject])
   const typeLabel = useMemo(() => CONTENT_TYPE_LABELS[contentType] || contentType, [contentType])
   const TypeIcon = CONTENT_TYPE_ICON[contentType] || BookOpen
+
+  const heroDescription = useMemo(() => {
+    if (contentType === 'cuoc-thi') {
+      return `Danh sách cuộc thi, thể lệ và hướng dẫn nộp bài cho phân môn ${subjectLabel}.`
+    }
+    return `Danh sách nội dung được xuất bản chính thức cho chuyên môn ${subjectLabel}.`
+  }, [subjectLabel, contentType])
 
   const loadItems = async () => {
     setLoading(true)
@@ -73,7 +82,7 @@ export const SubjectContentHub = () => {
             {subjectLabel}
           </div>
           <h1 className="text-4xl md:text-6xl font-black mt-6 italic uppercase tracking-tight text-fpt-blue">{typeLabel}</h1>
-          <p className="text-slate-500 mt-4 font-medium">Danh sách nội dung được xuất bản chính thức cho chuyên môn {subjectLabel}.</p>
+          <p className="text-slate-500 mt-4 font-medium">{heroDescription}</p>
         </div>
       </section>
 

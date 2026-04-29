@@ -3,6 +3,8 @@ import type { CMSBlock } from '../core/types'
 import { createTableModel } from '../plugins/table/model'
 import { TableCanvasEditor } from '../plugins/table/TableCanvasEditor'
 import { CmsParagraphRichTextEditor } from '../editor/CmsParagraphRichTextEditor'
+import { useImageUpload } from '../hooks/useImageUpload'
+import SubjectCombobox from '../components/SubjectCombobox'
 
 interface InspectorPanelProps {
   selectedBlock: CMSBlock | null
@@ -35,6 +37,8 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({ selectedBlock, o
   }
 
   const type = selectedBlock.type
+
+  const { imageInputRef, imageUploading, triggerImageFile, handleImageFile } = useImageUpload((url: string) => updateProp('src', url))
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-3 xl:sticky xl:top-4 max-h-[78vh] overflow-auto" aria-label="Trình chỉnh nội dung khối">
@@ -138,7 +142,19 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({ selectedBlock, o
       {type === 'image' && (
         <>
           <label className="block text-xs font-semibold text-gray-500">URL ảnh</label>
-          <input value={String(selectedBlock.props.src || '')} onChange={(event) => updateProp('src', event.target.value)} className="w-full px-3 py-2 rounded-lg bg-gray-50 text-xs" placeholder="https://..." aria-label="URL ảnh" />
+          <div className="flex gap-2">
+            <input
+              value={String(selectedBlock.props.src || '')}
+              onChange={(event) => updateProp('src', event.target.value)}
+              className="flex-1 px-3 py-2 rounded-lg bg-gray-50 text-xs"
+              placeholder="https://..."
+              aria-label="URL ảnh"
+            />
+            <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageFile} />
+            <button type="button" onClick={triggerImageFile} disabled={imageUploading} className="rounded-lg bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-600">
+              {imageUploading ? 'Đang tải...' : 'Tải ảnh'}
+            </button>
+          </div>
           <label className="block text-xs font-semibold text-gray-500">Chú thích</label>
           <input value={String(selectedBlock.props.text || '')} onChange={(event) => updateProp('text', event.target.value)} className="w-full px-3 py-2 rounded-lg bg-gray-50 text-xs" aria-label="Chú thích ảnh" />
         </>
@@ -229,7 +245,13 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({ selectedBlock, o
           <label className="block text-xs font-semibold text-gray-500">Số bài</label>
           <input type="number" min={1} max={12} value={toNumber(selectedBlock.props.count, 3)} onChange={(event) => updateProp('count', Number(event.target.value) || 1)} className="w-full px-3 py-2 rounded-lg bg-gray-50 text-xs" aria-label="Số bài liên quan" />
           <label className="block text-xs font-semibold text-gray-500">Lọc theo danh mục</label>
-          <input value={String(selectedBlock.props.category || '')} onChange={(event) => updateProp('category', event.target.value)} className="w-full px-3 py-2 rounded-lg bg-gray-50 text-xs" placeholder="van / ktpl / ..." aria-label="Danh mục bài liên quan" />
+          <SubjectCombobox
+            id={`inspector-related-posts-subjects-${selectedBlock.id}`}
+            value={String(selectedBlock.props.category || '')}
+            onChange={(v) => updateProp('category', v)}
+            placeholder="van / ktpl / ..."
+            className="w-full px-3 py-2 rounded-lg bg-gray-50 text-xs"
+          />
         </>
       )}
 

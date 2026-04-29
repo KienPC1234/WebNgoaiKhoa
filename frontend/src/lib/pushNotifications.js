@@ -205,3 +205,15 @@ export const unregisterWebPushToken = async () => {
     log('Local cached FCM token cleared')
   }
 }
+
+export const subscribeWebPush = async () => {
+  return await initWebPush({ requestPermission: true })
+}
+
+export const unsubscribeWebPush = async () => {
+  return await unregisterWebPushToken()
+}
+
+export const isWebPushSubscribed = () => {
+  return Boolean(localStorage.getItem(TOKEN_CACHE_KEY))
+}

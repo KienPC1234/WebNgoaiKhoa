@@ -26,6 +26,7 @@ const defaultStaff = {
   email: '',
   image_url: '',
   expertise: '',
+  tier: '',
   display_order: 0,
   is_active: true,
 }
@@ -102,6 +103,7 @@ export const AdminNhanVat = () => {
       email: item.email || '',
       image_url: item.image_url || '',
       expertise: item.expertise || '',
+      tier: item.tier || '',
       display_order: item.display_order ?? 0,
       is_active: item.is_active ?? true,
     })
@@ -177,7 +179,7 @@ export const AdminNhanVat = () => {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-xl bg-orange-50 text-fpt-orange"><Users size={20} /></div>
-            <h3 className="text-xl font-black text-fpt-blue uppercase tracking-tight">CMS Đội ngũ giáo viên</h3>
+            <h3 className="text-xl font-black text-fpt-blue uppercase tracking-tight">Đội ngũ</h3>
           </div>
           <Button onClick={resetStaffForm} className="bg-gray-100 text-gray-700 px-4 py-2 rounded-xl font-black inline-flex items-center gap-2 border-none">
             <Plus size={14} /> Mới
@@ -189,6 +191,13 @@ export const AdminNhanVat = () => {
           <input required className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="Chức danh" value={staffForm.title} onChange={(e) => setStaffForm({ ...staffForm, title: e.target.value })} />
           <input className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="Email" value={staffForm.email} onChange={(e) => setStaffForm({ ...staffForm, email: e.target.value })} />
           <input className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="Chuyên môn" value={staffForm.expertise} onChange={(e) => setStaffForm({ ...staffForm, expertise: e.target.value })} />
+          <select className="px-4 py-3 rounded-xl bg-gray-50 font-bold md:col-span-2" value={staffForm.tier || ''} onChange={(e) => setStaffForm({ ...staffForm, tier: e.target.value })}>
+            <option value="">— Chọn vị trí —</option>
+            <option value="management">Tổ trưởng</option>
+            <option value="senior">Trưởng bộ môn</option>
+            <option value="instructor">Giảng viên</option>
+            <option value="assistant">Trợ giảng</option>
+          </select>
           <input className="px-4 py-3 rounded-xl bg-gray-50 font-bold md:col-span-2" placeholder="Image URL" value={staffForm.image_url} onChange={(e) => setStaffForm({ ...staffForm, image_url: e.target.value })} />
           <RichTextEditor
             className="md:col-span-2"

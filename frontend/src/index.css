@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+@import './fonts-local.css';
 @import "tailwindcss";
 
 @custom-variant dark (&:is(.dark *));
@@ -236,10 +236,20 @@
 
   .surface {
     @apply rounded-3xl border border-white/60 bg-white/90 backdrop-blur-xl shadow-[0_22px_60px_-36px_rgba(31,41,55,0.45)];
+    will-change: transform, opacity, backdrop-filter;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    transition: box-shadow 220ms ease, background-color 220ms ease, opacity 180ms ease, transform 180ms ease, backdrop-filter 220ms ease;
+    contain: paint;
   }
 
   .surface-strong {
     @apply rounded-3xl border border-slate-200/70 bg-white shadow-[0_30px_80px_-45px_rgba(15,23,42,0.45)];
+    will-change: transform, opacity, backdrop-filter;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    transition: box-shadow 220ms ease, background-color 220ms ease, opacity 180ms ease, transform 180ms ease, backdrop-filter 220ms ease;
+    contain: paint;
   }
 
   .app-section {
@@ -259,19 +269,36 @@
   }
 
   .btn-primary {
-    @apply inline-flex items-center justify-center rounded-2xl bg-fpt-orange px-5 py-3 text-xs font-black uppercase tracking-widest text-white shadow-[0_16px_36px_-18px_rgba(242,112,36,0.8)] transition-all hover:-translate-y-0.5 hover:bg-[#de631d] active:translate-y-0;
+    @apply inline-flex items-center justify-center rounded-2xl bg-fpt-orange px-5 py-3 text-xs font-black uppercase tracking-widest text-white shadow-[0_16px_36px_-18px_rgba(242,112,36,0.8)] transition-transform transition-colors transition-shadow hover:-translate-y-0.5 hover:bg-[#de631d] active:translate-y-0;
+    will-change: transform;
   }
 
   .btn-ghost {
     @apply inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white/90 px-4 py-2.5 text-xs font-black uppercase tracking-widest text-slate-600 transition-colors hover:border-slate-300 hover:text-fpt-blue;
   }
 
+  /* Prevent lucide send icon from touching text */
+  .lucide-send {
+    margin-right: 0.25rem;
+    display: inline-block;
+    vertical-align: middle;
+  }
+
   .glass-card {
     @apply bg-white/72 backdrop-blur-xl border border-white/50 shadow-[0_20px_60px_-40px_rgba(29,42,87,0.55)];
+    will-change: transform, opacity, backdrop-filter;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    transition: box-shadow 220ms ease, background-color 220ms ease, opacity 180ms ease, transform 180ms ease, backdrop-filter 220ms ease;
+    contain: paint;
   }
 
   .glass-nav {
     @apply sticky top-0 z-50 border-b border-orange-100/70 bg-[#fffaf3]/65 backdrop-blur-md;
+    will-change: transform, opacity, backdrop-filter;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    transition: box-shadow 200ms ease, background-color 200ms ease, opacity 160ms ease, transform 160ms ease, backdrop-filter 200ms ease;
   }
 
   .page-shell-public {
@@ -397,6 +424,58 @@
   font-size: 0.95rem;
   line-height: 1.7;
 }
+
+/* Headings for rendered content and inside the CKEditor editable area */
+.cms-ckeditor-content h1,
+.cms-ckeditor-content h2,
+.cms-ckeditor-content h3,
+.cms-ckeditor-content h4,
+.ck-editor__editable h1,
+.ck-editor__editable h2,
+.ck-editor__editable h3,
+.ck-editor__editable h4,
+.ck-content h1,
+.ck-content h2,
+.ck-content h3,
+.ck-content h4 {
+  color: #0f172a;
+  margin: 0.6rem 0;
+  line-height: 1.2;
+}
+
+.cms-ckeditor-content h1,
+.ck-editor__editable h1,
+.ck-content h1 {
+  font-size: 1.6rem;
+  font-weight: 800;
+}
+
+.cms-ckeditor-content h2,
+.ck-editor__editable h2,
+.ck-content h2 {
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+
+.cms-ckeditor-content h3,
+.ck-editor__editable h3,
+.ck-content h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.cms-ckeditor-content h4,
+.ck-editor__editable h4,
+.ck-content h4 {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+/* Font-size preset classes used by CKEditor's fontSize named presets */
+.ck-content .text-tiny { font-size: 0.7em; }
+.ck-content .text-small { font-size: 0.85em; }
+.ck-content .text-big { font-size: 1.4em; }
+.ck-content .text-huge { font-size: 1.8em; }
 
 /* Per Google guidance: if the badge is hidden, include visible branding text
    and use visibility:hidden rather than display:none so the element remains

@@ -1,144 +1,80 @@
-import { useEffect, useState } from 'react'
+import React from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Card, Button, Input } from '@/components/UI'
-import { apiClient } from '@/lib/apiClient'
-import { toastError, toastInfo, toastSuccess } from '@/lib/notify'
+import useProfile from '@/hooks/useProfile'
+import ProfileSummary from '@/components/Profile/ProfileSummary'
+import ChangePasswordForm from '@/components/Profile/ChangePasswordForm'
+import SubmissionsList from '@/components/Profile/SubmissionsList'
+import ProfileHero from '@/components/Profile/ProfileHero'
+import { Button } from '@/components/UI'
 
 export const Profile = () => {
+  const {
+    me,
+    name,
+    setName,
+    currentPassword,
+    setCurrentPassword,
+    newPassword,
+    setNewPassword,
+    message,
+    error,
+    mySubmissions,
+    loading,
+    fetchMe,
+    saveProfile,
+    changePassword,
+    logout,
+  } = useProfile()
+
+  const [activeTab, setActiveTab] = React.useState('overview')
+
   const navigate = useNavigate()
-  const token = localStorage.getItem('token')
-  const [me, setMe] = useState(null)
-  const [name, setName] = useState('')
-  const [currentPassword, setCurrentPassword] = useState('')
-  const [newPassword, setNewPassword] = useState('')
-  const [message, setMessage] = useState('')
-  const [error, setError] = useState('')
-  const [mySubmissions, setMySubmissions] = useState([])
 
-  useEffect(() => {
-    if (!token) {
-      navigate('/login')
-      return
-    }
-
-    const fetchMe = async () => {
-      try {
-        const [meRes, submissionsRes] = await Promise.all([
-          apiClient.get('/auth/me'),
-          apiClient.get('/public/submissions/me'),
-        ])
-        const res = meRes
-        setMe(res.data)
-        setName(res.data.full_name || '')
-        setMySubmissions(submissionsRes.data || [])
-      } catch (err) {
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
-        toastInfo('Vui lòng đăng nhập lại để tiếp tục.')
-        navigate('/login')
-      }
-    }
-
-    fetchMe()
-  }, [token, navigate])
-
-  const saveProfile = async () => {
-    setMessage('')
-    setError('')
-    try {
-      await apiClient.put('/auth/me', { full_name: name })
-      setMessage('Đã cập nhật thông tin hồ sơ.')
-      toastSuccess('Đã cập nhật thông tin hồ sơ.')
-    } catch (err) {
-      const message = err.response?.data?.detail || 'Cập nhật hồ sơ thất bại.'
-      setError(message)
-      toastError(message)
-    }
-  }
-
-  const handleChangePassword = async () => {
-    setMessage('')
-    setError('')
-    try {
-      await apiClient.post('/auth/password/change', {
-        current_password: currentPassword,
-        new_password: newPassword,
-      })
-      setMessage('Đã đổi mật khẩu thành công.')
-      toastSuccess('Đã đổi mật khẩu thành công.')
-      setCurrentPassword('')
-      setNewPassword('')
-    } catch (err) {
-      const message = err.response?.data?.detail || 'Đổi mật khẩu thất bại.'
-      setError(message)
-      toastError(message)
-    }
-  }
-
-  const handleLogout = () => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    navigate('/login')
-  }
-
-  if (!me) {
+  if (loading || !me) {
     return <div className="flex min-h-screen items-center justify-center text-gray-400 font-black">Đang tải hồ sơ...</div>
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#fffaf3] via-[#fffefb] to-[#f8fbff] px-3 py-6 md:px-6 md:py-10">
-      <div className="mx-auto w-full max-w-6xl space-y-6">
-        <Card className="border border-orange-100/80 bg-white/95 p-6 shadow-[0_28px_64px_-40px_rgba(15,23,42,0.45)] md:p-8">
-          <h1 className="mb-6 text-3xl font-black italic leading-tight text-fpt-blue md:text-4xl">HỒ SƠ TÀI KHOẢN</h1>
-
-          {error && <div className="mb-4 bg-red-50 text-red-600 p-3 rounded-lg font-bold">{error}</div>}
-          {message && <div className="mb-4 bg-green-50 text-green-700 p-3 rounded-lg font-bold">{message}</div>}
-
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <Input label="Email" value={me.email} disabled />
-            <Input label="Vai trò" value={me.role} disabled />
-            <Input label="Trạng thái xác minh" value={me.email_verified ? 'Đã xác minh' : 'Chưa xác minh'} disabled />
-            <Input label="Họ và tên" value={name} onChange={(e) => setName(e.target.value)} />
+      <div className="mx-auto w-full max-w-6xl">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+          <div className="space-y-6">
+            <ProfileHero me={me} mySubmissions={mySubmissions} onEditProfile={() => setActiveTab('overview')} onAvatarUpdated={fetchMe} />
           </div>
 
-          <div className="mt-6 flex flex-wrap gap-3">
-            <Button onClick={saveProfile} variant="orange">Lưu hồ sơ</Button>
-            <Button onClick={handleLogout} variant="danger">Đăng xuất</Button>
-          </div>
-        </Card>
+          <div className="md:col-span-2 space-y-6">
+            <div className="rounded-3xl bg-white/95 p-4 border border-orange-50 shadow-[0_18px_48px_-36px_rgba(15,23,42,0.35)]">
+              <div className="flex flex-wrap items-center gap-3 border-b border-gray-100 pb-3">
+                <button className={`px-4 py-2 rounded-2xl font-black ${activeTab === 'overview' ? 'bg-fpt-blue/5 text-fpt-blue' : 'text-gray-500'}`} onClick={() => setActiveTab('overview')}>Tổng quan</button>
+                <button className={`px-4 py-2 rounded-2xl font-black ${activeTab === 'submissions' ? 'bg-fpt-blue/5 text-fpt-blue' : 'text-gray-500'}`} onClick={() => setActiveTab('submissions')}>Bài thi</button>
+                <button className={`px-4 py-2 rounded-2xl font-black ${activeTab === 'security' ? 'bg-fpt-blue/5 text-fpt-blue' : 'text-gray-500'}`} onClick={() => setActiveTab('security')}>Bảo mật</button>
+              </div>
 
-        <Card className="border border-orange-100/80 bg-white/95 p-6 shadow-[0_24px_54px_-42px_rgba(15,23,42,0.4)] md:p-8">
-          <h2 className="mb-4 text-2xl font-black leading-tight text-fpt-blue">ĐỔI MẬT KHẨU</h2>
-          <div className="grid grid-cols-1 items-end gap-4 md:grid-cols-3">
-            <Input label="Mật khẩu hiện tại" type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
-            <Input label="Mật khẩu mới" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
-            <Button variant="orange" onClick={handleChangePassword}>Đổi mật khẩu</Button>
-          </div>
-        </Card>
+              <div className="mt-6">
+                {activeTab === 'overview' && (
+                  <ProfileSummary me={me} name={name} setName={setName} onSave={saveProfile} onLogout={logout} error={error} message={message} />
+                )}
 
-        <Card className="border border-orange-100/80 bg-white/95 p-6 shadow-[0_24px_54px_-42px_rgba(15,23,42,0.4)] md:p-8">
-          <h2 className="mb-4 text-2xl font-black leading-tight text-fpt-blue">BÀI THI CỦA TÔI</h2>
-          {mySubmissions.length === 0 ? (
-            <p className="text-gray-400 font-semibold">Bạn chưa có bài thi nào.</p>
-          ) : (
-            <div className="space-y-3">
-              {mySubmissions.map((item) => (
-                <div key={item.id} className="rounded-xl border border-orange-100/70 bg-[#fffaf3] p-4">
-                  <div className="flex justify-between items-center gap-4">
-                    <h3 className="font-black text-fpt-blue">{item.title}</h3>
-                    <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-md ${
-                      item.status === 'approved' ? 'bg-green-100 text-green-700' : item.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-fpt-orange'
-                    }`}>
-                      {item.status === 'approved' ? 'Đã duyệt' : item.status === 'rejected' ? 'Từ chối' : 'Chờ duyệt'}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-500 mt-2 line-clamp-3">{item.content}</p>
-                </div>
-              ))}
+                {activeTab === 'submissions' && (
+                  <SubmissionsList mySubmissions={mySubmissions} />
+                )}
+
+                {activeTab === 'security' && (
+                  <ChangePasswordForm
+                    currentPassword={currentPassword}
+                    newPassword={newPassword}
+                    setCurrentPassword={setCurrentPassword}
+                    setNewPassword={setNewPassword}
+                    onChangePassword={changePassword}
+                  />
+                )}
+              </div>
             </div>
-          )}
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   )
 }
+
+export default Profile

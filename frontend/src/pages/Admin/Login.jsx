@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { Card, Button } from '../../components/UI'
 import { showApiError, toastError, toastSuccess } from '@/lib/notify'
+import { refreshAuthOverview, roleHasPermission } from '@/lib/rolePolicy'
 
 const Input = ({ label, ...props }) => (
   <div className="space-y-1">
@@ -35,14 +36,25 @@ export const AdminLogin = () => {
 
       const response = await axios.post(`${API_URL}/auth/login`, formData)
       
-      if (response.data.user.role !== 'admin') {
+      // store token/user, refresh server-driven policy, then validate admin_panel permission
+      localStorage.setItem('token', response.data.access_token)
+      localStorage.setItem('user', JSON.stringify(response.data.user))
+      try { window.dispatchEvent(new Event('auth-changed')) } catch (e) {}
+      try {
+        await refreshAuthOverview()
+      } catch (e) {
+        // ignore refresh errors
+      }
+
+      if (!roleHasPermission(response.data.user.role, 'admin_panel')) {
+        // insufficient privileges for admin panel
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
         setError('Bạn không có quyền truy cập trang quản trị.')
         toastError('Bạn không có quyền truy cập trang quản trị.')
         return
       }
 
-      localStorage.setItem('token', response.data.access_token)
-      localStorage.setItem('user', JSON.stringify(response.data.user))
       toastSuccess('Đăng nhập quản trị thành công.')
       navigate('/admin/dashboard')
     } catch (err) {

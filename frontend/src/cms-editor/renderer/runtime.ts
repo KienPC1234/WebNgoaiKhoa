@@ -106,7 +106,10 @@ const normalizeBlock = (value: unknown, path: string, depth: number, state: Norm
     })
   }
 
-  const span = resolveSpan({ props })
+  // Use the same default fallback as the editor canvas (6 columns)
+  // so blocks missing an explicit `colSpan` render consistently
+  // between editor preview and the public renderer.
+  const span = resolveSpan({ props }, { colSpan: 6, rowSpan: 1 })
   props.colSpan = span.colSpan
   props.rowSpan = span.rowSpan
 

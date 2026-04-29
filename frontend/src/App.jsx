@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { lazy, Suspense, useEffect, useState } from 'react'
+import { refreshAuthOverview, getRolesWithPermission, roleHasPermission } from '@/lib/rolePolicy'
+import MediaLibraryProvider from '@/lib/mediaLibrary'
 import AOS from 'aos'
 import 'aos/dist/aos.css'
 import { AdminPostDesigner } from '@/pages/Admin/PostDesigner'
@@ -47,6 +49,7 @@ const PublicPostDetail = lazyNamed(() => import('@/pages/PublicPostDetail'), 'Pu
 const Login = lazyNamed(() => import('@/pages/Login'), 'Login')
 const Register = lazyNamed(() => import('@/pages/Register'), 'Register')
 const Profile = lazyNamed(() => import('@/pages/Profile'), 'Profile')
+const ProfilePublic = lazyNamed(() => import('@/pages/ProfilePublic'), 'ProfilePublic')
 const VerifyEmail = lazyNamed(() => import('@/pages/VerifyEmail'), 'VerifyEmail')
 
 const AdminDashboard = lazyNamed(() => import('@/pages/Admin/Dashboard'), 'AdminDashboard')
@@ -60,9 +63,7 @@ const AdminAIKnowledge = lazyNamed(() => import('@/pages/Admin/AIKnowledge'), 'A
 const AdminCMSEditorFramework = lazyNamed(() => import('@/pages/Admin/CMSEditorFramework'), 'AdminCMSEditorFramework')
 const AdminAuthOverview = lazyNamed(() => import('@/pages/Admin/AuthOverview'), 'AuthOverview')
 
-const ADMIN_PANEL_ROLES = new Set(['admin', 'website_manager', 'submission_judge'])
-const WEBSITE_MANAGER_ROLES = new Set(['admin', 'website_manager'])
-const SUBMISSION_REVIEW_ROLES = new Set(['admin', 'submission_judge'])
+// Role/permission sets are computed dynamically from server-driven policy via `rolePolicy`.
 
 const PageWrapper = ({ children }) => (
   <motion.div
@@ -110,6 +111,8 @@ const AnimatedRoutes = () => {
           <Route path="doingu/*" element={<Navigate to="/doingu/scale" replace />} />
           <Route path="phanmon/*" element={<Navigate to="/phanmon/van/an-pham" replace />} />
 
+          <Route path="profile/public/:userId" element={<PageWrapper><ProfilePublic /></PageWrapper>} />
+
           <Route path="ngoaikhoa" element={<div className="text-center py-32 text-gray-400 font-black italic uppercase tracking-widest animate-pulse">Trang Hoạt động ngoại khoá đang cập nhật...</div>} />
           <Route path="lienhe" element={<PageWrapper><EventsUpcoming /></PageWrapper>} />
         </Route>
@@ -117,6 +120,7 @@ const AnimatedRoutes = () => {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
+        
         <Route path="/profile" element={<UserProtectedRoute><Profile /></UserProtectedRoute>} />
 
         {/* Admin Routes */}
@@ -127,22 +131,22 @@ const AnimatedRoutes = () => {
           </ProtectedRoute>
         }>
           <Route path="dashboard" element={<PageWrapper><AdminDashboard /></PageWrapper>} />
-          <Route path="publications" element={<RoleProtectedRoute allowedRoles={WEBSITE_MANAGER_ROLES}><PageWrapper><AdminPublications /></PageWrapper></RoleProtectedRoute>} />
-          <Route path="vinh-danh" element={<RoleProtectedRoute allowedRoles={WEBSITE_MANAGER_ROLES}><PageWrapper><AdminVinhDanh /></PageWrapper></RoleProtectedRoute>} />
-          <Route path="vinh-danh/:subject" element={<RoleProtectedRoute allowedRoles={WEBSITE_MANAGER_ROLES}><PageWrapper><AdminVinhDanh /></PageWrapper></RoleProtectedRoute>} />
-          <Route path="events" element={<RoleProtectedRoute allowedRoles={WEBSITE_MANAGER_ROLES}><PageWrapper><AdminEvents /></PageWrapper></RoleProtectedRoute>} />
-          <Route path="publications/new" element={<RoleProtectedRoute allowedRoles={WEBSITE_MANAGER_ROLES}><PageWrapper><AdminPostDesigner /></PageWrapper></RoleProtectedRoute>} />
-          <Route path="publications/:publicationId/edit" element={<RoleProtectedRoute allowedRoles={WEBSITE_MANAGER_ROLES}><PageWrapper><AdminPostDesigner /></PageWrapper></RoleProtectedRoute>} />
+            <Route path="publications" element={<RoleProtectedRoute allowedRoles={getRolesWithPermission('content_manage')}><PageWrapper><AdminPublications /></PageWrapper></RoleProtectedRoute>} />
+            <Route path="vinh-danh" element={<RoleProtectedRoute allowedRoles={getRolesWithPermission('content_manage')}><PageWrapper><AdminVinhDanh /></PageWrapper></RoleProtectedRoute>} />
+            <Route path="vinh-danh/:subject" element={<RoleProtectedRoute allowedRoles={getRolesWithPermission('content_manage')}><PageWrapper><AdminVinhDanh /></PageWrapper></RoleProtectedRoute>} />
+            <Route path="events" element={<RoleProtectedRoute allowedRoles={getRolesWithPermission('content_manage')}><PageWrapper><AdminEvents /></PageWrapper></RoleProtectedRoute>} />
+            <Route path="publications/new" element={<RoleProtectedRoute allowedRoles={getRolesWithPermission('content_manage')}><PageWrapper><AdminPostDesigner /></PageWrapper></RoleProtectedRoute>} />
+            <Route path="publications/:publicationId/edit" element={<RoleProtectedRoute allowedRoles={getRolesWithPermission('content_manage')}><PageWrapper><AdminPostDesigner /></PageWrapper></RoleProtectedRoute>} />
           <Route path="cms/stories" element={<Navigate to="/admin/publications" replace />} />
-          <Route path="cms/doingu" element={<RoleProtectedRoute allowedRoles={WEBSITE_MANAGER_ROLES}><PageWrapper><AdminNhanVatCMS /></PageWrapper></RoleProtectedRoute>} />
-          <Route path="cms/submissions" element={<RoleProtectedRoute allowedRoles={SUBMISSION_REVIEW_ROLES}><PageWrapper><AdminSubmissions /></PageWrapper></RoleProtectedRoute>} />
-          <Route path="cms-editor" element={<RoleProtectedRoute allowedRoles={WEBSITE_MANAGER_ROLES}><PageWrapper><AdminCMSEditorFramework /></PageWrapper></RoleProtectedRoute>} />
+          <Route path="cms/doingu" element={<RoleProtectedRoute allowedRoles={getRolesWithPermission('content_manage')}><PageWrapper><AdminNhanVatCMS /></PageWrapper></RoleProtectedRoute>} />
+          <Route path="cms/submissions" element={<RoleProtectedRoute allowedRoles={getRolesWithPermission('submission_review')}><PageWrapper><AdminSubmissions /></PageWrapper></RoleProtectedRoute>} />
+          <Route path="cms-editor" element={<RoleProtectedRoute allowedRoles={getRolesWithPermission('content_manage')}><PageWrapper><AdminCMSEditorFramework /></PageWrapper></RoleProtectedRoute>} />
           <Route path="stories" element={<Navigate to="/admin/publications" replace />} />
           <Route path="doingu" element={<Navigate to="/admin/cms/doingu" replace />} />
           <Route path="submissions" element={<Navigate to="/admin/cms/submissions" replace />} />
-          <Route path="users" element={<RoleProtectedRoute allowedRoles={new Set(['admin'])}><PageWrapper><AdminUsers /></PageWrapper></RoleProtectedRoute>} />
-          <Route path="ai-knowledge" element={<RoleProtectedRoute allowedRoles={new Set(['admin'])}><PageWrapper><AdminAIKnowledge /></PageWrapper></RoleProtectedRoute>} />
-          <Route path="auth-overview" element={<RoleProtectedRoute allowedRoles={new Set(['admin'])}><PageWrapper><AdminAuthOverview /></PageWrapper></RoleProtectedRoute>} />
+          <Route path="users" element={<RoleProtectedRoute allowedRoles={getRolesWithPermission('user_manage')}><PageWrapper><AdminUsers /></PageWrapper></RoleProtectedRoute>} />
+          <Route path="ai-knowledge" element={<RoleProtectedRoute allowedRoles={getRolesWithPermission('ai_knowledge')}><PageWrapper><AdminAIKnowledge /></PageWrapper></RoleProtectedRoute>} />
+          <Route path="auth-overview" element={<RoleProtectedRoute allowedRoles={getRolesWithPermission('auth_audit')}><PageWrapper><AdminAuthOverview /></PageWrapper></RoleProtectedRoute>} />
           <Route index element={<Navigate to="/admin/dashboard" replace />} />
         </Route>
       </Routes>
@@ -152,6 +156,7 @@ const AnimatedRoutes = () => {
 
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('token')
+  const location = useLocation()
 
   let role = null
   try {
@@ -161,12 +166,13 @@ const ProtectedRoute = ({ children }) => {
     role = null
   }
 
-  if (!token || !ADMIN_PANEL_ROLES.has(role)) return <Navigate to="/login" replace />
+  if (!token || !roleHasPermission(role, 'admin_panel')) return <Navigate to={{ pathname: '/login', state: { from: location.pathname } }} replace />
   return children
 }
 
 const RoleProtectedRoute = ({ children, allowedRoles }) => {
   const token = localStorage.getItem('token')
+  const location = useLocation()
 
   let role = null
   try {
@@ -176,14 +182,15 @@ const RoleProtectedRoute = ({ children, allowedRoles }) => {
     role = null
   }
 
-  if (!token) return <Navigate to="/login" replace />
+  if (!token) return <Navigate to={{ pathname: '/login', state: { from: location.pathname } }} replace />
   if (!allowedRoles?.has(role)) return <Navigate to="/admin/dashboard" replace />
   return children
 }
 
 const UserProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('token')
-  if (!token) return <Navigate to="/login" replace />
+  const location = useLocation()
+  if (!token) return <Navigate to={{ pathname: '/login', state: { from: location.pathname } }} replace />
   return children
 }
 
@@ -254,9 +261,17 @@ function App() {
     });
   }, []);
 
+  useEffect(() => {
+    // Refresh server-driven role/permission policy on app start so route guards
+    // and UI can rely on up-to-date mappings.
+    refreshAuthOverview().catch(() => {})
+  }, [])
+
   return (
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <AppShell />
+      <MediaLibraryProvider>
+        <AppShell />
+      </MediaLibraryProvider>
     </BrowserRouter>
   )
 }

@@ -315,7 +315,7 @@ export const PhanMonVan = () => {
   const handleSendToBGK = async () => {
     if (!token) {
       toastInfo('Vui lòng đăng nhập để gửi bài thi.')
-      navigate('/login')
+      navigate('/login', { state: { from: typeof window !== 'undefined' ? window.location.pathname : '/' } })
       return
     }
 
@@ -384,7 +384,7 @@ export const PhanMonVan = () => {
   const handleVote = async (id) => {
     if (!token) {
       toastInfo('Vui lòng đăng nhập để bình chọn bài thi.')
-      navigate('/login')
+      navigate('/login', { state: { from: typeof window !== 'undefined' ? window.location.pathname : '/' } })
       return
     }
 
@@ -478,7 +478,7 @@ export const PhanMonVan = () => {
     if (!selectedSubmission) return
     if (!token) {
       toastInfo('Vui lòng đăng nhập để bình luận bài thi.')
-      navigate('/login')
+      navigate('/login', { state: { from: typeof window !== 'undefined' ? window.location.pathname : '/' } })
       return
     }
 

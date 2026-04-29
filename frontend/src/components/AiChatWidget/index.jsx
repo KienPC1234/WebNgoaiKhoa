@@ -242,10 +242,92 @@ const createMarkdownComponents = (navigate) => ({
       </a>
     )
   },
+  strong: ({ children, ...props }) => {
+    const singleText = Array.isArray(children) && children.length === 1 && typeof children[0] === 'string' ? children[0] : null
+    if (singleText) {
+      const value = String(singleText).trim()
+      if (isInternalHref(value)) {
+        const handleClick = (event) => {
+          if (event.defaultPrevented) return
+          if (event.button !== 0) return
+          if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+          event.preventDefault()
+          navigate(toInternalRoute(value))
+        }
+
+        return (
+          <strong {...props}>
+            <a
+              href={value || '#'}
+              onClick={handleClick}
+              className="font-semibold text-blue-700 underline decoration-blue-300 underline-offset-2 transition-colors hover:text-blue-900"
+            >
+              {value}
+            </a>
+          </strong>
+        )
+      }
+    }
+    return <strong {...props}>{children}</strong>
+  },
+  em: ({ children, ...props }) => {
+    const singleText = Array.isArray(children) && children.length === 1 && typeof children[0] === 'string' ? children[0] : null
+    if (singleText) {
+      const value = String(singleText).trim()
+      if (isInternalHref(value)) {
+        const handleClick = (event) => {
+          if (event.defaultPrevented) return
+          if (event.button !== 0) return
+          if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+          event.preventDefault()
+          navigate(toInternalRoute(value))
+        }
+
+        return (
+          <em {...props}>
+            <a
+              href={value || '#'}
+              onClick={handleClick}
+              className="font-semibold text-blue-700 underline decoration-blue-300 underline-offset-2 transition-colors hover:text-blue-900"
+            >
+              {value}
+            </a>
+          </em>
+        )
+      }
+    }
+    return <em {...props}>{children}</em>
+  },
   ul: ({ ...props }) => <ul {...props} className="list-disc pl-5" />,
   ol: ({ ...props }) => <ol {...props} className="list-decimal pl-5" />,
-  code: ({ inline, className, children, ...props }) =>
-    inline ? (
+  code: ({ inline, className, children, ...props }) => {
+    const raw = Array.isArray(children) ? children.join('') : String(children ?? '')
+    const text = String(raw).replace(/\n/g, '').trim()
+
+    // If the code content is a single internal path, render it as a clickable internal link
+    if (text && isInternalHref(text)) {
+      const value = text
+      const handleClick = (event) => {
+        if (event.defaultPrevented) return
+        if (event.button !== 0) return
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+        event.preventDefault()
+        navigate(toInternalRoute(value))
+      }
+
+      return (
+        <a
+          {...props}
+          href={value || '#'}
+          onClick={handleClick}
+          className="font-semibold text-blue-700 underline decoration-blue-300 underline-offset-2 transition-colors hover:text-blue-900"
+        >
+          {value}
+        </a>
+      )
+    }
+
+    return inline ? (
       <code {...props} className={cn('rounded bg-slate-100/90 px-1.5 py-0.5 text-[0.92em] font-semibold text-slate-700', className)}>
         {children}
       </code>
@@ -253,7 +335,8 @@ const createMarkdownComponents = (navigate) => ({
       <code {...props} className={cn('block rounded-xl bg-slate-900/95 p-3 text-[0.92em] text-slate-100', className)}>
         {children}
       </code>
-    ),
+    )
+  },
 })
 
 const MarkdownTable = ({ header = [], rows = [], alignments = [], markdownComponents, isMobile = false }) => {
@@ -498,6 +581,18 @@ export const AiChatWidget = ({ pendingOpen = false, onPendingOpenHandled }) => {
     }
   }, [messages, isTyping, showScrollDown])
 
+  // Mark global presence so pages can avoid double-mounting the widget
+  useEffect(() => {
+    try {
+      window.__AI_WIDGET_PRESENT = true
+    } catch (e) {}
+    return () => {
+      try {
+        delete window.__AI_WIDGET_PRESENT
+      } catch (e) {}
+    }
+  }, [])
+
   const handleScroll = () => {
     if (!scrollRef.current || scrollRafRef.current) return
 
@@ -714,7 +809,7 @@ export const AiChatWidget = ({ pendingOpen = false, onPendingOpenHandled }) => {
 
         <Sparkles size={30} className="relative z-10 transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110" />
 
-        <span className="pointer-events-none absolute -right-1 -top-1 rounded-full bg-fpt-blue px-2 py-1 text-[9px] font-black uppercase tracking-wider text-white shadow-[0_8px_18px_-8px_rgba(29,42,87,0.8)]">
+        <span className="pointer-events-none absolute -right-1 -top-1 rounded-full bg-fpt-blue px-3 py-1.5 text-[9px] font-black uppercase tracking-wider text-white shadow-[0_8px_18px_-8px_rgba(29,42,87,0.8)]">
           AI
         </span>
 

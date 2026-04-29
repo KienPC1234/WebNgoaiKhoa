@@ -1,6 +1,9 @@
 import React from 'react'
 import { CKEditor } from '@ckeditor/ckeditor5-react'
-import ClassicEditor from '@ckeditor/ckeditor5-build-classic'
+// Use the local custom built CKEditor (built with font plugins)
+// Use wrapper that resolves the custom build export shape to the editor constructor
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+import ClassicEditor from '@/libs/ckeditor-custom-wrapper'
 import { cn } from '@/lib/utils'
 
 interface CmsParagraphRichTextEditorProps {
@@ -45,6 +48,7 @@ const attachUploadAdapter = (editor: any) => {
   fileRepository.createUploadAdapter = (loader: any) => new Base64UploadAdapter(loader)
 }
 
+
 export const CmsParagraphRichTextEditor: React.FC<CmsParagraphRichTextEditorProps> = ({
   label,
   value,
@@ -72,6 +76,12 @@ export const CmsParagraphRichTextEditor: React.FC<CmsParagraphRichTextEditorProp
         items: [
           'heading',
           '|',
+          'fontFamily',
+          'fontSize',
+          '|',
+          'fontColor',
+          'fontBackgroundColor',
+          '|',
           'bold',
           'italic',
           'link',
@@ -97,14 +107,63 @@ export const CmsParagraphRichTextEditor: React.FC<CmsParagraphRichTextEditorProp
       },
       image: {
         toolbar: [
-          'imageTextAlternative',
-          'imageStyle:inline',
-          'imageStyle:block',
+          'imageStyle:full',
           'imageStyle:side',
           '|',
-          'toggleImageCaption',
-          'imageResize',
+          'imageTextAlternative',
         ],
+      },
+      fontFamily: {
+        options: [
+          'default',
+          'Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif',
+          'Roboto, Arial, Helvetica, sans-serif',
+          'Poppins, Arial, Helvetica, sans-serif',
+          'Montserrat, Arial, Helvetica, sans-serif',
+          'Source Sans 3, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
+          'Source Sans Pro, Arial, Helvetica, sans-serif',
+          'Noto Sans, Arial, Helvetica, sans-serif',
+          'Lora, Georgia, serif',
+          'Merriweather, Georgia, serif',
+          'Times New Roman, Times, serif',
+          'Courier New, Courier, monospace',
+          'Verdana, Geneva, sans-serif',
+        ],
+        supportAllValues: true,
+      },
+      fontSize: {
+        options: ['10px','11px','12px','13px','14px','15px','16px','18px','20px','22px','24px','28px','32px','36px','48px'],
+        supportAllValues: true,
+      },
+      fontColor: {
+        columns: 5,
+        colors: [
+          { color: '#000000', label: 'Black' },
+          { color: '#444444', label: 'Dark gray' },
+          { color: '#666666', label: 'Gray' },
+          { color: '#ffffff', label: 'White' },
+          { color: '#f87171', label: 'Red' },
+          { color: '#f59e0b', label: 'Orange' },
+          { color: '#fbbf24', label: 'Yellow' },
+          { color: '#34d399', label: 'Green' },
+          { color: '#60a5fa', label: 'Blue' },
+          { color: '#a78bfa', label: 'Purple' }
+        ]
+      },
+      fontBackgroundColor: {
+        columns: 5,
+        colors: [
+          { color: '#000000', label: 'Black' },
+          { color: '#444444', label: 'Dark gray' },
+          { color: '#666666', label: 'Gray' },
+          { color: '#ffffff', label: 'White' },
+          { color: '#f87171', label: 'Red' },
+          { color: '#f59e0b', label: 'Orange' },
+          { color: '#fbbf24', label: 'Yellow' },
+          { color: '#34d399', label: 'Green' },
+          { color: '#60a5fa', label: 'Blue' },
+          { color: '#a78bfa', label: 'Purple' }
+        ]
       },
       mediaEmbed: {
         previewsInData: true,

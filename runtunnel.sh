@@ -1,0 +1,1 @@
+sudo nohup docker run --rm --network host cloudflare/cloudflared:latest   tunnel --no-autoupdate run --token eyJhIjoiOWIxMjVlMmY0YTE2YzFlMWYxYzFjYTA2Y2Q4NTNlZDEiLCJ0IjoiMjYwMWI4OTEtYjMyZS00YWVkLWJmMzktZWE5NTI4NDBjOTE1IiwicyI6Ill6SmhORFl6WmpFdE5qUTBZUzAwTkRaaUxXSXdaV0l0T1RReE56YzBORFEzTTJJMyJ9 > ./maintunnel.log 2>&1 &

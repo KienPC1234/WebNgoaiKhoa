@@ -1,12 +1,13 @@
 from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
-from fastapi import APIRouter, Depends, Form, HTTPException, status
+from fastapi import APIRouter, Depends, Form, HTTPException, status, UploadFile, File, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 from typing import Optional
+from pathlib import Path
 import hashlib
 import hmac
 import os
@@ -17,6 +18,7 @@ import uuid
 
 from app.db.session import get_db
 from app.models.user import User
+from app.models.role import Role
 from app.services import newsletter as newsletter_service
 from app.services.email_templates import get_otp_html
 from app.schemas.schemas import PushConfigOut, PushTokenIn, PushTokenOut
@@ -33,6 +35,10 @@ RECAPTCHA_SECRET_KEY = os.getenv("RECAPTCHA_SECRET_KEY", "")
 RECAPTCHA_VERIFY_URL = os.getenv("RECAPTCHA_VERIFY_URL", "https://www.google.com/recaptcha/api/siteverify")
 RECAPTCHA_REQUIRED = os.getenv("RECAPTCHA_REQUIRED", "false").lower() == "true"
 
+# Image upload settings (reuse same uploads dir as admin/public)
+IMAGE_UPLOAD_DIR = Path(os.getenv("IMAGE_UPLOAD_DIR", "/data/WebNgoaiKhoa/backend/uploads/images"))
+IMAGE_MAX_UPLOAD_SIZE = int(os.getenv("IMAGE_MAX_UPLOAD_BYTES", str(12 * 1024 * 1024)))
+
 SMTP_HOST = os.getenv("SMTP_HOST", "")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USER = os.getenv("SMTP_USER", "")
@@ -42,6 +48,7 @@ UNSUBSCRIBE_URL_BASE = os.getenv("UNSUBSCRIBE_URL_BASE", "http://localhost:3002/
 UNSUBSCRIBE_SECRET = os.getenv("EMAIL_UNSUBSCRIBE_SECRET", SECRET_KEY)
 OTP_EXPIRE_MINUTES = int(os.getenv("OTP_EXPIRE_MINUTES", "10"))
 GOOGLE_OAUTH_CLIENT_ID = os.getenv("GOOGLE_OAUTH_CLIENT_ID", "")
+VERIFY_EMAIL_URL_BASE = os.getenv("VERIFY_EMAIL_URL_BASE", "http://localhost:3002/verify-email")
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
@@ -94,6 +101,7 @@ class UserOut(BaseModel):
     email: str
     role: str
     full_name: Optional[str] = None
+    image_url: Optional[str] = None
     email_verified: bool
     is_subscribed: bool
 
@@ -125,6 +133,19 @@ def is_valid_email(email: str) -> bool:
 
 def normalize_email(email: Optional[str]) -> str:
     return (email or "").strip().lower()
+
+
+def _ensure_aware(dt: Optional[datetime]) -> Optional[datetime]:
+    """Return a timezone-aware datetime in UTC.
+
+    If `dt` is naive, assume it's UTC and attach UTC tzinfo. If it's already
+    timezone-aware, return as-is. If None, return None.
+    """
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
 
 
 def is_recaptcha_enabled() -> bool:
@@ -172,6 +193,7 @@ def make_otp() -> str:
 def send_otp_email(to_email: str, otp: str) -> None:
     unsubscribe_token = build_unsubscribe_token(to_email)
     unsubscribe_link = f"{UNSUBSCRIBE_URL_BASE}?email={to_email}&token={unsubscribe_token}"
+    verify_link = f"{VERIFY_EMAIL_URL_BASE}?token={otp}"
 
     msg = EmailMessage()
     msg["Subject"] = "Ma xac thuc OTP - To xa hoi"
@@ -194,7 +216,7 @@ def send_otp_email(to_email: str, otp: str) -> None:
     )
     msg.set_content(body)
 
-    html_content = get_otp_html(otp, OTP_EXPIRE_MINUTES, unsubscribe_link)
+    html_content = get_otp_html(otp, OTP_EXPIRE_MINUTES, unsubscribe_link, verify_link)
     msg.add_alternative(html_content, subtype="html")
 
     if not SMTP_HOST:
@@ -230,8 +252,55 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
     return user
 
 
-async def get_current_admin(current_user: User = Depends(get_current_user)):
-    if current_user.role != "admin":
+def _legacy_permission_map(permission: str):
+    return {
+        'admin': {'admin'},
+        'admin_panel': {'admin', 'website_manager', 'submission_judge'},
+        'content_manage': {'admin', 'website_manager'},
+        'submission_review': {'admin', 'submission_judge'},
+        'contestant': {'student', 'contestant', 'admin'},
+    }.get(permission, set())
+
+
+def role_has_permission(db: Session, role_slug: Optional[str], permission: str) -> bool:
+    """Return True if the given role (slug) includes the specified permission.
+
+    Falls back to legacy hardcoded role sets when the `roles` table is not populated.
+    """
+    if not role_slug:
+        return False
+
+    try:
+        role = db.query(Role).filter(Role.slug == role_slug).first()
+    except Exception:
+        role = None
+
+    if role:
+        perms = role.permissions
+        if perms is None:
+            return False
+        # perms may already be a list (JSON column) or other iterable
+        try:
+            if isinstance(perms, (list, tuple, set)):
+                return permission in perms
+            # if stored as string (fallback), check substring
+            if isinstance(perms, str):
+                import json
+                try:
+                    parsed = json.loads(perms)
+                    return permission in parsed
+                except Exception:
+                    return permission in perms
+        except Exception:
+            return False
+
+    # Fallback to legacy mapping
+    legacy = _legacy_permission_map(permission)
+    return role_slug in legacy
+
+
+async def get_current_admin(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not role_has_permission(db, current_user.role, 'admin'):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="The user does not have enough privileges",
@@ -239,8 +308,8 @@ async def get_current_admin(current_user: User = Depends(get_current_user)):
     return current_user
 
 
-async def get_current_admin_panel_user(current_user: User = Depends(get_current_user)):
-    if current_user.role not in {"admin", "website_manager", "submission_judge"}:
+async def get_current_admin_panel_user(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not role_has_permission(db, current_user.role, 'admin_panel'):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="The user does not have admin panel access",
@@ -248,8 +317,8 @@ async def get_current_admin_panel_user(current_user: User = Depends(get_current_
     return current_user
 
 
-async def get_current_website_manager(current_user: User = Depends(get_current_user)):
-    if current_user.role not in {"admin", "website_manager"}:
+async def get_current_website_manager(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not role_has_permission(db, current_user.role, 'content_manage'):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="The user does not have website management privileges",
@@ -257,8 +326,8 @@ async def get_current_website_manager(current_user: User = Depends(get_current_u
     return current_user
 
 
-async def get_current_submission_judge(current_user: User = Depends(get_current_user)):
-    if current_user.role not in {"admin", "submission_judge"}:
+async def get_current_submission_judge(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not role_has_permission(db, current_user.role, 'submission_review'):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="The user does not have submission moderation privileges",
@@ -266,8 +335,8 @@ async def get_current_submission_judge(current_user: User = Depends(get_current_
     return current_user
 
 
-async def get_current_contestant(current_user: User = Depends(get_current_user)):
-    if current_user.role not in ("student", "contestant", "admin"):
+async def get_current_contestant(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not role_has_permission(db, current_user.role, 'contestant'):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="The user is not a contestant",
@@ -316,6 +385,7 @@ async def login(
             "email": user.email,
             "role": user.role,
             "full_name": user.full_name,
+            "image_url": getattr(user, 'image_url', None),
             "email_verified": user.email_verified,
             "is_subscribed": user.is_subscribed,
         },
@@ -393,6 +463,7 @@ async def login_or_register_google(payload: GoogleAuthIn, db: Session = Depends(
             "email": user.email,
             "role": user.role,
             "full_name": user.full_name,
+            "image_url": getattr(user, 'image_url', None),
             "email_verified": user.email_verified,
             "is_subscribed": user.is_subscribed,
         },
@@ -453,7 +524,8 @@ async def verify_otp(payload: VerifyOtpIn, db: Session = Depends(get_db)):
     if not user.verification_token or payload.otp != str(user.verification_token):
         raise HTTPException(status_code=400, detail="Ma OTP khong hop le")
 
-    if user.verification_token_expires_at and datetime.now(timezone.utc) > user.verification_token_expires_at:
+    expires_at = _ensure_aware(user.verification_token_expires_at)
+    if expires_at and datetime.now(timezone.utc) > expires_at:
         raise HTTPException(status_code=400, detail="Ma OTP da het han")
 
     user.email_verified = True
@@ -462,7 +534,26 @@ async def verify_otp(payload: VerifyOtpIn, db: Session = Depends(get_db)):
     db.add(user)
     db.commit()
 
-    return {"message": "Xac minh OTP thanh cong"}
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.email},
+        expires_delta=access_token_expires,
+    )
+
+    return {
+        "message": "Xac minh OTP thanh cong",
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "role": user.role,
+            "full_name": user.full_name,
+            "image_url": getattr(user, 'image_url', None),
+            "email_verified": user.email_verified,
+            "is_subscribed": user.is_subscribed,
+        },
+    }
 
 
 @router.get("/verify-email")
@@ -471,7 +562,8 @@ async def verify_email(token: str, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=400, detail="Token xac minh khong hop le")
 
-    if user.verification_token_expires_at and datetime.now(timezone.utc) > user.verification_token_expires_at:
+    expires_at = _ensure_aware(user.verification_token_expires_at)
+    if expires_at and datetime.now(timezone.utc) > expires_at:
         raise HTTPException(status_code=400, detail="Token xac minh da het han")
 
     user.email_verified = True
@@ -480,7 +572,26 @@ async def verify_email(token: str, db: Session = Depends(get_db)):
     db.add(user)
     db.commit()
 
-    return {"message": "Xac minh email thanh cong"}
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.email},
+        expires_delta=access_token_expires,
+    )
+
+    return {
+        "message": "Xac minh email thanh cong",
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "role": user.role,
+            "full_name": user.full_name,
+            "image_url": getattr(user, 'image_url', None),
+            "email_verified": user.email_verified,
+            "is_subscribed": user.is_subscribed,
+        },
+    }
 
 
 @router.post("/verify-email/resend")
@@ -529,6 +640,47 @@ async def update_current_user(
     db.commit()
     db.refresh(current_user)
     return current_user
+
+
+@router.post('/me/avatar')
+async def upload_my_avatar(
+    avatar: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    # Validate file
+    if not avatar or not avatar.filename:
+        raise HTTPException(status_code=400, detail="Missing file")
+
+    filename_lower = avatar.filename.lower()
+    allowed_exts = (".jpg", ".jpeg", ".png", ".gif", ".webp", ".avif", ".svg")
+    if not any(filename_lower.endswith(ext) for ext in allowed_exts):
+        raise HTTPException(status_code=400, detail="Unsupported file type")
+
+    payload = await avatar.read()
+    if not payload:
+        raise HTTPException(status_code=400, detail="Empty file")
+
+    if len(payload) > IMAGE_MAX_UPLOAD_SIZE:
+        raise HTTPException(status_code=400, detail="File too large")
+
+    IMAGE_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    ext = Path(avatar.filename).suffix.lower() or '.png'
+    stored_name = f"{uuid.uuid4().hex}{ext}"
+    target = IMAGE_UPLOAD_DIR / stored_name
+    try:
+        target.write_bytes(payload)
+    except Exception:
+        raise HTTPException(status_code=500, detail="Failed to save file")
+
+    # Persist public-facing URL on user
+    public_path = f"/api/public/uploads/images/{stored_name}"
+    current_user.image_url = public_path
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
+
+    return {"url": public_path, "file_name": avatar.filename}
 
 
 @router.post("/password/set")

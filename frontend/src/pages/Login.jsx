@@ -1,16 +1,17 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { Card, Button, Input } from '@/components/UI'
 import { GoogleLogin } from '@react-oauth/google'
 import ReCAPTCHA from 'react-google-recaptcha'
-import { ShieldCheck } from 'lucide-react'
+import { ShieldCheck, Home } from 'lucide-react'
 import { useRef } from 'react'
 import { apiClient } from '@/lib/apiClient'
 import { toastError, toastInfo, toastSuccess } from '@/lib/notify'
+import { AiChatWidget } from '@/components/AiChatWidget'
+import { refreshAuthOverview, roleHasPermission } from '@/lib/rolePolicy'
 
 const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY || ''
 const GOOGLE_OAUTH_CLIENT_ID = import.meta.env.VITE_GOOGLE_OAUTH_CLIENT_ID || ''
-const ADMIN_PANEL_ROLES = new Set(['admin', 'website_manager', 'submission_judge'])
 
 const getRecaptchaTokenSafely = async (recaptchaRef) => {
   if (!RECAPTCHA_SITE_KEY || !recaptchaRef.current) return null
@@ -33,14 +34,34 @@ export const Login = () => {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
+  const location = useLocation()
   const recaptchaRef = useRef(null)
 
-  const completeLogin = (payload) => {
+  const completeLogin = async (payload) => {
     localStorage.setItem('token', payload.access_token)
     localStorage.setItem('user', JSON.stringify(payload.user))
+    try { window.dispatchEvent(new Event('auth-changed')) } catch (e) {}
     toastSuccess('Đăng nhập thành công.')
 
-    if (ADMIN_PANEL_ROLES.has(payload.user.role)) {
+    try {
+      await refreshAuthOverview()
+    } catch (e) {
+      // ignore refresh errors
+    }
+
+    const returnTo = location.state?.from
+    if (returnTo) {
+      // If returning to an admin route but the user lacks admin permission,
+      // fall back to home.
+      if (returnTo.startsWith('/admin') && !roleHasPermission(payload.user.role, 'admin_panel')) {
+        navigate('/')
+        return
+      }
+      navigate(returnTo)
+      return
+    }
+
+    if (roleHasPermission(payload.user.role, 'admin_panel')) {
       navigate('/admin/dashboard')
       return
     }
@@ -62,7 +83,7 @@ export const Login = () => {
       if (recaptchaToken) formData.append('recaptcha_token', recaptchaToken)
 
       const response = await apiClient.post('/auth/login', formData)
-      completeLogin(response.data)
+      await completeLogin(response.data)
     } catch (err) {
       const message = err?.response?.data?.detail || 'Đăng nhập thất bại. Vui lòng thử lại.'
       setError(message)
@@ -85,7 +106,7 @@ export const Login = () => {
       const response = await apiClient.post('/auth/google', {
         id_token: credential,
       })
-      completeLogin(response.data)
+      await completeLogin(response.data)
     } catch (err) {
       const message = err?.response?.data?.detail || 'Đăng nhập Google thất bại.'
       setError(message)
@@ -97,6 +118,12 @@ export const Login = () => {
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_20%_20%,#e6f4ff_0,#f8fafc_35%,#fff7ed_100%)] flex items-center justify-center p-4">
+      <div className="fixed left-4 top-6 z-[130]">
+        <Link to="/" className="group inline-flex items-center gap-3 rounded-full px-4 py-2 bg-white/90 backdrop-blur-md border border-white/30 shadow hover:scale-105 transition-transform duration-200">
+          <Home size={18} className="text-fpt-blue" />
+          <span className="hidden sm:inline font-black text-sm text-fpt-blue">Trang chủ</span>
+        </Link>
+      </div>
       <Card className="max-w-md w-full p-10 space-y-8 border border-white/60 bg-white/90 backdrop-blur-xl shadow-[0_30px_80px_-45px_rgba(15,23,42,0.4)] rounded-[32px]">
         <div className="text-center space-y-3">
           <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 text-fpt-blue text-[10px] font-black uppercase tracking-widest">
@@ -154,10 +181,11 @@ export const Login = () => {
             Chưa có tài khoản? <Link to="/register" className="text-fpt-blue font-black">Đăng ký ngay</Link>
           </p>
           <p>
-            Cần xác minh email? <Link to="/verify-email" className="text-fpt-orange font-black">Xác minh tài khoản</Link>
+            Cần xác minh email? Vui lòng kiểm tra email để lấy mã OTP.
           </p>
         </div>
       </Card>
+      <AiChatWidget />
     </div>
   )
 }

@@ -22,7 +22,7 @@ export const PhanMonLichSu = () => {
     const fetchPublications = async () => {
         setLoading(true)
         try {
-            const response = await axios.get(`${API_URL}/public/publications?category=lich-su`)
+            const response = await axios.get(`${API_URL}/public/publications?subject=lich-su`)
             setPublications(response.data)
         } catch (error) {
             console.error('Error fetching publications:', error)

@@ -20,6 +20,12 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Ignore canceled requests (AbortController / axios cancel) — don't show a toast for these
+    const isCanceled = error?.code === 'ERR_CANCELED' || error?.name === 'CanceledError' || error?.message === 'canceled'
+    if (isCanceled) {
+      return Promise.reject(error)
+    }
+
     const status = error?.response?.status
     if (status === 401) {
       localStorage.removeItem('token')
@@ -29,6 +35,7 @@ apiClient.interceptors.response.use(
       const message = extractErrorMessage(error, 'Không thể kết nối tới máy chủ.')
       toastError(message)
     }
+
     return Promise.reject(error)
   }
 )

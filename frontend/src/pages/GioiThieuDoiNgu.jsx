@@ -1,30 +1,136 @@
-import { useEffect, useState } from 'react'
-import axios from 'axios'
+import { useEffect, useState, useMemo, useCallback } from 'react'
+import { showToast } from '@/lib/notify'
+import { apiClient } from '@/lib/apiClient'
 import { Card } from '@/components/UI'
-import { Users, BookOpen, GraduationCap, Heart, Star, Sparkles } from 'lucide-react'
+import { tierGradientClass, tierLabel } from '@/lib/tierGradients'
+import { Users, BookOpen, GraduationCap, Sparkles } from 'lucide-react'
 import { motion } from 'framer-motion'
+import StaffCardPublic from '@/components/Staff/StaffCardPublic'
 
-const API_URL = import.meta.env.VITE_API_URL || '/api'
+// Use `apiClient` which attaches auth token from localStorage
+
+const sanitizeHtml = (html) => {
+  if (!html) return ''
+  return html
+    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
+    .replace(/\son\w+\s*=\s*"[^"]*"/gi, '')
+    .replace(/\son\w+\s*=\s*'[^']*'/gi, '')
+}
 
 export const GioiThieuDoiNgu = () => {
   const [staff, setStaff] = useState([])
   const [loading, setLoading] = useState(false)
+  const [selectedTier, setSelectedTier] = useState('')
+  const [reactionCounts, setReactionCounts] = useState({})
 
+  // Fetch staff profiles with cancellation support
   useEffect(() => {
+    const controller = new AbortController()
+    let canceled = false
+
     const fetchStaff = async () => {
       setLoading(true)
       try {
-        const res = await axios.get(`${API_URL}/public/doingu/staff`)
-        setStaff(res.data || [])
+        const res = await apiClient.get('/public/doingu/staff', { signal: controller.signal })
+        if (!canceled) setStaff(res.data || [])
       } catch (error) {
-        console.error('Error fetching staff profiles:', error)
+        if (error?.name === 'CanceledError' || error?.message === 'canceled') {
+          // request aborted
+        } else {
+          console.error('Error fetching staff profiles:', error)
+        }
       } finally {
-        setLoading(false)
+        if (!canceled) setLoading(false)
       }
     }
 
     fetchStaff()
+
+    return () => {
+      canceled = true
+      controller.abort()
+    }
   }, [])
+
+
+  useEffect(() => {
+    // fetch per-user reaction state for all staff in a single request with cancellation
+    if (!staff || staff.length === 0) return
+    const controller = new AbortController()
+    let canceled = false
+
+    const loadCounts = async () => {
+      try {
+        const ids = staff.map((s) => s.id).join(',')
+        const res = await apiClient.get(`/public/doingu/staff/reactions?ids=${ids}`, { signal: controller.signal })
+        const newCounts = res.data || {}
+        setReactionCounts((prev) => {
+          try {
+            if (JSON.stringify(prev) === JSON.stringify(newCounts)) return prev
+          } catch (e) {}
+          return newCounts
+        })
+      } catch (err) {
+        if (err?.name === 'CanceledError' || err?.message === 'canceled') {
+          // aborted
+        } else {
+          // ignore other reaction fetch errors for now
+        }
+      }
+    }
+
+    loadCounts()
+
+    return () => {
+      canceled = true
+      controller.abort()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [staff])
+
+  const reactToStaff = useCallback(async (staffId, type) => {
+    try {
+      const res = await apiClient.post(`/public/doingu/staff/${staffId}/react`, { reaction_type: type })
+      // server returns { reacted: true, reaction_type: "love" }
+      const updated = res.data || { reacted: true, reaction_type: type }
+      setReactionCounts((prev) => {
+        const prevFor = prev[staffId] || {}
+        if (prevFor.reacted === updated.reacted && prevFor.reaction_type === updated.reaction_type) return prev
+        return { ...prev, [staffId]: updated }
+      })
+    } catch (err) {
+      if (err && err.response && err.response.status === 401) {
+        alert('Vui lòng đăng nhập để phản ứng')
+      } else if (err && err.response && err.response.status === 409) {
+        showToast('warning', 'Bạn đã phản ứng với nhân viên này rồi')
+      } else {
+        console.error('Reaction error', err)
+      }
+    }
+  }, [])
+
+  // Top-level derived values and memoized renderers
+  const TIER_ORDER = useMemo(() => [
+    { value: 'management', label: 'Tổ trưởng' },
+    { value: 'senior', label: 'Trưởng bộ môn' },
+    { value: 'instructor', label: 'Giảng viên' },
+  ], [])
+
+  const filtered = useMemo(() => staff.filter(p => !selectedTier || p.tier === selectedTier), [staff, selectedTier])
+
+  // Determine a small set of eager-loaded staff ids (first N by display_order)
+  const eagerCount = 8
+  const eagerIds = useMemo(() => {
+    return staff.slice(0, eagerCount).map(s => s.id)
+  }, [staff])
+
+  const renderCards = useCallback((profiles) => (
+    <div className="flex flex-wrap justify-center gap-8">
+      {profiles.map((p) => (
+        <StaffCardPublic key={p.id} person={p} reaction={reactionCounts[p.id]} onReact={reactToStaff} eager={eagerIds.includes(p.id)} />
+      ))}
+    </div>
+  ), [reactionCounts, reactToStaff, eagerIds])
 
   return (
     <div className="min-h-screen bg-gray-50/50 pb-20">
@@ -46,7 +152,7 @@ export const GioiThieuDoiNgu = () => {
           >
             ĐỘI NGŨ <br />
             <span
-              className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-200 not-italic gradient-text-fix pt-3 md:pt-6"
+              className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-200 not-italic gradient-text-fix pt-3 pb-3 md:pt-6 md:pb-6"
               style={{ WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}
             >
               GIÁO VIÊN TÂM HUYẾT
@@ -73,94 +179,56 @@ export const GioiThieuDoiNgu = () => {
         {!loading && staff.length === 0 && (
           <Card className="p-12 text-center rounded-[40px] border-dashed border-2 border-gray-200 bg-white mb-8">
             <Users size={42} className="mx-auto text-gray-300 mb-4" />
-            <p className="text-gray-400 font-black uppercase tracking-widest">Chưa có hồ sơ đội ngũ giáo viên.</p>
           </Card>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-          {staff.map((p, i) => (
-            <motion.div
-              key={p.id}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
-              viewport={{ once: true }}
-            >
-              <Card className="p-0 border-none bg-white shadow-xl rounded-[40px] overflow-hidden group hover:-translate-y-4 transition-all duration-500">
-                <div className="relative aspect-[4/5] overflow-hidden bg-gray-100">
-                  <div className="absolute inset-0 bg-gradient-to-t from-fpt-blue/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity z-10"></div>
-                  <img src={p.image_url} alt={p.full_name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-                  <div className="absolute bottom-6 left-6 right-6 z-20 translate-y-10 group-hover:translate-y-0 transition-transform duration-500 opacity-0 group-hover:opacity-100">
-                    <div className="flex gap-4">
-                      <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white hover:bg-fpt-orange transition-colors cursor-pointer border border-white/30">
-                        <Heart size={18} />
-                      </div>
-                      <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white hover:bg-fpt-orange transition-colors cursor-pointer border border-white/30">
-                        <Star size={18} />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="p-8 space-y-3">
-                  <h4 className="text-xl font-black text-gray-800 tracking-tight group-hover:text-fpt-blue transition-colors">{p.full_name}</h4>
-                  <div className="text-[10px] font-black uppercase tracking-widest text-fpt-orange bg-orange-50 inline-block px-3 py-1 rounded-md">
-                    {p.title}
-                  </div>
-                  <p className="text-sm text-gray-500 font-medium leading-relaxed italic line-clamp-3">
-                    {p.bio}
-                  </p>
-                </div>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
+        
 
-        <section className="mt-24 bg-gradient-to-br from-fpt-blue to-[#0d1b4a] rounded-[50px] p-12 lg:p-20 text-white relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-96 h-96 bg-fpt-orange opacity-10 rounded-full blur-[100px]"></div>
-          <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-blue-400 opacity-10 rounded-full blur-[80px]"></div>
+        {selectedTier ? (
+          (() => {
+            const label = tierLabel(selectedTier)
+            const profiles = filtered
+            return profiles.length ? (
+              <section className="mt-12">
+                <h3 className="text-4xl md:text-5xl font-black text-center mb-8">
+                  <span className={`text-transparent bg-clip-text gradient-text-fix inline-block bg-gradient-to-r ${tierGradientClass(selectedTier)} inline-block pt-3 pb-3 md:pt-6 md:pb-6`}>
+                    {label}
+                  </span>
+                </h3>
+                {renderCards(profiles)}
+              </section>
+            ) : null
+          })()
+        ) : (
+          <>
+            {TIER_ORDER.map((t) => {
+              const profiles = staff.filter(p => p.tier === t.value)
+              return profiles.length ? (
+                <section key={t.value} className="mt-12">
+                  <h3 className="text-4xl md:text-6xl font-black text-center mb-8">
+                    <span className={`text-transparent bg-clip-text gradient-text-fix inline-block bg-gradient-to-r ${tierGradientClass(t.value)} inline-block pt-3 pb-3 md:pt-6 md:pb-6`}>
+                      {tierLabel(t.value)}
+                    </span>
+                  </h3>
+                  {renderCards(profiles)}
+                </section>
+              ) : null
+            })}
 
-          <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-            <div className="space-y-8">
-                <h2 className="text-4xl md:text-5xl font-black italic uppercase tracking-tighter leading-tight">
-                Triết lý giáo dục <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-fpt-orange to-yellow-400 not-italic inline-block pt-1 md:pt-2 gradient-text-fix">SÁNG TẠO & NHÂN VĂN</span>
-              </h2>
-              <div className="space-y-6">
-                <div className="flex gap-5">
-                  <div className="w-12 h-12 rounded-2xl bg-white/10 flex-shrink-0 flex items-center justify-center text-fpt-orange border border-white/10">
-                    <Sparkles size={24} />
-                  </div>
-                  <div>
-                    <h5 className="font-black text-lg uppercase tracking-widest mb-2">Đội ngũ tinh hoa</h5>
-                    <p className="text-blue-100 opacity-80 font-medium">100% giáo viên đạt chuẩn chuyên môn, tâm huyết và không ngừng cải tiến phương pháp giảng dạy.</p>
-                  </div>
-                </div>
-                <div className="flex gap-5">
-                  <div className="w-12 h-12 rounded-2xl bg-white/10 flex-shrink-0 flex items-center justify-center text-emerald-400 border border-white/10">
-                    <Heart size={24} />
-                  </div>
-                  <div>
-                    <h5 className="font-black text-lg uppercase tracking-widest mb-2">Trái tim nhân hậu</h5>
-                    <p className="text-blue-100 opacity-80 font-medium">Giáo dục bằng tình yêu thương, thấu hiểu tâm lý sinh viên để cùng phát triển.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-6">
-              <Card className="aspect-square bg-white/5 border-white/10 flex flex-col items-center justify-center text-center p-6 space-y-4 hover:bg-white/10 transition-colors">
-                <GraduationCap size={40} className="text-fpt-orange" />
-                <div className="text-3xl font-black">20+</div>
-                <div className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-200">Giảng viên ưu tú</div>
-              </Card>
-              <Card className="aspect-square bg-white/5 border-white/10 flex flex-col items-center justify-center text-center p-6 space-y-4 hover:bg-white/10 transition-colors">
-                <BookOpen size={40} className="text-emerald-400" />
-                <div className="text-3xl font-black">150+</div>
-                <div className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-200">Khoá học</div>
-              </Card>
-            </div>
-          </div>
-        </section>
+            {(() => {
+              const unassigned = staff.filter(p => !p.tier || !TIER_ORDER.some(t => t.value === p.tier))
+              return unassigned.length ? (
+                <section className="mt-12">
+                  <h3 className="text-3xl md:text-4xl font-black text-center uppercase mb-8">Khác</h3>
+                  {renderCards(unassigned)}
+                </section>
+              ) : null
+            })()}
+          </>
+        )}
       </div>
     </div>
   )
 }
+
+export default GioiThieuDoiNgu

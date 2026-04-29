@@ -111,6 +111,7 @@ export interface EditorState {
   }
   dirty: boolean
   lastSavedAt: number | null
+  lastDraftSavedAt: number | null
 }
 
 export type EditorAction =
@@ -125,3 +126,4 @@ export type EditorAction =
   | { type: 'UNDO' }
   | { type: 'REDO' }
   | { type: 'MARK_SAVED'; payload: { savedAt: number } }
+  | { type: 'MARK_DRAFT_SAVED'; payload: { savedAt: number } }

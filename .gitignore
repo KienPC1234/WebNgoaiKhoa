@@ -23,3 +23,12 @@ env/
 # OS
 .DS_Store
 Thumbs.db
+*.jpg
+*.jpeg
+*.png
+*.woff2
+*.sql
+*.bin
+*.sqlite3
+nohup.out
+.backend_pid

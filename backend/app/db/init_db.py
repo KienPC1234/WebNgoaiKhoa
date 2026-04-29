@@ -8,6 +8,7 @@ from app.models.publication import (
     Story,
     Submission,
     SubmissionVote,
+    StaffReaction,
 )
 import pymysql
 import os
@@ -16,6 +17,7 @@ from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import sessionmaker
 from app.db.session import Base
 from app.models.user import User, UserRole
+from app.models.role import Role
 from passlib.context import CryptContext
 from datetime import datetime, timezone, timedelta
 
@@ -116,6 +118,23 @@ def init_database():
     # 3. Seed Demo Admin User
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     db = SessionLocal()
+    try:
+        # Seed default roles if not present
+        existing_roles = db.query(Role).count()
+        if existing_roles == 0:
+            print("Seeding default roles...")
+            default_roles = [
+                Role(slug='admin', name='Admin hệ thống', permissions=['admin', 'admin_panel', 'user_manage', 'auth_audit', 'ai_knowledge', 'content_manage', 'submission_review'], built_in=True),
+                Role(slug='website_manager', name='Quản lý website', permissions=['admin_panel', 'content_manage'], built_in=True),
+                Role(slug='submission_judge', name='Người chấm bài', permissions=['admin_panel', 'submission_review'], built_in=True),
+                Role(slug='teacher', name='Giáo viên', permissions=['public_user'], built_in=True),
+                Role(slug='student', name='Học sinh/sinh viên', permissions=['public_user'], built_in=True),
+            ]
+            db.add_all(default_roles)
+            db.commit()
+            print("Default roles seeded.")
+    except Exception as e:
+        print(f"Warning: failed to seed default roles: {e}")
     try:
         admin_email = "admin@webngoaikhoa.edu.vn"
         admin = db.query(User).filter(User.email == admin_email).first()
@@ -261,7 +280,7 @@ def init_database():
         if db.query(SocialScale).count() == 0:
             print("Seeding social scale profile...")
             scale = SocialScale(
-                hero_title="Tổ xã hội - Quy mô & phát triển",
+                hero_title="Quy mô & phát triển",
                 hero_subtitle="Deep learning with love - Kết nối tri thức xã hội trong môi trường số.",
                 vision="Phát triển năng lực công dân toàn cầu cho học sinh sinh viên thông qua các phân môn xã hội và hoạt động liên ngành.",
                 subjects_overview="Ngữ Văn, Kinh tế pháp luật, Lịch sử, Địa lí, Vovinam",
@@ -285,6 +304,7 @@ def init_database():
                     bio="Hơn 15 năm kinh nghiệm giảng dạy và nghiên cứu văn học hiện đại.",
                     expertise="Văn học hiện đại",
                     image_url="https://i.pravatar.cc/300?u=staff-a",
+                    tier='management',
                     display_order=1,
                     is_active=True,
                 ),
@@ -294,6 +314,7 @@ def init_database():
                     bio="Chuyên gia về lịch sử bang giao quốc tế và văn hóa Việt Nam.",
                     expertise="Lịch sử và văn hóa",
                     image_url="https://i.pravatar.cc/300?u=staff-b",
+                    tier='instructor',
                     display_order=2,
                     is_active=True,
                 ),
@@ -303,6 +324,7 @@ def init_database():
                     bio="Võ sư trung đẳng, tâm huyết với sự nghiệp phát triển võ thuật học đường.",
                     expertise="Vovinam",
                     image_url="https://i.pravatar.cc/300?u=staff-c",
+                    tier='instructor',
                     display_order=3,
                     is_active=True,
                 ),
@@ -312,6 +334,7 @@ def init_database():
                     bio="Nghiên cứu sâu về biến đổi khí hậu và quy hoạch vùng.",
                     expertise="Địa lí ứng dụng",
                     image_url="https://i.pravatar.cc/300?u=staff-d",
+                    tier='instructor',
                     display_order=4,
                     is_active=True,
                 ),

@@ -1,26 +1,9 @@
-import { useMemo } from 'react'
-import { Shield, Users, Globe, FileCheck2, Lock, AlertTriangle } from 'lucide-react'
-import { Card, cn } from '@/components/UI'
-
-const ROLE_LABELS = {
-  admin: 'Admin hệ thống',
-  website_manager: 'Quản lý website',
-  submission_judge: 'Người chấm bài',
-  teacher: 'Giáo viên',
-  student: 'Học sinh/sinh viên',
-}
-
-const ROLE_CAPABILITIES = {
-  admin: ['Truy cập toàn bộ admin panel', 'Quản lý người dùng', 'Đổi quyền người dùng', 'Quản lý nội dung website', 'Duyệt bài dự thi'],
-  website_manager: ['Truy cập admin panel', 'Quản lý bài viết/sự kiện/CMS', 'Không được quản lý user'],
-  submission_judge: ['Truy cập admin panel', 'Duyệt bài dự thi', 'Không được quản lý website'],
-  teacher: ['Không có quyền admin panel'],
-  student: ['Không có quyền admin panel'],
-}
-
-const ADMIN_PANEL_ROLES = new Set(['admin', 'website_manager', 'submission_judge'])
-const WEBSITE_MANAGER_ROLES = new Set(['admin', 'website_manager'])
-const SUBMISSION_REVIEW_ROLES = new Set(['admin', 'submission_judge'])
+import { useMemo, useEffect, useState } from 'react'
+import { Shield, Users, Globe, FileCheck2, Lock, AlertTriangle, Edit3, Trash2, Plus } from 'lucide-react'
+import { Card, cn, Button } from '@/components/UI'
+import { cmsService } from '@/lib/cmsService'
+import RoleEditorModal from '@/components/Admin/RoleEditorModal'
+import { toastSuccess, showApiError, confirmAction } from '@/lib/notify'
 
 const toBoolLabel = (value) => (value ? 'Có' : 'Không')
 
@@ -38,35 +21,70 @@ export const AuthOverview = () => {
   const currentUser = getUserFromStorage()
   const role = currentUser?.role || 'unknown'
 
+  const [overview, setOverview] = useState(null)
+  const [roles, setRoles] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [editorOpen, setEditorOpen] = useState(false)
+  const [editingRole, setEditingRole] = useState(null)
+
+  const fetch = async () => {
+    setLoading(true)
+    try {
+      const o = await cmsService.getAuthOverview()
+      setOverview(o)
+      setRoles(o.role_details || [])
+    } catch (err) {
+      showApiError(err, 'Không tải được dữ liệu phân quyền')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { fetch() }, [])
+
   const checks = useMemo(() => {
+    const perms = overview?.permissions || {}
+    const myPerms = perms[role] || []
+    const has = (p) => myPerms.includes(p) || myPerms.includes('admin')
     return [
-      {
-        label: 'Đăng nhập',
-        ok: Boolean(token),
-        detail: token ? 'Có token phiên đăng nhập' : 'Chưa có token',
-      },
-      {
-        label: 'Truy cập admin panel',
-        ok: ADMIN_PANEL_ROLES.has(role),
-        detail: `Vai trò hiện tại: ${ROLE_LABELS[role] || role}`,
-      },
-      {
-        label: 'Quyền quản lý website',
-        ok: WEBSITE_MANAGER_ROLES.has(role),
-        detail: WEBSITE_MANAGER_ROLES.has(role) ? 'Được phép quản lý bài viết/CMS' : 'Không có quyền quản lý nội dung website',
-      },
-      {
-        label: 'Quyền duyệt bài',
-        ok: SUBMISSION_REVIEW_ROLES.has(role),
-        detail: SUBMISSION_REVIEW_ROLES.has(role) ? 'Được phép duyệt bài dự thi' : 'Không có quyền duyệt bài',
-      },
-      {
-        label: 'Bảo vệ role admin',
-        ok: true,
-        detail: 'Hệ thống chặn thay đổi role của tài khoản admin khác (kiểm tra ở API và giao diện Users).',
-      },
+      { label: 'Đăng nhập', ok: Boolean(token), detail: token ? 'Có token phiên đăng nhập' : 'Chưa có token' },
+      { label: 'Truy cập admin panel', ok: has('admin_panel'), detail: `Vai trò hiện tại: ${overview?.role_details?.find(r => r.slug === role)?.name || role}` },
+      { label: 'Quyền quản lý website', ok: has('content_manage'), detail: has('content_manage') ? 'Được phép quản lý bài viết/CMS' : 'Không có quyền quản lý nội dung website' },
+      { label: 'Quyền duyệt bài', ok: has('submission_review'), detail: has('submission_review') ? 'Được phép duyệt bài dự thi' : 'Không có quyền duyệt bài' },
+      { label: 'Bảo vệ role admin', ok: true, detail: 'Hệ thống chặn thay đổi role của tài khoản admin khác (kiểm tra ở API và giao diện Users).' },
     ]
-  }, [role, token])
+  }, [overview, role, token])
+
+  const openCreate = () => { setEditingRole(null); setEditorOpen(true) }
+  const openEdit = (r) => { setEditingRole(r); setEditorOpen(true) }
+
+  const handleSaveRole = async (payload) => {
+    try {
+      if (payload.id) {
+        await cmsService.updateRole(payload.id, { slug: payload.slug, name: payload.name, permissions: payload.permissions, built_in: payload.built_in })
+        toastSuccess('Cập nhật vai trò thành công')
+      } else {
+        await cmsService.createRole({ slug: payload.slug, name: payload.name, permissions: payload.permissions, built_in: payload.built_in })
+        toastSuccess('Tạo vai trò mới thành công')
+      }
+      await fetch()
+    } catch (err) {
+      showApiError(err, 'Lưu vai trò thất bại')
+      throw err
+    }
+  }
+
+  const handleDeleteRole = async (id) => {
+    const ok = await confirmAction({ title: 'Xóa vai trò?', text: 'Hành động này sẽ xóa vai trò nếu không có user nào đang gán.' })
+    if (!ok) return
+    try {
+      await cmsService.deleteRole(id)
+      toastSuccess('Xóa vai trò thành công')
+      await fetch()
+    } catch (err) {
+      showApiError(err, 'Xóa vai trò thất bại')
+    }
+  }
 
   return (
     <div className="space-y-6 pb-8">
@@ -75,11 +93,16 @@ export const AuthOverview = () => {
           <div className="rounded-xl bg-slate-100 p-2 text-slate-700">
             <Shield size={18} />
           </div>
-          <div>
-            <h1 className="text-xl font-bold text-slate-900">Tổng quan xác thực và phân quyền</h1>
-            <p className="mt-1 text-sm text-slate-600">
-              Màn hình này tổng hợp trạng thái auth hiện tại và policy phân quyền theo vai trò.
-            </p>
+          <div className="flex-1">
+            <div className="flex items-start justify-between">
+              <div>
+                <h1 className="text-xl font-bold text-slate-900">Tổng quan xác thực và phân quyền</h1>
+                <p className="mt-1 text-sm text-slate-600">Màn hình này tổng hợp trạng thái auth hiện tại và policy phân quyền theo vai trò.</p>
+              </div>
+              <div>
+                <Button onClick={openCreate} className="inline-flex items-center gap-2"><Plus size={14} /> Thêm vai trò</Button>
+              </div>
+            </div>
           </div>
         </div>
       </Card>
@@ -119,24 +142,33 @@ export const AuthOverview = () => {
             <thead className="bg-slate-50 text-left text-xs uppercase tracking-wider text-slate-500">
               <tr>
                 <th className="px-4 py-3">Vai trò</th>
-                <th className="px-4 py-3">Khả năng</th>
+                <th className="px-4 py-3">Quyền</th>
+                <th className="px-4 py-3">Người đang gán</th>
+                <th className="px-4 py-3">Hành động</th>
               </tr>
             </thead>
             <tbody>
-              {Object.entries(ROLE_LABELS).map(([key, label]) => (
-                <tr key={key} className="border-t border-slate-100 align-top">
+              {(roles || []).map((r) => (
+                <tr key={r.slug} className="border-t border-slate-100 align-top">
                   <td className="px-4 py-3 font-semibold text-slate-800">
                     <div className="inline-flex items-center gap-2">
-                      {key === 'admin' ? <Lock size={14} /> : key === 'website_manager' ? <Globe size={14} /> : key === 'submission_judge' ? <FileCheck2 size={14} /> : <Users size={14} />}
-                      {label}
+                      {r.slug === 'admin' ? <Lock size={14} /> : r.slug === 'website_manager' ? <Globe size={14} /> : r.slug === 'submission_judge' ? <FileCheck2 size={14} /> : <Users size={14} />}
+                      {r.name || r.slug}
                     </div>
                   </td>
                   <td className="px-4 py-3 text-slate-600">
-                    <ul className="space-y-1">
-                      {ROLE_CAPABILITIES[key].map((capability) => (
-                        <li key={capability}>- {capability}</li>
+                    <div className="flex flex-wrap gap-2">
+                      {(r.permissions || []).map((p) => (
+                        <div key={p} className="rounded-full bg-gray-100 px-3 py-1 text-xs">{p}</div>
                       ))}
-                    </ul>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-slate-700">{(overview?.roles && overview.roles[r.slug]) || 0}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => openEdit(r)} className="text-slate-600 hover:text-slate-900 flex items-center gap-2"><Edit3 size={14} /> Chỉnh sửa</button>
+                      {!r.built_in && <button onClick={() => handleDeleteRole(r.id)} className="text-red-600 hover:text-red-800 flex items-center gap-2"><Trash2 size={14} /> Xóa</button>}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -150,13 +182,12 @@ export const AuthOverview = () => {
           <AlertTriangle size={18} className="mt-0.5 text-amber-700" />
           <div>
             <p className="text-sm font-semibold text-amber-800">Lưu ý bảo mật quan trọng</p>
-            <p className="mt-1 text-sm text-amber-700">
-              Tài khoản có role admin chỉ nên cấp cho người quản trị hệ thống. Admin không được thay đổi role của admin khác,
-              và quy tắc này được thực thi đồng thời ở frontend và backend.
-            </p>
+            <p className="mt-1 text-sm text-amber-700">Tài khoản có role admin chỉ nên cấp cho người quản trị hệ thống. Admin không được thay đổi role của admin khác, và quy tắc này được thực thi đồng thời ở frontend và backend.</p>
           </div>
         </div>
       </Card>
+
+      <RoleEditorModal open={editorOpen} role={editingRole} onClose={() => setEditorOpen(false)} onSave={handleSaveRole} onDelete={async (id) => { await handleDeleteRole(id) }} />
     </div>
   )
 }

@@ -38,6 +38,12 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),
+        // Force all imports of react / react-dom to resolve to the
+        // single copy installed at the project root. This prevents
+        // duplicate React instances when dependencies ship their
+        // own builds or when ESM/CJS interop creates separate copies.
+        react: path.resolve(__dirname, 'node_modules/react'),
+        'react-dom': path.resolve(__dirname, 'node_modules/react-dom'),
       },
     },
     server: {

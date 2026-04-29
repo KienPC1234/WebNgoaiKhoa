@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
+import { cmsService } from '@/lib/cmsService'
+import { roleHasPermission } from '@/lib/rolePolicy'
 import { Card, Button, cn } from '../../components/UI'
 import { User, Search, Shield, CheckCircle2, XCircle, Trash2 } from 'lucide-react'
 import { confirmAction, showApiError, toastError, toastSuccess } from '@/lib/notify'
@@ -19,17 +21,22 @@ export const AdminUsers = () => {
     currentUser = null
   }
 
-  const roleOptions = [
-    { value: 'student', label: 'Học sinh/sinh viên' },
-    { value: 'teacher', label: 'Giáo viên' },
-    { value: 'submission_judge', label: 'Người chấm bài' },
-    { value: 'website_manager', label: 'Quản lý website' },
-    { value: 'admin', label: 'Admin hệ thống' },
-  ]
+  const [roleOptions, setRoleOptions] = useState([])
 
   useEffect(() => {
     fetchUsers()
+    fetchRoles()
   }, [])
+
+  const fetchRoles = async () => {
+    try {
+      const res = await cmsService.getRoles()
+      const opts = (res || []).map((r) => ({ value: r.slug, label: r.name || r.slug }))
+      setRoleOptions(opts)
+    } catch (err) {
+      console.error('Error fetching roles:', err)
+    }
+  }
 
   const fetchUsers = async () => {
     try {
@@ -80,7 +87,7 @@ export const AdminUsers = () => {
   const handleUpdateRole = async (user, nextRole) => {
     if (!nextRole || nextRole === user.role) return
 
-    const isEditingOtherAdmin = user.role === 'admin' && user.id !== currentUser?.id
+    const isEditingOtherAdmin = roleHasPermission(user.role, 'admin_panel') && user.id !== currentUser?.id
     if (isEditingOtherAdmin) {
       toastError('Không thể thay đổi quyền của tài khoản admin khác.')
       return
@@ -168,10 +175,10 @@ export const AdminUsers = () => {
                         <select
                           value={user.role}
                           onChange={(e) => handleUpdateRole(user, e.target.value)}
-                          disabled={user.role === 'admin' && user.id !== currentUser?.id}
+                          disabled={roleHasPermission(user.role, 'admin_panel') && user.id !== currentUser?.id}
                           className={cn(
                             'rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700',
-                            user.role === 'admin' ? 'border-slate-700 text-slate-900' : ''
+                            roleHasPermission(user.role, 'admin_panel') ? 'border-slate-700 text-slate-900' : ''
                           )}
                         >
                           {roleOptions.map((option) => (

@@ -21,16 +21,19 @@ interface HybridCMSEditorRootProps {
   onDocumentChange?: (document: CMSDocument) => void
   /** When false, hides the document title input (use when the host page already exposes a title field) */
   showDocumentTitle?: boolean
+  onAutosave?: (document: CMSDocument) => Promise<void> | void
 }
 
 export const HybridCMSEditorRoot: React.FC<HybridCMSEditorRootProps> = ({
   initialDocument,
   onDocumentChange,
   showDocumentTitle = true,
+  onAutosave,
 }) => {
   const [state, dispatch] = useReducer(editorReducer, createInitialEditorState())
   const [canvasMode, setCanvasMode] = useState<'edit' | 'preview'>('edit')
   const [showHelpDialog, setShowHelpDialog] = useState(false)
+  const [isAutosaving, setIsAutosaving] = useState(false)
   const loadedInitialDocRef = useRef<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
@@ -49,8 +52,20 @@ export const HybridCMSEditorRoot: React.FC<HybridCMSEditorRootProps> = ({
   }, [state.document, state.dirty, onDocumentChange])
 
   useAutosave(state.document, {
-    onSave: () => {
-      dispatch({ type: 'MARK_SAVED', payload: { savedAt: Date.now() } })
+    enabled: !!state.dirty,
+    onSave: async (doc) => {
+      setIsAutosaving(true)
+      try {
+        if (typeof (onAutosave) === 'function') {
+          await onAutosave(doc)
+        }
+      } catch (err) {
+        // ignore autosave errors to avoid disturbing the editor UX
+        console.debug('autosave error', err)
+      } finally {
+        dispatch({ type: 'MARK_SAVED', payload: { savedAt: Date.now() } })
+        setIsAutosaving(false)
+      }
     },
   })
 
@@ -164,6 +179,7 @@ export const HybridCMSEditorRoot: React.FC<HybridCMSEditorRootProps> = ({
               >
                 Nhập
               </button>
+            
             <input ref={(el) => (fileInputRef.current = el)} type="file" accept="application/json" onChange={(e) => handleImportFile(e.target.files?.[0] ?? null)} className="hidden" />
             {/* <span className={`rounded-lg px-2 py-1 text-[10px] font-black uppercase tracking-widest ${validation.valid ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
               {validation.valid ? 'Hợp lệ' : `${validation.errors.length} lỗi`}
@@ -189,7 +205,21 @@ export const HybridCMSEditorRoot: React.FC<HybridCMSEditorRootProps> = ({
               aria-label="Tiêu đề tài liệu"
             />
           )}
-          <p className="text-[10px] text-gray-400">Đã bật tự động lưu</p>
+          <div className="text-[10px] text-gray-400">
+            {isAutosaving ? (
+              <span className="inline-flex items-center gap-2">
+                <svg className="animate-spin h-3 w-3 text-fpt-blue" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                </svg>
+                Đang lưu...
+              </span>
+            ) : state.lastSavedAt ? (
+              <span>Đã lưu {new Date(state.lastSavedAt).toLocaleTimeString()}</span>
+            ) : (
+              <span>Chưa lưu</span>
+            )}
+          </div>
         </div>
 
         <div className="rounded-xl border border-gray-200 bg-white p-3 space-y-2">

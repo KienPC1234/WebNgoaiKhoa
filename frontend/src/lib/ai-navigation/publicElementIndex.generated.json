@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-04-19T13:57:12.061Z",
+  "generatedAt": "2026-04-29T12:37:58.182Z",
   "version": 2,
-  "total": 242,
+  "total": 245,
   "elements": [
     {
       "route": "/phanmon/van?tab=sang-tac",
@@ -38,6 +38,36 @@
       "route": "/phanmon/van?tab=sang-tac",
       "kind": "button",
       "text": "Nộp bài dự thi",
+      "source": "manual-tab-hint"
+    },
+    {
+      "route": "/phanmon/van/cuoc-thi",
+      "kind": "label",
+      "text": "Danh sách cuộc thi",
+      "source": "manual-tab-hint"
+    },
+    {
+      "route": "/phanmon/ktpl/cuoc-thi",
+      "kind": "label",
+      "text": "Danh sách cuộc thi",
+      "source": "manual-tab-hint"
+    },
+    {
+      "route": "/phanmon/lich-su/cuoc-thi",
+      "kind": "label",
+      "text": "Danh sách cuộc thi",
+      "source": "manual-tab-hint"
+    },
+    {
+      "route": "/phanmon/dia-li/cuoc-thi",
+      "kind": "label",
+      "text": "Danh sách cuộc thi",
+      "source": "manual-tab-hint"
+    },
+    {
+      "route": "/phanmon/vovinam/cuoc-thi",
+      "kind": "label",
+      "text": "Danh sách cuộc thi",
       "source": "manual-tab-hint"
     },
     {
@@ -520,11 +550,20 @@
     {
       "route": "/login",
       "kind": "span",
+      "text": "Trang chủ",
+      "source": "src/pages/Login.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Login.jsx",
+      "line": 124
+    },
+    {
+      "route": "/login",
+      "kind": "span",
       "text": "Bảo mật OTP + reCAPTCHA",
       "source": "src/pages/Login.jsx",
       "anchor": null,
       "componentPath": "src/pages/Login.jsx",
-      "line": 102
+      "line": 129
     },
     {
       "route": "/login",
@@ -533,7 +572,7 @@
       "source": "src/pages/Login.jsx",
       "anchor": null,
       "componentPath": "src/pages/Login.jsx",
-      "line": 105
+      "line": 132
     },
     {
       "route": "/login",
@@ -542,7 +581,7 @@
       "source": "src/pages/Login.jsx",
       "anchor": null,
       "componentPath": "src/pages/Login.jsx",
-      "line": 106
+      "line": 133
     },
     {
       "route": "/login",
@@ -551,7 +590,7 @@
       "source": "src/pages/Login.jsx",
       "anchor": null,
       "componentPath": "src/pages/Login.jsx",
-      "line": 116
+      "line": 143
     },
     {
       "route": "/login",
@@ -560,7 +599,7 @@
       "source": "src/pages/Login.jsx",
       "anchor": null,
       "componentPath": "src/pages/Login.jsx",
-      "line": 143
+      "line": 170
     },
     {
       "route": "/login",
@@ -569,7 +608,7 @@
       "source": "src/pages/Login.jsx",
       "anchor": null,
       "componentPath": "src/pages/Login.jsx",
-      "line": 153
+      "line": 180
     },
     {
       "route": "/login",
@@ -578,25 +617,16 @@
       "source": "src/pages/Login.jsx",
       "anchor": null,
       "componentPath": "src/pages/Login.jsx",
-      "line": 154
+      "line": 181
     },
     {
       "route": "/login",
       "kind": "p",
-      "text": "Cần xác minh email?",
+      "text": "Cần xác minh email? Vui lòng kiểm tra email để lấy mã OTP.",
       "source": "src/pages/Login.jsx",
       "anchor": null,
       "componentPath": "src/pages/Login.jsx",
-      "line": 156
-    },
-    {
-      "route": "/login",
-      "kind": "Link",
-      "text": "Xác minh tài khoản",
-      "source": "src/pages/Login.jsx",
-      "anchor": null,
-      "componentPath": "src/pages/Login.jsx",
-      "line": 157
+      "line": 183
     },
     {
       "route": "/doingu/scale",
@@ -718,11 +748,11 @@
     {
       "route": "/doingu/staff",
       "kind": "div",
-      "text": "Đội ngũ giáo viên",
+      "text": "Đội ngũ",
       "source": "src/pages/NhanVatStaff.jsx",
       "anchor": null,
       "componentPath": "src/pages/NhanVatStaff.jsx",
-      "line": 30
+      "line": 58
     },
     {
       "route": "/doingu/staff",
@@ -731,7 +761,7 @@
       "source": "src/pages/NhanVatStaff.jsx",
       "anchor": null,
       "componentPath": "src/pages/NhanVatStaff.jsx",
-      "line": 34
+      "line": 62
     },
     {
       "route": "/doingu/staff",
@@ -740,16 +770,16 @@
       "source": "src/pages/NhanVatStaff.jsx",
       "anchor": null,
       "componentPath": "src/pages/NhanVatStaff.jsx",
-      "line": 35
+      "line": 63
     },
     {
       "route": "/doingu/staff",
       "kind": "p",
-      "text": "Trang giới thiệu đội ngũ giáo viên nòng cốt của Tổ xã hội. Đây là bản nền để tích hợp dữ liệu hồ sơ thật, thành tích, lịch giảng dạy và bài viết chuyên môn.",
+      "text": "Trang giới thiệu đội ngũ nòng cốt của Tổ xã hội. Đây là bản nền để tích hợp dữ liệu hồ sơ thật, thành tích, lịch giảng dạy và bài viết chuyên môn.",
       "source": "src/pages/NhanVatStaff.jsx",
       "anchor": null,
       "componentPath": "src/pages/NhanVatStaff.jsx",
-      "line": 37
+      "line": 65
     },
     {
       "route": "/doingu/staff",
@@ -758,7 +788,25 @@
       "source": "src/pages/NhanVatStaff.jsx",
       "anchor": null,
       "componentPath": "src/pages/NhanVatStaff.jsx",
-      "line": 41
+      "line": 69
+    },
+    {
+      "route": "/doingu/staff",
+      "kind": "StaffSection",
+      "text": "Đội ngũ quản lý",
+      "source": "src/pages/NhanVatStaff.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/NhanVatStaff.jsx",
+      "line": 77
+    },
+    {
+      "route": "/doingu/staff",
+      "kind": "StaffSection",
+      "text": "Đội ngũ giảng viên",
+      "source": "src/pages/NhanVatStaff.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/NhanVatStaff.jsx",
+      "line": 87
     },
     {
       "route": "/doingu/staff",
@@ -767,7 +815,7 @@
       "source": "src/pages/NhanVatStaff.jsx",
       "anchor": null,
       "componentPath": "src/pages/NhanVatStaff.jsx",
-      "line": 58
+      "line": 98
     },
     {
       "route": "/doingu/staff",
@@ -776,7 +824,7 @@
       "source": "src/pages/NhanVatStaff.jsx",
       "anchor": null,
       "componentPath": "src/pages/NhanVatStaff.jsx",
-      "line": 63
+      "line": 103
     },
     {
       "route": "/doingu/staff",
@@ -785,7 +833,7 @@
       "source": "src/pages/NhanVatStaff.jsx",
       "anchor": null,
       "componentPath": "src/pages/NhanVatStaff.jsx",
-      "line": 64
+      "line": 104
     },
     {
       "route": "/doingu/staff",
@@ -794,7 +842,7 @@
       "source": "src/pages/NhanVatStaff.jsx",
       "anchor": null,
       "componentPath": "src/pages/NhanVatStaff.jsx",
-      "line": 65
+      "line": 105
     },
     {
       "route": "/phanmon/dia-li",
@@ -1919,70 +1967,43 @@
       "source": "src/pages/Profile.jsx",
       "anchor": null,
       "componentPath": "src/pages/Profile.jsx",
-      "line": 85
+      "line": 34
     },
     {
       "route": "/profile",
-      "kind": "h1",
-      "text": "HỒ SƠ TÀI KHOẢN",
+      "kind": "button",
+      "text": "Tổng quan",
       "source": "src/pages/Profile.jsx",
       "anchor": null,
       "componentPath": "src/pages/Profile.jsx",
-      "line": 92
+      "line": 48
     },
     {
       "route": "/profile",
-      "kind": "Button",
-      "text": "Lưu hồ sơ",
+      "kind": "button",
+      "text": "Bài thi",
       "source": "src/pages/Profile.jsx",
       "anchor": null,
       "componentPath": "src/pages/Profile.jsx",
-      "line": 105
+      "line": 49
     },
     {
       "route": "/profile",
-      "kind": "Button",
-      "text": "Đăng xuất",
+      "kind": "button",
+      "text": "Bảo mật",
       "source": "src/pages/Profile.jsx",
       "anchor": null,
       "componentPath": "src/pages/Profile.jsx",
-      "line": 106
+      "line": 50
     },
     {
-      "route": "/profile",
-      "kind": "h2",
-      "text": "ĐỔI MẬT KHẨU",
-      "source": "src/pages/Profile.jsx",
+      "route": "/register",
+      "kind": "span",
+      "text": "Trang chủ",
+      "source": "src/pages/Register.jsx",
       "anchor": null,
-      "componentPath": "src/pages/Profile.jsx",
-      "line": 111
-    },
-    {
-      "route": "/profile",
-      "kind": "Button",
-      "text": "Đổi mật khẩu",
-      "source": "src/pages/Profile.jsx",
-      "anchor": null,
-      "componentPath": "src/pages/Profile.jsx",
-      "line": 115
-    },
-    {
-      "route": "/profile",
-      "kind": "h2",
-      "text": "BÀI THI CỦA TÔI",
-      "source": "src/pages/Profile.jsx",
-      "anchor": null,
-      "componentPath": "src/pages/Profile.jsx",
-      "line": 120
-    },
-    {
-      "route": "/profile",
-      "kind": "p",
-      "text": "Bạn chưa có bài thi nào.",
-      "source": "src/pages/Profile.jsx",
-      "anchor": null,
-      "componentPath": "src/pages/Profile.jsx",
-      "line": 122
+      "componentPath": "src/pages/Register.jsx",
+      "line": 128
     },
     {
       "route": "/register",
@@ -1991,7 +2012,7 @@
       "source": "src/pages/Register.jsx",
       "anchor": null,
       "componentPath": "src/pages/Register.jsx",
-      "line": 121
+      "line": 133
     },
     {
       "route": "/register",
@@ -2000,7 +2021,7 @@
       "source": "src/pages/Register.jsx",
       "anchor": null,
       "componentPath": "src/pages/Register.jsx",
-      "line": 124
+      "line": 136
     },
     {
       "route": "/register",
@@ -2009,7 +2030,7 @@
       "source": "src/pages/Register.jsx",
       "anchor": null,
       "componentPath": "src/pages/Register.jsx",
-      "line": 125
+      "line": 137
     },
     {
       "route": "/register",
@@ -2018,7 +2039,7 @@
       "source": "src/pages/Register.jsx",
       "anchor": null,
       "componentPath": "src/pages/Register.jsx",
-      "line": 143
+      "line": 155
     },
     {
       "route": "/register",
@@ -2027,7 +2048,7 @@
       "source": "src/pages/Register.jsx",
       "anchor": null,
       "componentPath": "src/pages/Register.jsx",
-      "line": 144
+      "line": 156
     },
     {
       "route": "/register",
@@ -2036,7 +2057,7 @@
       "source": "src/pages/Register.jsx",
       "anchor": null,
       "componentPath": "src/pages/Register.jsx",
-      "line": 144
+      "line": 156
     },
     {
       "route": "/register",
@@ -2045,7 +2066,7 @@
       "source": "src/pages/Register.jsx",
       "anchor": null,
       "componentPath": "src/pages/Register.jsx",
-      "line": 151
+      "line": 163
     },
     {
       "route": "/register",
@@ -2054,7 +2075,7 @@
       "source": "src/pages/Register.jsx",
       "anchor": null,
       "componentPath": "src/pages/Register.jsx",
-      "line": 160
+      "line": 172
     },
     {
       "route": "/register",
@@ -2063,25 +2084,16 @@
       "source": "src/pages/Register.jsx",
       "anchor": null,
       "componentPath": "src/pages/Register.jsx",
-      "line": 161
+      "line": 173
     },
     {
       "route": "/register",
       "kind": "p",
-      "text": "Đã đăng ký nhưng chưa xác minh?",
+      "text": "Đã đăng ký nhưng chưa xác minh? Vui lòng kiểm tra email để nhập mã OTP.",
       "source": "src/pages/Register.jsx",
       "anchor": null,
       "componentPath": "src/pages/Register.jsx",
-      "line": 163
-    },
-    {
-      "route": "/register",
-      "kind": "Link",
-      "text": "Nhập OTP",
-      "source": "src/pages/Register.jsx",
-      "anchor": null,
-      "componentPath": "src/pages/Register.jsx",
-      "line": 164
+      "line": 175
     },
     {
       "route": "/stories/inspiring",

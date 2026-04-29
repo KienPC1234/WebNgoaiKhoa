@@ -7,6 +7,10 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from app.services.email_templates import get_newsletter_html
+from app.db.session import SessionLocal
+from app.models.notification import PushSubscription, Notification
+from app.models.user import User
+from app.db.notifications import manager
 
 try:
     import firebase_admin
@@ -117,6 +121,7 @@ def register_push_token(email: str, token: str) -> int:
     if not token:
         return 0
 
+    # Save to registry file (backwards compatibility)
     with _registry_lock:
         data = _load_registry()
         bucket = data.get(email, [])
@@ -124,7 +129,39 @@ def register_push_token(email: str, token: str) -> int:
             bucket.append(token)
         data[email] = bucket
         _save_registry(data)
-        return len(bucket)
+
+    # Also attempt to persist into DB push_subscriptions table if available
+    try:
+        db = SessionLocal()
+        # find or create subscription record
+        exists = db.query(PushSubscription).filter(PushSubscription.token == token).first()
+        if not exists:
+            user = db.query(User).filter(User.email == email).first()
+            user_id = user.id if user else None
+            sub = PushSubscription(user_id=user_id, token=token)
+            db.add(sub)
+            db.commit()
+        else:
+            # if exists but not linked to user, link it
+            if exists.user_id is None:
+                user = db.query(User).filter(User.email == email).first()
+                if user:
+                    exists.user_id = user.id
+                    db.add(exists)
+                    db.commit()
+    except Exception:
+        # DB persistence is optional; keep using registry file on failure
+        try:
+            db.rollback()
+        except Exception:
+            pass
+    finally:
+        try:
+            db.close()
+        except Exception:
+            pass
+
+    return len(bucket)
 
 
 def unregister_push_token(email: str, token: str) -> int:
@@ -142,7 +179,26 @@ def unregister_push_token(email: str, token: str) -> int:
             del data[email]
 
         _save_registry(data)
-        return len(bucket)
+
+    # Also remove from DB if present
+    try:
+        db = SessionLocal()
+        rows = db.query(PushSubscription).filter(PushSubscription.token == token).all()
+        for r in rows:
+            db.delete(r)
+        db.commit()
+    except Exception:
+        try:
+            db.rollback()
+        except Exception:
+            pass
+    finally:
+        try:
+            db.close()
+        except Exception:
+            pass
+
+    return len(bucket)
 
 
 def clear_push_tokens(email: str) -> None:
@@ -269,6 +325,61 @@ def dispatch_newsletter_bulk(
             for token in registry.get(email, []):
                 if send_webpush(token=token, title=title, body=body, link=action_url):
                     push_sent += 1
+
+            # Persist in-app notification for the user if present
+            try:
+                db = SessionLocal()
+                user = db.query(User).filter(User.email == email).first()
+                if user:
+                    n = Notification(user_id=user.id, title=title, body=body, url=action_url)
+                    db.add(n)
+                    db.commit()
+                    try:
+                        # refresh to get ID and created_at
+                        db.refresh(n)
+                    except Exception:
+                        pass
+
+                    # Broadcast to connected websocket clients so UI updates live
+                    try:
+                        payload = {
+                            "type": "notification",
+                            "id": n.id,
+                            "title": n.title,
+                            "message": n.body,
+                            "url": n.url,
+                            "is_read": False,
+                            "created_at": n.created_at.isoformat() if n.created_at else None,
+                        }
+                        import asyncio
+                        try:
+                            loop = asyncio.get_event_loop()
+                        except RuntimeError:
+                            loop = None
+
+                        if loop and loop.is_running():
+                            # schedule on running loop
+                            asyncio.create_task(manager.broadcast(payload))
+                        else:
+                            # run a temporary loop to perform the broadcast
+                            try:
+                                asyncio.run(manager.broadcast(payload))
+                            except Exception:
+                                # best-effort: ignore broadcast failures
+                                pass
+                    except Exception:
+                        # Ignore broadcast errors; notification is persisted
+                        pass
+            except Exception:
+                try:
+                    db.rollback()
+                except Exception:
+                    pass
+            finally:
+                try:
+                    db.close()
+                except Exception:
+                    pass
 
     return {
         "total": len(recipients),

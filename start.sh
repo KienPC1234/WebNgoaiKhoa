@@ -82,7 +82,7 @@ if [ ! -d "node_modules" ]; then
 fi
 
 echo -e "${ORANGE}Khởi động Frontend...${NC}"
-nohup npm run dev > ../frontend.log 2>&1 &
+nohup npm run dev -- --host > ../frontend.log 2>&1 &
 FRONTEND_PID=$!
 echo $FRONTEND_PID >> ../$PID_FILE
 cd ..

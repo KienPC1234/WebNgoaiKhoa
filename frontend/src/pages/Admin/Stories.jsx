@@ -26,8 +26,10 @@ export const AdminStories = () => {
     action_url: '/stories/inspiring',
     send_email: true,
     send_webpush: true,
+    audience: ['all'],
   })
   const [newsletterSending, setNewsletterSending] = useState(false)
+  const [roleOptions, setRoleOptions] = useState([])
 
   const fetchStories = async () => {
     setLoading(true)
@@ -44,6 +46,15 @@ export const AdminStories = () => {
 
   useEffect(() => {
     fetchStories()
+    const fetchRoles = async () => {
+      try {
+        const res = await cmsService.getRoles()
+        setRoleOptions((res || []).map((r) => ({ value: r.slug, label: r.name || r.slug })))
+      } catch (err) {
+        console.error('Error fetching roles:', err)
+      }
+    }
+    fetchRoles()
   }, [])
 
   useEffect(() => {
@@ -174,6 +185,40 @@ export const AdminStories = () => {
             />
             Gửi webpush
           </label>
+          <div className="md:col-span-2">
+            <div className="text-sm font-medium text-slate-700 mb-1">Người nhận</div>
+            <div className="flex flex-wrap gap-2">
+                {[
+                  { value: 'all', label: 'Tất cả' },
+                  // roleOptions should be populated earlier in this component
+                  ...(roleOptions || []),
+                ].map((role) => (
+                  <label key={role.value} className="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={(newsletterForm.audience || []).includes(role.value)}
+                      onChange={() => {
+                        setNewsletterForm((prev) => {
+                          const cur = prev.audience || []
+                          if (role.value === 'all') {
+                            return { ...prev, audience: ['all'] }
+                          }
+                          let next = cur.filter((r) => r !== 'all')
+                          if (next.includes(role.value)) {
+                            next = next.filter((r) => r !== role.value)
+                          } else {
+                            next = [...next, role.value]
+                          }
+                          if (next.length === 0) next = ['all']
+                          return { ...prev, audience: next }
+                        })
+                      }}
+                    />
+                    {role.label}
+                  </label>
+                ))}
+            </div>
+          </div>
         </div>
 
         <div className="mt-4 flex justify-end">
