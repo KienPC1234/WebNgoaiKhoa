@@ -43,10 +43,10 @@ def main():
     # Load backend/.env first (standard server env)
     env_path = backend_dir / ".env"
     if env_path.exists():
-        load_dotenv(env_path)
+        _load_env_file(env_path)
     else:
         # fallback to repo-root .env if present
-        load_dotenv(repo_root / ".env")
+        _load_env_file(repo_root / ".env")
 
     db_url = os.getenv("DATABASE_URL") or os.getenv("SQLALCHEMY_DATABASE_URL")
     if not db_url:

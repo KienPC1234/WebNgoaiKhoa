@@ -22,6 +22,7 @@ export const GioiThieuDoiNgu = () => {
   const [loading, setLoading] = useState(false)
   const [selectedTier, setSelectedTier] = useState('')
   const [reactionCounts, setReactionCounts] = useState({})
+  const [pageScale, setPageScale] = useState(null)
 
   // Fetch staff profiles with cancellation support
   useEffect(() => {
@@ -45,6 +46,33 @@ export const GioiThieuDoiNgu = () => {
     }
 
     fetchStaff()
+
+    return () => {
+      canceled = true
+      controller.abort()
+    }
+  }, [])
+
+
+  // Fetch public social-scale (hero subtitle) so admin can configure hero paragraph
+  useEffect(() => {
+    const controller = new AbortController()
+    let canceled = false
+
+    const fetchScale = async () => {
+      try {
+        const res = await apiClient.get('/public/doingu/scale', { signal: controller.signal })
+        if (!canceled) setPageScale(res.data || null)
+      } catch (err) {
+        if (err?.name === 'CanceledError' || err?.message === 'canceled') {
+          // aborted
+        } else {
+          console.error('Error fetching public social scale:', err)
+        }
+      }
+    }
+
+    fetchScale()
 
     return () => {
       canceled = true
@@ -164,7 +192,11 @@ export const GioiThieuDoiNgu = () => {
             transition={{ delay: 0.2 }}
             className="text-xl text-blue-50 max-w-3xl mx-auto font-medium leading-relaxed"
           >
-            Hội tụ những chuyên gia giàu kinh nghiệm, không ngừng sáng tạo và truyền lửa đam mê cho thế hệ sinh viên.
+              {pageScale && (pageScale.staff_hero || pageScale.hero_subtitle) ? (
+                <span dangerouslySetInnerHTML={{ __html: sanitizeHtml(pageScale.staff_hero || pageScale.hero_subtitle) }} />
+              ) : (
+                'Hội tụ những chuyên gia giàu kinh nghiệm, không ngừng sáng tạo và truyền lửa đam mê cho thế hệ học sinh.'
+              )}
           </motion.p>
         </div>
       </section>

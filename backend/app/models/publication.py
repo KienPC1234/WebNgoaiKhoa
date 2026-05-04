@@ -104,6 +104,8 @@ class SocialScale(Base):
     projects_count = Column(Integer, nullable=False, default=100)
     awards_count = Column(Integer, nullable=False, default=25)
     roadmap = Column(Text, nullable=True)
+    # Hero sentence specifically for the team page (ĐỘI NGŨ)
+    staff_hero = Column(Text, nullable=True)
     is_active = Column(Boolean, nullable=False, default=True)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     created_at = Column(DateTime(timezone=True), server_default=func.now())

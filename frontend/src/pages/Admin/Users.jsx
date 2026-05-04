@@ -1,19 +1,16 @@
 import { useState, useEffect } from 'react'
-import axios from 'axios'
+import { apiClient } from '@/lib/apiClient'
 import { cmsService } from '@/lib/cmsService'
 import { roleHasPermission } from '@/lib/rolePolicy'
 import { Card, Button, cn } from '../../components/UI'
 import { User, Search, Shield, CheckCircle2, XCircle, Trash2 } from 'lucide-react'
 import { confirmAction, showApiError, toastError, toastSuccess } from '@/lib/notify'
 
-const API_URL = import.meta.env.VITE_API_URL || '/api'
-
 export const AdminUsers = () => {
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
 
-  const token = localStorage.getItem('token')
   let currentUser = null
   try {
     currentUser = JSON.parse(localStorage.getItem('user') || 'null')
@@ -40,9 +37,7 @@ export const AdminUsers = () => {
 
   const fetchUsers = async () => {
     try {
-      const res = await axios.get(`${API_URL}/admin/users`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      const res = await apiClient.get('/admin/users')
       setUsers(res.data)
     } catch (err) {
       console.error('Error fetching users:', err)
@@ -53,10 +48,8 @@ export const AdminUsers = () => {
 
   const handleToggleStatus = async (user) => {
     try {
-      await axios.put(`${API_URL}/admin/users/${user.id}`, {
+      await apiClient.put(`/admin/users/${user.id}`, {
         is_active: !user.is_active
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
       })
       fetchUsers()
       toastSuccess(!user.is_active ? 'Đã kích hoạt tài khoản.' : 'Đã khóa tài khoản.')
@@ -74,9 +67,7 @@ export const AdminUsers = () => {
     if (!confirmed) return
 
     try {
-      await axios.delete(`${API_URL}/admin/users/${user.id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      await apiClient.delete(`/admin/users/${user.id}`)
       toastSuccess('Đã xóa người dùng.')
       fetchUsers()
     } catch (err) {
@@ -101,10 +92,8 @@ export const AdminUsers = () => {
     if (!confirmed) return
 
     try {
-      await axios.put(`${API_URL}/admin/users/${user.id}`, {
+      await apiClient.put(`/admin/users/${user.id}`, {
         role: nextRole,
-      }, {
-        headers: { Authorization: `Bearer ${token}` },
       })
       toastSuccess('Đã cập nhật quyền người dùng.')
       fetchUsers()

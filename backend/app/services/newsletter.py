@@ -228,22 +228,22 @@ def send_newsletter_email(to_email: str, unsubscribe_token: str, subject: str, b
     msg["Precedence"] = "bulk"
 
     lines = [
-        "Xin chao,",
+        "Xin chào,",
         "",
         body,
         "",
     ]
     if action_url:
-        lines.extend([f"Xem chi tiet: {action_url}", ""])
+        lines.extend([f"Xem chi tiết: {action_url}", ""])
     lines.extend(
         [
-            "Ban nhan duoc thong tin nay tu TO XA HOI.",
-            "Neu khong muon nhan them email, vui long huy dang ky:",
+            "Bạn nhận được thông tin này từ TỔ XÃ HỘI.",
+            "Nếu không muốn nhận thêm email, vui lòng hủy đăng ký:",
             unsubscribe_link,
         ]
     )
 
-    msg.set_content("\n".join(lines))
+    msg.set_content("\n".join(lines), charset="utf-8")
 
     html_content = get_newsletter_html(subject, body, action_url, unsubscribe_link)
     msg.add_alternative(html_content, subtype="html")

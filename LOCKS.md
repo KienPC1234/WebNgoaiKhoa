@@ -35,6 +35,8 @@ Do not claim this file `LOCKS.md`.
 
 ## Active Locks
 
-_No active locks_
+| AGENT_ID | Area / file paths | Claimed at | Task summary |
+|---|---|---|---|
+
 
  

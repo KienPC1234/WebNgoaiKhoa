@@ -51,8 +51,6 @@ export const AdminPostDesigner = () => {
   const [saving, setSaving] = useState(false)
   const [formData, setFormData] = useState(emptyForm)
   const [notifyOptions, setNotifyOptions] = useState({ sendEmail: true, sendWebpush: true })
-  const [coverUploading, setCoverUploading] = useState(false)
-  const coverInputRef = useRef(null)
   const [initialDocument, setInitialDocument] = useState(() => createInitialDoc())
   const [pdfFile, setPdfFile] = useState(null)
   const [pdfAttachmentUrl, setPdfAttachmentUrl] = useState('')
@@ -227,32 +225,6 @@ export const AdminPostDesigner = () => {
     loadEntity()
   }, [isEditing, isStory, isEvent, entity, publicationId, navigate, buildPdfPreview])
 
-  const triggerCoverUpload = () => {
-    if (coverInputRef.current) coverInputRef.current.click()
-  }
-
-  const handleCoverFile = async (event) => {
-    const file = event?.target?.files?.[0] || null
-    if (!file) return
-    setCoverUploading(true)
-    try {
-      const res = await cmsService.uploadImage(file, 'cover')
-      const url = res?.url || res?.image_url || res?.file_url
-      if (url) {
-        setFormData((prev) => ({ ...prev, image_url: url }))
-        toastSuccess('Ảnh bìa đã tải lên.')
-      } else {
-        toastSuccess('Ảnh đã tải lên (tạm hiển thị).')
-      }
-    } catch (err) {
-      showApiError(err, 'Tải ảnh bìa thất bại.')
-    } finally {
-      setCoverUploading(false)
-      // reset input value so same file can be uploaded again
-      try { if (coverInputRef.current) coverInputRef.current.value = '' } catch (e) {}
-    }
-  }
-
   // Prefill form when creating a new publication via query params (e.g. ?content_type=vinh-danh&subject=van)
   useEffect(() => {
     if (isEditing) return
@@ -267,47 +239,6 @@ export const AdminPostDesigner = () => {
           category: subj || prev.category,
         }))
       }
-    } catch (e) {
-      // ignore
-    }
-  }, [isEditing, searchParams])
-
-  // Prefill new publication from an event when creating via ?linked_event=<id>
-  useEffect(() => {
-    if (isEditing) return
-    try {
-      const linkedEvent = searchParams.get('linked_event')
-      if (!linkedEvent) return
-      let mounted = true
-      ;(async () => {
-        try {
-          const ev = await cmsService.getEventById(Number(linkedEvent))
-          if (!mounted || !ev) return
-          setFormData((prev) => ({
-            ...prev,
-            title: ev.title || prev.title,
-            image_url: ev.image_url || prev.image_url,
-            // keep existing subject/content_type defaults for publications
-          }))
-
-          const fallback = createInitialDoc(ev.title)
-          if (ev.description) {
-            fallback.blocks = [
-              {
-                id: `legacy-content-${Date.now()}`,
-                type: 'paragraph',
-                props: { colSpan: 12, rowSpan: 1, text: String(ev.description) },
-                children: [],
-              },
-            ]
-          }
-          setInitialDocument(fallback)
-          latestDocumentRef.current = fallback
-        } catch (err) {
-          // ignore prefill failures
-        }
-      })()
-      return () => { mounted = false }
     } catch (e) {
       // ignore
     }
@@ -333,7 +264,7 @@ export const AdminPostDesigner = () => {
         },
       }
 
-        if (isStory) {
+      if (isStory) {
         const payload = {
           title: formData.title,
           content: deriveHtmlContentFromDocument(normalizedDoc),
@@ -433,7 +364,7 @@ export const AdminPostDesigner = () => {
         } else {
           await cmsService.createStory(payload, notifyOptions)
         }
-        } else if (isEvent) {
+      } else if (isEvent) {
         const payload = {
           ...shared,
           description: deriveHtmlContentFromDocument(normalizedDoc),
@@ -446,7 +377,7 @@ export const AdminPostDesigner = () => {
         } else {
           await cmsService.createEvent(payload, notifyOptions)
         }
-        } else {
+      } else {
         const payload = {
           ...shared,
           content: deriveHtmlContentFromDocument(normalizedDoc),
@@ -455,45 +386,6 @@ export const AdminPostDesigner = () => {
           content_type: formData.content_type,
           featured_year: formData.featured_year,
         }
-
-          if (isEditing) {
-            await cmsService.updatePublication(publicationId, payload)
-          } else {
-            // create publication and, if requested, link it to an event via ?linked_event=
-            const created = await cmsService.createPublication(payload, notifyOptions)
-            try {
-              const linkedEvent = searchParams.get('linked_event')
-              if (linkedEvent) {
-                const evId = Number(linkedEvent)
-                if (Number.isFinite(evId)) {
-                  // fetch current event and update with linked_post_id set to created.id
-                  try {
-                    const ev = await cmsService.getEventById(evId)
-                    if (ev) {
-                      const evPayload = {
-                        title: ev.title || '',
-                        description: ev.description || '',
-                        event_date: ev.event_date || '',
-                        location: ev.location || '',
-                        rrule: ev.rrule || '',
-                        timezone: ev.timezone || '',
-                        image_url: ev.image_url || '',
-                        status: ev.status || 'upcoming',
-                        linked_post_id: created.id,
-                        is_active: ev.is_active ?? true,
-                      }
-                      await cmsService.updateEvent(evId, evPayload)
-                      toastSuccess('Bài viết được tạo và liên kết với sự kiện.')
-                    }
-                  } catch (err) {
-                    console.error('Failed to link created publication to event', err)
-                  }
-                }
-              }
-            } catch (err) {
-              // ignore linking errors
-            }
-          }
 
         if (isEditing) {
           await cmsService.updatePublication(publicationId, payload)
@@ -530,36 +422,24 @@ export const AdminPostDesigner = () => {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
-        <Card className="p-4 rounded-2xl border border-gray-100 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 items-start">
-          <div className="md:col-span-2 xl:col-span-2">
-            <input
-              required
-              value={formData.title}
-              onChange={(event) => setFormData((prev) => ({ ...prev, title: event.target.value }))}
-              className="w-full px-3 py-2 rounded-lg bg-gray-50 text-sm font-bold"
-              placeholder="Tiêu đề"
-            />
-          </div>
+        <Card className="p-4 rounded-2xl border border-gray-100 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+          <input
+            required
+            value={formData.title}
+            onChange={(event) => setFormData((prev) => ({ ...prev, title: event.target.value }))}
+            className="w-full px-3 py-2 rounded-lg bg-gray-50 text-sm font-bold"
+            placeholder="Tiêu đề"
+          />
 
-          <div className="flex items-center gap-3">
-            <div className="flex-1">
-              <input
-                value={formData.image_url}
-                onChange={(event) => setFormData((prev) => ({ ...prev, image_url: event.target.value }))}
-                className="w-full px-3 py-2 rounded-lg bg-gray-50 text-sm"
-                placeholder="URL ảnh bìa"
-              />
-            </div>
-            <div>
-              <input ref={coverInputRef} type="file" accept="image/*" onChange={handleCoverFile} className="hidden" />
-              <button type="button" onClick={triggerCoverUpload} className="px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm">
-                {coverUploading ? 'Đang tải...' : 'Tải ảnh bìa'}
-              </button>
-            </div>
-          </div>
+          <input
+            value={formData.image_url}
+            onChange={(event) => setFormData((prev) => ({ ...prev, image_url: event.target.value }))}
+            className="w-full px-3 py-2 rounded-lg bg-gray-50 text-sm"
+            placeholder="URL ảnh bìa"
+          />
 
           {isStory ? (
-            <div className="grid grid-cols-1 gap-2 w-full">
+            <>
               <input
                 value={formData.author}
                 onChange={(event) => setFormData((prev) => ({ ...prev, author: event.target.value }))}
@@ -586,9 +466,9 @@ export const AdminPostDesigner = () => {
                 className="w-full px-3 py-2 rounded-lg bg-gray-50 text-sm"
                 placeholder="Mô tả ngắn thẻ câu chuyện"
               />
-            </div>
+            </>
           ) : isEvent ? (
-            <div className="grid grid-cols-1 gap-2 w-full">
+            <>
               <input
                 type="datetime-local"
                 value={formData.featured_year}
@@ -606,9 +486,9 @@ export const AdminPostDesigner = () => {
                 <option value="passed">Passed</option>
                 <option value="cancelled">Cancelled</option>
               </select>
-            </div>
+            </>
           ) : (
-            <div className="grid grid-cols-1 gap-2 w-full">
+            <>
               <select
                 value={formData.subject}
                 onChange={(event) => setFormData((prev) => ({ ...prev, subject: event.target.value, category: event.target.value }))}
@@ -628,9 +508,8 @@ export const AdminPostDesigner = () => {
                 <option value="an-pham">Ấn phẩm</option>
                 <option value="tai-lieu">Tài liệu</option>
                 <option value="vinh-danh">Vinh danh</option>
-                <option value="cuoc-thi">Cuộc thi</option>
               </select>
-            </div>
+            </>
           )}
         </Card>
 

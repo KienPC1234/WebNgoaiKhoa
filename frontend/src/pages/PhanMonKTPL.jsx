@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Card, Button } from '../components/UI'
 import { GraduationCap, Scale, Landmark, FileText, Gavel, BookOpen, ExternalLink, Download, ArrowRight } from 'lucide-react'
-import axios from 'axios'
-
-const API_URL = import.meta.env.VITE_API_URL || '/api'
+import { apiClient } from '@/lib/apiClient'
 
 export const PhanMonKTPL = () => {
   const [publications, setPublications] = useState([])
@@ -22,7 +20,7 @@ export const PhanMonKTPL = () => {
   const fetchPublications = async () => {
     setLoading(true)
     try {
-      const response = await axios.get(`${API_URL}/public/publications?subject=ktpl`)
+      const response = await apiClient.get('/public/publications?subject=ktpl')
       setPublications(response.data)
     } catch (error) {
       console.error('Error fetching publications:', error)

@@ -219,6 +219,7 @@ class StoryDraft(BaseModel):
 class SocialScaleBase(BaseModel):
     hero_title: str
     hero_subtitle: Optional[str] = None
+    staff_hero: Optional[str] = None
     vision: Optional[str] = None
     subjects_overview: Optional[str] = None
     staff_count: int = 20

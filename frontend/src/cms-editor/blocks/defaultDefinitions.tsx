@@ -799,7 +799,7 @@ const MinimalRenderer: React.FC<{ block: CMSBlock; renderContext?: MinimalRender
 
         const list = await resp.json()
         const filtered = Array.isArray(list)
-          ? list.filter((p) => !(publication && String(p.id) === String(publication.id)))
+          ? list.filter((p) => !(publication && p.id === publication.id))
           : []
 
         if (!cancelled) setRelatedItems(filtered.slice(0, count))
@@ -995,29 +995,35 @@ const MinimalRenderer: React.FC<{ block: CMSBlock; renderContext?: MinimalRender
       )
     }
 
-    // Publish mode: if still loading or no results, collapse the block so it only
-    // occupies space for the actual number of returned posts.
-    if (relatedLoading || relatedItems === null) return null
-    if (!Array.isArray(relatedItems) || relatedItems.length === 0) return null
-
+    // Publish mode: render fetched related items
     return (
       <div className="rounded-lg border border-gray-200 bg-transparent p-3">
         <p className="mb-2 text-xs font-semibold text-gray-500">{String(block.props.title || text || 'Bài viết liên quan')}</p>
-        <ul className="space-y-3">
-          {relatedItems.map((item) => (
-            <li key={item.id} className="flex items-center gap-3">
-              {item.image_url ? (
-                <img src={item.image_url} alt={item.title} className="h-12 w-20 rounded object-cover" />
-              ) : (
-                <div className="h-12 w-20 rounded bg-gray-100" />
-              )}
-              <div className="flex-1">
-                <a href={`/posts/${item.id}`} className="font-semibold text-sm text-slate-800 hover:underline">{item.title}</a>
-                <p className="text-xs text-gray-500">{new Date(item.created_at).toLocaleDateString('vi-VN')}</p>
-              </div>
-            </li>
-          ))}
-        </ul>
+        {relatedLoading ? (
+          <div className="space-y-2">
+            {Array.from({ length: count }).map((_, idx) => (
+              <div key={`related-loading-${idx}`} className="h-7 rounded border border-gray-200 bg-white" />
+            ))}
+          </div>
+        ) : relatedItems && relatedItems.length > 0 ? (
+          <ul className="space-y-3">
+            {relatedItems.map((item) => (
+              <li key={item.id} className="flex items-center gap-3">
+                {item.image_url ? (
+                  <img src={item.image_url} alt={item.title} className="h-12 w-20 rounded object-cover" />
+                ) : (
+                  <div className="h-12 w-20 rounded bg-gray-100" />
+                )}
+                <div className="flex-1">
+                  <a href={`/posts/${item.id}`} className="font-semibold text-sm text-slate-800 hover:underline">{item.title}</a>
+                  <p className="text-xs text-gray-500">{new Date(item.created_at).toLocaleDateString('vi-VN')}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-xs text-gray-500">Không tìm thấy bài liên quan.</p>
+        )}
       </div>
     )
   }

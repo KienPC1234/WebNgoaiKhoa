@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Calendar, FileText, Layers3, User } from 'lucide-react'
+import PostActions from '@/components/PostActions'
 import { Card } from '@/components/ui/core'
 import { PublicDocumentView } from '@/cms-editor/renderer/PublicDocumentView'
 import { normalizeLayoutMetadataToDocument } from '@/cms-editor/core/legacy'
@@ -196,6 +197,7 @@ export const PublicPostDetail = () => {
             <span className="inline-flex items-center gap-1.5"><Layers3 size={14} /> {post.content_type || 'an-pham'}</span>
             <span className="inline-flex items-center gap-1.5"><User size={14} /> {post.subject || 'van'}</span>
           </div>
+          <PostActions publicationId={post.id} />
         </div>
       </section>
 

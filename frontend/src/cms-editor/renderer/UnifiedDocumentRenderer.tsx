@@ -208,7 +208,6 @@ export const UnifiedDocumentRenderer: React.FC<UnifiedDocumentRendererProps> = (
   rowHeight = DEFAULT_ROW_HEIGHT,
   className = '',
   unknownBlockStrategy = 'placeholder',
-  outerRenderContext,
   onDiagnostics,
 }) => {
   const normalized = useMemo(() => normalizeDocumentForRender(document), [document])
@@ -231,7 +230,6 @@ export const UnifiedDocumentRenderer: React.FC<UnifiedDocumentRendererProps> = (
         rowHeight={rowHeight}
         unknownBlockStrategy={unknownBlockStrategy}
         tocItems={tocItems}
-        outerRenderContext={outerRenderContext}
       />
     </article>
   )

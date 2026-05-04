@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Card, Button } from '../components/UI'
 import { Shield, Sword, Zap, FileText, BookOpen, ExternalLink, Download, ArrowRight, Trophy } from 'lucide-react'
-import axios from 'axios'
-
-const API_URL = import.meta.env.VITE_API_URL || '/api'
+import { apiClient } from '@/lib/apiClient'
 
 export const PhanMonVovinam = () => {
     const [publications, setPublications] = useState([])
@@ -22,7 +20,7 @@ export const PhanMonVovinam = () => {
     const fetchPublications = async () => {
         setLoading(true)
         try {
-            const response = await axios.get(`${API_URL}/public/publications?subject=vovinam`)
+            const response = await apiClient.get('/public/publications?subject=vovinam')
             setPublications(response.data)
         } catch (error) {
             console.error('Error fetching publications:', error)

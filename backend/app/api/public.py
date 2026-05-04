@@ -58,6 +58,9 @@ CONTENT_MIN_LENGTH = 30
 COMMENT_MIN_LENGTH = 2
 COMMENT_MAX_LENGTH = 5000
 
+# Allowed staff reaction types (keep in sync with frontend choices)
+VALID_STAFF_REACTION_TYPES = {"love", "star"}
+
 
 class SubmissionIn(BaseModel):
     title: str
@@ -194,22 +197,52 @@ async def get_public_publications(
     subject: Optional[str] = None,
     content_type: Optional[str] = None,
     featured_year: Optional[str] = None,
+    sort: Optional[str] = None,
+    limit: Optional[int] = Query(None, gt=0),
     db: Session = Depends(get_db),
 ):
-    query = db.query(Publication)
+    """Return publications.
+
+    Supports an optional `sort=trending` which orders results by comment count
+    (descending) as a lightweight proxy for popularity. Clients may also pass
+    `limit` to restrict the number of returned items.
+    """
+
+    # Base query for publications; apply filters first so ordering/joining
+    # respects the requested subject/content_type/featured_year.
+    base_query = db.query(Publication)
 
     # Accept `category` query param as legacy; filter by canonical `subject` column only.
     resolved_subject = subject or category
     if resolved_subject:
-        query = query.filter(Publication.subject == resolved_subject)
+        base_query = base_query.filter(Publication.subject == resolved_subject)
 
     if content_type:
-        query = query.filter(Publication.content_type == content_type)
+        base_query = base_query.filter(Publication.content_type == content_type)
 
     if featured_year:
-        query = query.filter(Publication.featured_year == featured_year)
+        base_query = base_query.filter(Publication.featured_year == featured_year)
 
-    return query.order_by(Publication.created_at.desc()).all()
+    # Trending sort: order by comment count (desc), then by created_at as tiebreaker.
+    if sort == 'trending':
+        subq = (
+            db.query(Comment.publication_id, func.count(Comment.id).label('comment_count'))
+            .group_by(Comment.publication_id)
+            .subquery()
+        )
+
+        query = (
+            base_query
+            .outerjoin(subq, Publication.id == subq.c.publication_id)
+            .order_by(func.coalesce(subq.c.comment_count, 0).desc(), Publication.created_at.desc())
+        )
+    else:
+        query = base_query.order_by(Publication.created_at.desc())
+
+    if limit:
+        return query.limit(limit).all()
+
+    return query.all()
 
 
 @router.get("/publications/{pub_id}", response_model=PublicationOut)
@@ -413,6 +446,13 @@ async def post_staff_reaction(
     reaction_type = (payload.get("reaction_type") or "").strip()
     if not reaction_type:
         raise HTTPException(status_code=400, detail="reaction_type required")
+
+    # normalize and validate reaction type; explicitly disallow removed types like 'clap'
+    reaction_type = reaction_type.lower()
+    if reaction_type in ("clap", "👏"):
+        raise HTTPException(status_code=400, detail="reaction_type 'clap' is no longer supported")
+    if reaction_type not in VALID_STAFF_REACTION_TYPES:
+        raise HTTPException(status_code=400, detail=f"Invalid reaction_type: {reaction_type}")
 
     staff = db.query(StaffProfile).filter(StaffProfile.id == staff_id, StaffProfile.is_active == True).first()
     if not staff:

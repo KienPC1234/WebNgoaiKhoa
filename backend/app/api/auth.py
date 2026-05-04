@@ -196,7 +196,7 @@ def send_otp_email(to_email: str, otp: str) -> None:
     verify_link = f"{VERIFY_EMAIL_URL_BASE}?token={otp}"
 
     msg = EmailMessage()
-    msg["Subject"] = "Ma xac thuc OTP - To xa hoi"
+    msg["Subject"] = "Mã xác thực OTP - Tổ Xã Hội"
     msg["From"] = SMTP_FROM
     msg["To"] = to_email
     msg["List-Unsubscribe"] = f"<{unsubscribe_link}>"
@@ -205,16 +205,16 @@ def send_otp_email(to_email: str, otp: str) -> None:
     msg["X-Entity-Ref-ID"] = f"otp-{uuid.uuid4()}"
 
     body = (
-        "Xin chao,\n\n"
-        f"Ma OTP cua ban la: {otp}\n"
-        f"Ma co hieu luc trong {OTP_EXPIRE_MINUTES} phut.\n\n"
-        "Neu ban khong thuc hien thao tac nay, vui long bo qua email.\n"
+        "Xin chào,\n\n"
+        f"Mã OTP của bạn là: {otp}\n"
+        f"Mã có hiệu lực trong {OTP_EXPIRE_MINUTES} phút.\n\n"
+        "Nếu bạn không thực hiện thao tác này, vui lòng bỏ qua email.\n"
         "\n"
-        "Ban nhan duoc thong tin nay tu TO XA HOI.\n"
-        "Dia chi: FPT Education, Khu Cong nghe cao Hoa Lac, Ha Noi.\n"
-        f"Huy dang ky tai day: {unsubscribe_link}"
+        "Bạn nhận được thông tin này từ TỔ XÃ HỘI.\n"
+        "Địa chỉ: FPT Education, Khu Công nghệ cao Hòa Lạc, Hà Nội.\n"
+        f"Hủy đăng ký tại đây: {unsubscribe_link}"
     )
-    msg.set_content(body)
+    msg.set_content(body, charset="utf-8")
 
     html_content = get_otp_html(otp, OTP_EXPIRE_MINUTES, unsubscribe_link, verify_link)
     msg.add_alternative(html_content, subtype="html")
@@ -358,17 +358,17 @@ async def login(
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Ten dang nhap hoac mat khau khong dung",
+            detail="Tên đăng nhập hoặc mật khẩu không đúng",
         )
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Tai khoan da bi vo hieu hoa",
+            detail="Tài khoản đã bị vô hiệu hóa",
         )
     if user.role != "admin" and not user.email_verified:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Tai khoan chua xac minh OTP email",
+            detail="Tài khoản chưa xác minh OTP email",
         )
 
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -481,7 +481,7 @@ async def register_user(payload: RegisterIn, db: Session = Depends(get_db)):
 
     existing = db.query(User).filter(User.email == normalized_email).first()
     if existing:
-        raise HTTPException(status_code=400, detail="Email already registered")
+        raise HTTPException(status_code=400, detail="Email đã được đăng ký")
 
     otp = make_otp()
     new_user = User(
@@ -516,17 +516,17 @@ async def verify_otp(payload: VerifyOtpIn, db: Session = Depends(get_db)):
 
     user = db.query(User).filter(User.email == normalized_email).first()
     if not user:
-        raise HTTPException(status_code=404, detail="Email khong ton tai")
+        raise HTTPException(status_code=404, detail="Email không tồn tại")
 
     if user.email_verified:
-        return {"message": "Tai khoan da xac minh"}
+        return {"message": "Tài khoản đã xác minh"}
 
     if not user.verification_token or payload.otp != str(user.verification_token):
-        raise HTTPException(status_code=400, detail="Ma OTP khong hop le")
+        raise HTTPException(status_code=400, detail="Mã OTP không hợp lệ")
 
     expires_at = _ensure_aware(user.verification_token_expires_at)
     if expires_at and datetime.now(timezone.utc) > expires_at:
-        raise HTTPException(status_code=400, detail="Ma OTP da het han")
+        raise HTTPException(status_code=400, detail="Mã OTP đã hết hạn")
 
     user.email_verified = True
     user.verification_token = None
@@ -560,11 +560,11 @@ async def verify_otp(payload: VerifyOtpIn, db: Session = Depends(get_db)):
 async def verify_email(token: str, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.verification_token == token).first()
     if not user:
-        raise HTTPException(status_code=400, detail="Token xac minh khong hop le")
+        raise HTTPException(status_code=400, detail="Token xác minh không hợp lệ")
 
     expires_at = _ensure_aware(user.verification_token_expires_at)
     if expires_at and datetime.now(timezone.utc) > expires_at:
-        raise HTTPException(status_code=400, detail="Token xac minh da het han")
+        raise HTTPException(status_code=400, detail="Token xác minh đã hết hạn")
 
     user.email_verified = True
     user.verification_token = None
@@ -579,7 +579,7 @@ async def verify_email(token: str, db: Session = Depends(get_db)):
     )
 
     return {
-        "message": "Xac minh email thanh cong",
+        "message": "Xác minh email thành công",
         "access_token": access_token,
         "token_type": "bearer",
         "user": {
@@ -602,10 +602,10 @@ async def resend_verify_email(payload: VerifyResendIn, db: Session = Depends(get
 
     user = db.query(User).filter(User.email == normalized_email).first()
     if not user:
-        raise HTTPException(status_code=404, detail="Email khong ton tai")
+        raise HTTPException(status_code=404, detail="Email không tồn tại")
 
     if user.email_verified:
-        return {"message": "Tai khoan da xac minh truoc do"}
+        return {"message": "Tài khoản đã xác minh trước đó"}
 
     otp = make_otp()
     user.verification_token = otp
@@ -702,12 +702,12 @@ async def change_password(
     current_user: User = Depends(get_current_user),
 ):
     if not verify_password(payload.current_password, current_user.hashed_password):
-        raise HTTPException(status_code=400, detail="Mat khau hien tai khong dung")
+        raise HTTPException(status_code=400, detail="Mật khẩu hiện tại không đúng")
 
     current_user.hashed_password = get_password_hash(payload.new_password)
     db.add(current_user)
     db.commit()
-    return {"message": "Mat khau da duoc cap nhat"}
+    return {"message": "Mật khẩu đã được cập nhật"}
 
 
 @router.get("/unsubscribe")
@@ -717,7 +717,7 @@ async def unsubscribe_confirm_page(email: str, token: str, db: Session = Depends
 
     user = db.query(User).filter(User.email == email).first()
     return {
-        "message": "Vui long gui POST /api/auth/unsubscribe de xac nhan huy dang ky",
+        "message": "Vui lòng gửi POST /api/auth/unsubscribe để xác nhận hủy đăng ký",
         "email": email,
         "is_subscribed": bool(user.is_subscribed) if user else False,
     }
@@ -726,7 +726,7 @@ async def unsubscribe_confirm_page(email: str, token: str, db: Session = Depends
 @router.post("/unsubscribe")
 async def unsubscribe(payload: UnsubscribeIn, db: Session = Depends(get_db)):
     if not is_valid_unsubscribe_token(payload.email, payload.token):
-        raise HTTPException(status_code=400, detail="Yeu cau huy dang ky khong hop le")
+        raise HTTPException(status_code=400, detail="Yêu cầu hủy đăng ký không hợp lệ")
 
     user = db.query(User).filter(User.email == payload.email).first()
     updated = False
@@ -739,7 +739,7 @@ async def unsubscribe(payload: UnsubscribeIn, db: Session = Depends(get_db)):
     newsletter_service.clear_push_tokens(payload.email)
 
     return {
-        "message": "Da huy dang ky nhan email",
+        "message": "Đã hủy đăng ký nhận email",
         "email": payload.email,
         "updated": updated,
         "webpush_tokens_cleared": True,

@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react'
-import axios from 'axios'
+import { apiClient } from '@/lib/apiClient'
 import { Card, Button, cn } from '../../components/UI'
 import { CheckCircle, XCircle, Clock, Eye, Search, User, Mail, Calendar, MessageSquare } from 'lucide-react'
 import { confirmAction, showApiError, toastError, toastSuccess } from '@/lib/notify'
-
-const API_URL = import.meta.env.VITE_API_URL || '/api'
 
 export const AdminSubmissions = () => {
   const [subs, setSubs] = useState([])
@@ -14,8 +12,6 @@ export const AdminSubmissions = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [updatingId, setUpdatingId] = useState(null)
 
-  const token = localStorage.getItem('token')
-
   useEffect(() => {
     fetchSubs()
   }, [])
@@ -23,9 +19,7 @@ export const AdminSubmissions = () => {
   const fetchSubs = async () => {
     setLoading(true)
     try {
-      const res = await axios.get(`${API_URL}/admin/submissions`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      const res = await apiClient.get('/admin/submissions')
       const allSubs = res.data || []
       setSubs(allSubs)
 
@@ -65,9 +59,7 @@ export const AdminSubmissions = () => {
     }
 
     try {
-      await axios.put(`${API_URL}/admin/submissions/${id}/status`, { status }, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      await apiClient.put(`/admin/submissions/${id}/status`, { status })
       toastSuccess(status === 'approved' ? 'Đã phê duyệt bài dự thi.' : 'Đã từ chối bài dự thi.')
     } catch (err) {
       setSubs((prev) => prev.map((item) => (item.id === id ? { ...item, status: previousStatus } : item)))

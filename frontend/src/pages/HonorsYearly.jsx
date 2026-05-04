@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react'
-import axios from 'axios'
+import { apiClient } from '@/lib/apiClient'
 import { Award } from 'lucide-react'
 import { Card } from '@/components/UI'
 import { Link } from 'react-router-dom'
 
-const API_URL = import.meta.env.VITE_API_URL || '/api'
 const toPlainText = (value) => (value || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
 
 export const HonorsYearly = () => {
@@ -17,7 +16,7 @@ export const HonorsYearly = () => {
       try {
         const subjects = ['van', 'ktpl', 'lich-su', 'dia-li', 'vovinam']
         const requests = subjects.map((subject) =>
-          axios.get(`${API_URL}/public/publications`, {
+          apiClient.get('/public/publications', {
             params: { subject, content_type: 'vinh-danh' },
           })
         )

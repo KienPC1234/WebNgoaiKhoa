@@ -4,12 +4,14 @@ import {
   BookOpen,
   Calendar,
   ChevronRight,
-  Compass,
-  Lightbulb,
-  Rocket,
   Send,
   Sparkles,
   Users,
+  Heart,
+  RefreshCw,
+  ShieldCheck,
+  Award,
+  Sun,
 } from 'lucide-react'
 import { Button, Card } from '@/components/ui/core'
 import { GridBackground, ShimmerButton, Spotlight } from '@/components/aceternity'
@@ -29,22 +31,40 @@ const toWebpCandidate = (url) => {
 
 const featureCards = [
   {
-    icon: Lightbulb,
-    title: 'Sáng tạo học thuật',
-    description: 'Không gian để các ý tưởng thành bài viết, dự án và thảo luận có chiều sâu.',
+    icon: Heart,
+    title: 'Tôn',
+    description: 'Tôn trọng — tôn trọng người khác, ý kiến và quy trình.',
     colorClass: 'from-[#f7f3ea] to-white border-amber-100 text-amber-700',
   },
   {
-    icon: Compass,
-    title: 'Định hướng rõ ràng',
-    description: 'Hệ sinh thái nội dung theo từng phân môn, dễ theo dõi và triển khai học tập cá nhân.',
+    icon: RefreshCw,
+    title: 'Đổi',
+    description: 'Đổi mới — khuyến khích sáng tạo và cải tiến liên tục.',
     colorClass: 'from-[#eef5ff] to-white border-blue-100 text-fpt-blue',
   },
   {
-    icon: Rocket,
-    title: 'Bứt tốc cùng AI',
-    description: 'Trợ lý thông minh hỗ trợ tra cứu nhanh, tóm tắt kiến thức và gợi ý ý tưởng mới.',
+    icon: Users,
+    title: 'Đồng',
+    description: 'Đồng đội — làm việc hợp tác, hỗ trợ lẫn nhau.',
     colorClass: 'from-[#edf9f1] to-white border-emerald-100 text-emerald-700',
+  },
+  {
+    icon: ShieldCheck,
+    title: 'Chí',
+    description: 'Chí công — công bằng, chính trực trong hành động.',
+    colorClass: 'from-[#fff7f0] to-white border-orange-100 text-orange-700',
+  },
+  {
+    icon: Award,
+    title: 'Gương',
+    description: 'Gương mẫu — hành xử làm tấm gương cho người khác noi theo.',
+    colorClass: 'from-[#f0f6ff] to-white border-sky-100 text-sky-700',
+  },
+  {
+    icon: Sun,
+    title: 'Sáng',
+    description: 'Sáng suốt — quyết định rõ ràng, minh bạch và có tầm nhìn.',
+    colorClass: 'from-[#fffaf0] to-white border-yellow-100 text-yellow-700',
   },
 ]
 
@@ -65,7 +85,7 @@ export const Home = () => {
     const fetchLatest = async () => {
       setLoading(true)
       try {
-        const response = await fetch(`${API_URL}/public/publications?subject=van&content_type=an-pham`, {
+        const response = await fetch(`${API_URL}/public/publications?sort=trending&limit=6`, {
           signal: controller.signal,
           headers: {
             Accept: 'application/json',
@@ -73,7 +93,7 @@ export const Home = () => {
         })
         if (!response.ok) throw new Error(`HTTP ${response.status}`)
         const data = await response.json()
-        setLatestPubs(Array.isArray(data) ? data.slice(0, 3) : [])
+        setLatestPubs(Array.isArray(data) ? data.slice(0, 6) : [])
       } catch (error) {
         if (error?.name !== 'AbortError') {
           console.error('Error fetching latest pubs:', error)
@@ -177,14 +197,14 @@ export const Home = () => {
       <section className="app-section cv-auto" data-ai-anchor="home-latest-publications">
         <div className="mb-14 flex flex-col items-start justify-between gap-8 md:flex-row md:items-end" data-aos="fade-up">
           <div>
-            <p className="mb-4 inline-flex items-center gap-2 rounded-full bg-orange-50 px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-fpt-orange">
-              <Sparkles size={14} /> Editorial selection
+            <p className="mb-5 inline-flex items-center gap-2 rounded-full bg-orange-50 px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-fpt-orange">
+              <Sparkles size={14} /> Lựa chọn biên tập
             </p>
             <h2 className="text-4xl font-black uppercase tracking-tight text-fpt-blue md:text-6xl">
-              Ấn phẩm <span className="italic text-fpt-orange">Nhái Bén</span>
+              Ấn phẩm <span className="italic text-fpt-orange">Nổi Bật</span>
             </h2>
             <p className="mt-4 max-w-2xl text-base font-medium text-slate-500 md:text-lg">
-              Khám phá thế giới quan đa chiều qua những trang viết đầy cảm hứng và trải nghiệm học thuật cập nhật.
+              Tuyển chọn ấn phẩm nổi bật từ mọi phân môn — bài viết sáng tạo, sâu sắc và hữu ích cho hành trình học tập.
             </p>
           </div>
 
@@ -195,7 +215,7 @@ export const Home = () => {
 
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
           {loading ? (
-            [1, 2, 3].map((i) => <div key={i} className="h-[440px] animate-pulse rounded-[2.2rem] bg-slate-100" />)
+            [1, 2, 3, 4, 5, 6].map((i) => <div key={i} className="h-[440px] animate-pulse rounded-[2.2rem] bg-slate-100" />)
           ) : latestPubs.length === 0 ? (
             <div className="col-span-1 rounded-[2.2rem] border-2 border-dashed border-slate-200 bg-slate-50 py-20 text-center md:col-span-2 lg:col-span-3" data-aos="zoom-in">
               <Calendar size={58} className="mx-auto mb-5 text-slate-300" />
@@ -261,7 +281,7 @@ export const Home = () => {
         <div className="mb-12 max-w-3xl" data-aos="fade-up">
           <h2 className="text-4xl font-black uppercase tracking-tight text-fpt-blue md:text-5xl">Giá trị cốt lõi</h2>
           <p className="mt-4 text-lg font-medium text-slate-500">
-            Từ học thuật đến hoạt động cộng đồng, mọi trải nghiệm đều hướng tới năng lực thật và tinh thần trách nhiệm xã hội.
+            Tôn - Đổi - Đồng - Chí - Gương - Sáng (Tôn trọng - Đổi mới - Đồng đội - Chí công - Gương mẫu - Sáng suốt).
           </p>
         </div>
 

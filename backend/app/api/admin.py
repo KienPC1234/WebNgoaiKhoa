@@ -9,7 +9,7 @@ import uuid
 from app.db.session import get_db
 from app.models.user import User
 from app.models.publication import ContentType, Event, Publication, SocialScale, StaffProfile, Story, Submission, EventAttachment
-from app.models.publication import StaffReaction
+from app.models.publication import StaffReaction, PublicationFavorite, PublicationVote, PublicationViewEvent
 from sqlalchemy import func
 from app.models.media import MediaAsset
 import base64
@@ -877,6 +877,33 @@ async def get_publication_by_id(pub_id: int, db: Session = Depends(get_db), admi
     if not pub:
         raise HTTPException(status_code=404, detail="Publication not found")
     return pub
+
+
+@router.get('/popular')
+async def admin_get_popular(limit: int = Query(10, gt=0), db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
+    rows = db.query(Publication).order_by(Publication.view_count.desc(), Publication.created_at.desc()).limit(limit).all()
+    return [
+        {"id": p.id, "title": p.title, "view_count": int(p.view_count or 0), "created_at": p.created_at}
+        for p in rows
+    ]
+
+
+@router.put('/publications/{pub_id}/reset-stats')
+async def admin_reset_publication_stats(pub_id: int, db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
+    pub = db.query(Publication).filter(Publication.id == pub_id).first()
+    if not pub:
+        raise HTTPException(status_code=404, detail="Publication not found")
+
+    try:
+        # reset view_count and remove view events
+        pub.view_count = 0
+        db.query(PublicationViewEvent).filter(PublicationViewEvent.publication_id == pub_id).delete()
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Could not reset stats")
+
+    return {"id": pub.id, "view_count": 0}
 
 @router.post("/publications", response_model=PublicationOut)
 async def create_publication(
@@ -1848,6 +1875,7 @@ async def get_social_scale(db: Session = Depends(get_db), admin: User = Depends(
         item = SocialScale(
             hero_title="Quy mô & phát triển",
             hero_subtitle="Cập nhật dữ liệu quy mô theo từng năm học.",
+            staff_hero="Hội tụ những chuyên gia giàu kinh nghiệm, không ngừng sáng tạo và truyền lửa đam mê cho thế hệ học sinh.",
             vision="Deep learning with love",
             subjects_overview="Ngữ văn, KTPL, Lịch sử, Địa lí, Vovinam",
             roadmap="Cấu trúc tổ chức; chỉ tiêu học thuật; học liệu; báo cáo theo học kỳ",

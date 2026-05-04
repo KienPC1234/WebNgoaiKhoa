@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Card, Button, cn } from '../components/UI'
 import { Send, ThumbsUp, Edit3, ShieldCheck, PenTool, BookOpen, User, Calendar, X, Sparkles, FileText, MessageSquare, Eye } from 'lucide-react'
-import axios from 'axios'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import ReCAPTCHA from 'react-google-recaptcha'
 import { showApiError, toastError, toastInfo, toastSuccess } from '@/lib/notify'
@@ -10,7 +9,6 @@ import { PageFlip } from 'page-flip'
 import * as pdfjsLib from 'pdfjs-dist'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
 
-const API_URL = import.meta.env.VITE_API_URL || '/api'
 const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY || ''
 const SUBMISSION_DRAFT_KEY = 'phanmon_van_submission_draft_v1'
 const MAX_UPLOAD_BYTES = 15 * 1024 * 1024
@@ -246,7 +244,7 @@ export const PhanMonVan = () => {
   const fetchApprovedSubmissions = async () => {
     setLoading(true)
     try {
-      const response = await axios.get(`${API_URL}/public/submissions`)
+      const response = await apiClient.get('/public/submissions')
       setApprovedSubmissions(response.data)
     } catch (error) {
       console.error('Error fetching submissions:', error)
@@ -406,10 +404,8 @@ export const PhanMonVan = () => {
         recaptchaRef.current.reset()
       }
 
-      const response = await axios.post(`${API_URL}/public/submissions/${id}/vote`, {
+      const response = await apiClient.post(`/public/submissions/${id}/vote`, {
         recaptcha_token: recaptchaToken,
-      }, {
-        headers: { Authorization: `Bearer ${token}` },
       })
       const nextVotes = response.data.votes
       setApprovedSubmissions(prev => prev.map(s => s.id === id ? { ...s, votes: nextVotes || (s.votes + 1) } : s))
@@ -436,7 +432,7 @@ export const PhanMonVan = () => {
   const fetchSubmissionComments = async (submissionId) => {
     setCommentsLoadingBySubmission((prev) => ({ ...prev, [submissionId]: true }))
     try {
-      const response = await axios.get(`${API_URL}/public/submissions/${submissionId}/comments`)
+      const response = await apiClient.get(`/public/submissions/${submissionId}/comments`)
       setCommentsBySubmission((prev) => ({ ...prev, [submissionId]: response.data || [] }))
     } catch (error) {
       setCommentsBySubmission((prev) => ({ ...prev, [submissionId]: [] }))
@@ -496,14 +492,11 @@ export const PhanMonVan = () => {
         recaptchaRef.current.reset()
       }
 
-      const response = await axios.post(
-        `${API_URL}/public/submissions/${selectedSubmission.id}/comments`,
+      const response = await apiClient.post(
+        `/public/submissions/${selectedSubmission.id}/comments`,
         {
           content: commentEditorValue,
           recaptcha_token: recaptchaToken,
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
         },
       )
 

@@ -1,10 +1,8 @@
 import { useEffect, useState } from 'react'
-import axios from 'axios'
+import { apiClient } from '@/lib/apiClient'
 import { Card, Button, RichTextEditor } from '@/components/UI'
 import { Plus, Save, Trash2, Users, Building2 } from 'lucide-react'
 import { confirmAction, showApiError, toastSuccess } from '@/lib/notify'
-
-const API_URL = import.meta.env.VITE_API_URL || '/api'
 
 const defaultScale = {
   hero_title: '',
@@ -32,9 +30,6 @@ const defaultStaff = {
 }
 
 export const AdminNhanVat = () => {
-  const token = localStorage.getItem('token')
-  const headers = { Authorization: `Bearer ${token}` }
-
   const [loading, setLoading] = useState(true)
   const [scale, setScale] = useState(defaultScale)
   const [staff, setStaff] = useState([])
@@ -45,8 +40,8 @@ export const AdminNhanVat = () => {
     setLoading(true)
     try {
       const [scaleRes, staffRes] = await Promise.all([
-        axios.get(`${API_URL}/admin/social-scale`, { headers }),
-        axios.get(`${API_URL}/admin/staff`, { headers }),
+        apiClient.get('/admin/social-scale'),
+        apiClient.get('/admin/staff'),
       ])
       setScale(scaleRes.data)
       setStaff(staffRes.data || [])
@@ -64,7 +59,7 @@ export const AdminNhanVat = () => {
 
   const saveScale = async () => {
     try {
-      await axios.put(`${API_URL}/admin/social-scale`, scale, { headers })
+      await apiClient.put('/admin/social-scale', scale)
       toastSuccess('Đã lưu thông tin quy mô.')
     } catch (error) {
       console.error('Error saving social scale:', error)
@@ -81,9 +76,9 @@ export const AdminNhanVat = () => {
     e.preventDefault()
     try {
       if (editingId) {
-        await axios.put(`${API_URL}/admin/staff/${editingId}`, staffForm, { headers })
+        await apiClient.put(`/admin/staff/${editingId}`, staffForm)
       } else {
-        await axios.post(`${API_URL}/admin/staff`, staffForm, { headers })
+        await apiClient.post('/admin/staff', staffForm)
       }
       resetStaffForm()
       toastSuccess(editingId ? 'Đã cập nhật hồ sơ giáo viên.' : 'Đã thêm hồ sơ giáo viên.')
@@ -117,7 +112,7 @@ export const AdminNhanVat = () => {
     })
     if (!confirmed) return
     try {
-      await axios.delete(`${API_URL}/admin/staff/${id}`, { headers })
+      await apiClient.delete(`/admin/staff/${id}`)
       toastSuccess('Đã xóa hồ sơ giáo viên.')
       loadData()
     } catch (error) {
@@ -135,7 +130,7 @@ export const AdminNhanVat = () => {
       <Card className="p-8 rounded-[32px] border-none shadow-xl bg-white">
         <div className="flex items-center gap-3 mb-6">
           <div className="p-2 rounded-xl bg-blue-50 text-fpt-blue"><Building2 size={20} /></div>
-          <h3 className="text-xl font-black text-fpt-blue uppercase tracking-tight">CMS Quy mô Tổ xã hội</h3>
+          <h3 className="text-xl font-black text-fpt-blue uppercase tracking-tight">CMS Quy mô</h3>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
