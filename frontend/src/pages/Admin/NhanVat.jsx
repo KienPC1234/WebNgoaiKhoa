@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { apiClient } from '@/lib/apiClient'
 import { Card, Button, RichTextEditor } from '@/components/UI'
-import { Plus, Save, Trash2, Users, Building2 } from 'lucide-react'
+import { Plus, Save, Trash2, Users, Building2, ImagePlus } from 'lucide-react'
 import { confirmAction, showApiError, toastSuccess } from '@/lib/notify'
+import { cmsService } from '@/lib/cmsService'
 
 const defaultScale = {
   hero_title: '',
@@ -35,6 +36,23 @@ export const AdminNhanVat = () => {
   const [staff, setStaff] = useState([])
   const [staffForm, setStaffForm] = useState(defaultStaff)
   const [editingId, setEditingId] = useState(null)
+  const [uploadingImage, setUploadingImage] = useState(false)
+
+  const uploadStaffImage = async (file) => {
+    if (!file) return
+    setUploadingImage(true)
+    try {
+      const res = await cmsService.uploadImage(file, 'doingu')
+      const url = res?.url || ''
+      if (!url) throw new Error('Upload không trả về URL')
+      setStaffForm((prev) => ({ ...prev, image_url: url }))
+      toastSuccess('Đã tải ảnh giáo viên')
+    } catch (err) {
+      showApiError(err, 'Tải ảnh thất bại')
+    } finally {
+      setUploadingImage(false)
+    }
+  }
 
   const loadData = async () => {
     setLoading(true)
@@ -190,10 +208,36 @@ export const AdminNhanVat = () => {
             <option value="">— Chọn vị trí —</option>
             <option value="management">Tổ trưởng</option>
             <option value="senior">Trưởng bộ môn</option>
-            <option value="instructor">Giảng viên</option>
+            <option value="instructor">Giáo viên</option>
             <option value="assistant">Trợ giảng</option>
           </select>
-          <input className="px-4 py-3 rounded-xl bg-gray-50 font-bold md:col-span-2" placeholder="Image URL" value={staffForm.image_url} onChange={(e) => setStaffForm({ ...staffForm, image_url: e.target.value })} />
+          <div className="md:col-span-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100">
+                <ImagePlus size={14} /> {uploadingImage ? 'Đang tải...' : 'Upload ảnh'}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  disabled={uploadingImage}
+                  onChange={(e) => {
+                    const file = e.target.files && e.target.files[0]
+                    if (file) uploadStaffImage(file)
+                    e.target.value = ''
+                  }}
+                />
+              </label>
+              <input className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" placeholder="Hoặc dán URL ảnh" value={staffForm.image_url} onChange={(e) => setStaffForm({ ...staffForm, image_url: e.target.value })} />
+            </div>
+            {staffForm.image_url ? (
+              <div className="mt-2 flex items-start gap-3">
+                <img src={staffForm.image_url} alt="Preview" className="h-24 w-24 rounded-lg border border-slate-200 object-cover" />
+                <button type="button" onClick={() => setStaffForm({ ...staffForm, image_url: '' })} className="mt-1 inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-700">
+                  <Trash2 size={12} /> Xóa ảnh
+                </button>
+              </div>
+            ) : null}
+          </div>
           <RichTextEditor
             className="md:col-span-2"
             size="compact"

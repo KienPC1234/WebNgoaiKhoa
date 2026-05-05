@@ -121,23 +121,26 @@ const MediaLibraryModal = ({ open, onClose, onSelect, multi = false, accept = 'i
   const modal = (
     <div id="media-library-modal" className="fixed inset-0 flex items-center justify-center p-6 media-library-modal-debug" style={{ zIndex: 99999, position: 'fixed' }}>
       <div className="fixed inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-4xl max-h-[90vh] overflow-auto rounded-lg bg-white p-4 shadow-lg" style={{ zIndex: 100000 }}>
-        <div className="flex items-center justify-between pb-2">
+      <div className="relative z-10 flex h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-lg bg-white shadow-lg" style={{ zIndex: 100000 }}>
+        <div className="sticky top-0 z-20 border-b border-slate-100 bg-white px-4 pb-3 pt-4">
+          <div className="flex items-center justify-between pb-2">
           <h3 className="text-lg font-semibold">Chọn tập tin / ảnh</h3>
           <button onClick={onClose} className="rounded-md p-1 text-slate-500 hover:bg-slate-100">
             <X size={16} />
           </button>
+          </div>
+
+          <div className="flex gap-2">
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Tìm theo tên file..." className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm" />
+            <Button onClick={fetchResults} className="rounded-md border border-slate-300 bg-white px-3 py-2 text-xs normal-case tracking-normal text-slate-700 hover:bg-slate-50">Tìm</Button>
+            <input ref={uploadInputRef} type="file" accept={accept} className="hidden" onChange={handleUpload} />
+            <Button onClick={() => uploadInputRef.current?.click()} className="rounded-md border border-slate-300 bg-white px-3 py-2 text-xs normal-case tracking-normal text-slate-700 hover:bg-slate-50">{uploading ? 'Đang tải...' : 'Tải lên'}</Button>
+          </div>
+          {uploadError ? <div className="mt-2 text-xs text-red-500">{uploadError}</div> : null}
         </div>
 
-        <div className="flex gap-2">
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Tìm theo tên file..." className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm" />
-          <Button onClick={fetchResults} className="rounded-md border border-slate-300 bg-white px-3 py-2 text-xs normal-case tracking-normal text-slate-700 hover:bg-slate-50">Tìm</Button>
-          <input ref={uploadInputRef} type="file" accept={accept} className="hidden" onChange={handleUpload} />
-          <Button onClick={() => uploadInputRef.current?.click()} className="rounded-md border border-slate-300 bg-white px-3 py-2 text-xs normal-case tracking-normal text-slate-700 hover:bg-slate-50">{uploading ? 'Đang tải...' : 'Tải lên'}</Button>
-        </div>
-        {uploadError ? <div className="mt-2 text-xs text-red-500">{uploadError}</div> : null}
-
-        <div className="mt-3 grid grid-cols-3 gap-3">
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+          <div className="grid grid-cols-3 gap-3">
           {loading ? (
             <div className="col-span-3 py-6 text-center text-slate-500">Đang tải...</div>
           ) : results.length === 0 ? (
@@ -161,9 +164,10 @@ const MediaLibraryModal = ({ open, onClose, onSelect, multi = false, accept = 'i
               </div>
             ))
           )}
+          </div>
         </div>
 
-        <div className="mt-4 flex items-center gap-2 border-t border-slate-100 pt-3">
+        <div className="sticky bottom-0 z-20 flex items-center gap-2 border-t border-slate-100 bg-white px-4 py-3">
           <div className="flex-1 text-sm text-slate-500">{results.length ? `${results.length} kết quả` : ''}</div>
           <Button onClick={handleChoose} className="rounded-md border-none bg-slate-900 px-3 py-2 text-xs normal-case tracking-normal text-white hover:bg-slate-700">Chọn</Button>
           <Button onClick={onClose} className="rounded-md border border-slate-300 bg-white px-3 py-2 text-xs normal-case tracking-normal text-slate-700 hover:bg-slate-50">Đóng</Button>

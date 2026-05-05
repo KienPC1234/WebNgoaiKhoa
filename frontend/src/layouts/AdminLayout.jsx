@@ -16,6 +16,7 @@ import {
   FolderKanban,
   Menu,
   X,
+  MessageSquare,
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/components/UI'
@@ -67,10 +68,12 @@ export const AdminLayout = () => {
 
   const cmsItems = [
     ...(canManageWebsite ? [{ title: 'Tất cả bài viết', path: '/admin/publications', icon: FileText }] : []),
+    ...(canManageWebsite ? [{ title: 'Bình luận', path: '/admin/comments', icon: MessageSquare }] : []),
     ...(canManageWebsite ? [{ title: 'Vinh danh', path: '/admin/vinh-danh', icon: Award }] : []),
     ...(canManageWebsite ? [{ title: 'Đội ngũ', path: '/admin/doingu', icon: Users2 }] : []),
     ...(canReviewSubmissions ? [{ title: 'Duyệt bài', path: '/admin/submissions', icon: Send }] : []),
     ...(canManageWebsite ? [{ title: 'CMS Editor', path: '/admin/cms-editor', icon: Sparkles }] : []),
+    ...(canManageWebsite ? [{ title: 'Trang chủ', path: '/admin/homepage', icon: FolderKanban }] : []),
   ]
 
   const isActive = (path) => location.pathname === path
@@ -79,9 +82,11 @@ export const AdminLayout = () => {
     if (location.pathname.startsWith('/admin/publications')) return 'Nội dung tổng hợp'
     if (location.pathname.startsWith('/admin/events')) return 'Sự kiện'
     if (location.pathname.startsWith('/admin/cms-editor')) return 'CMS Editor'
+    if (location.pathname.startsWith('/admin/homepage') || location.pathname.startsWith('/admin/site-texts')) return 'Trang chủ'
     if (location.pathname.startsWith('/admin/doingu')) return 'Đội ngũ'
     if (location.pathname.startsWith('/admin/submissions')) return 'Duyệt bài'
     if (location.pathname.startsWith('/admin/auth-overview')) return 'Phân quyền hệ thống'
+    if (location.pathname.startsWith('/admin/comments')) return 'Bình luận'
 
     const matched = menuItems.find((item) => isActive(item.path))
     return matched?.title || 'Quản trị'
@@ -183,7 +188,7 @@ export const AdminLayout = () => {
                   }
 
                   // Make Đội ngũ / Duyệt bài / CMS Editor larger to match other main menu items
-                  const largeButtons = ['/admin/doingu', '/admin/submissions', '/admin/cms-editor', '/admin/vinh-danh']
+                  const largeButtons = ['/admin/doingu', '/admin/submissions', '/admin/cms-editor', '/admin/vinh-danh', '/admin/homepage', '/admin/comments']
                   if (largeButtons.includes(item.path)) {
                     const active = location.pathname === item.path
                     return (

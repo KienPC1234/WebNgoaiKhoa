@@ -35,6 +35,23 @@ export const cmsService = {
       send_webpush: options.sendWebpush ?? true,
     },
   })).data,
+  generatePublicationShortDescription: async ({ title = '', subject = '', contentType = '', content = '', layoutMetadata = null }) => {
+    const response = await apiClient.post(
+      '/ai/publication/short-description',
+      {
+        title,
+        subject,
+        content_type: contentType,
+        content,
+        layout_metadata: layoutMetadata || {},
+      },
+      {
+        timeout: 45000,
+      }
+    )
+
+    return String(response?.data?.description || '').trim()
+  },
   updatePublication: async (id, payload) => (await apiClient.put(`/admin/publications/${id}`, payload)).data,
   savePublicationDraft: async (id, payload) => (await apiClient.patch(`/admin/publications/${id}/draft`, payload)).data,
   deletePublication: async (id) => (await apiClient.delete(`/admin/publications/${id}`)).data,
@@ -211,4 +228,14 @@ export const cmsService = {
   },
 
   sendNewsletter: async (payload) => (await apiClient.post('/admin/newsletter/send', payload)).data,
+
+  getSiteTexts: async () => (await apiClient.get('/admin/homepage')).data,
+  updateSiteTexts: async (payload) => (await apiClient.put('/admin/homepage', payload)).data,
+  uploadHomepageVideo: async (file) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    return (await apiClient.post('/admin/homepage/videos/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })).data
+  },
 }

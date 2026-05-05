@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { Button } from '@/components/UI'
 import { RichTextEditor } from '@/components/UI'
+import { toastError } from '@/lib/notify'
 import { Image as ImageIcon, X as XIcon } from 'lucide-react'
 
 const StaffEditorModal = ({ open, item, onClose, onSave, onDelete, onUploadImage }) => {
@@ -81,7 +82,14 @@ const StaffEditorModal = ({ open, item, onClose, onSave, onDelete, onUploadImage
   }
 
   const handleSave = async () => {
-    if (!form.full_name || !form.title) return
+    if (uploading) {
+      toastError('Ảnh vẫn đang tải lên — vui lòng đợi cho đến khi tải xong rồi lưu.')
+      return
+    }
+    if (!form.full_name || !form.title) {
+      toastError('Vui lòng nhập tên và chức danh.')
+      return
+    }
     console.log('[StaffEditorModal] save', { id: form.id, full_name: form.full_name })
     await onSave(form)
     onClose()
@@ -111,11 +119,11 @@ const StaffEditorModal = ({ open, item, onClose, onSave, onDelete, onUploadImage
 
           <div className="md:col-span-3">
             <label className="text-xs text-gray-500">Vị trí</label>
-            <select className="w-full px-3 py-2 rounded-lg border" value={form.tier || ''} onChange={(e) => setForm({ ...form, tier: e.target.value })}>
+              <select className="w-full px-3 py-2 rounded-lg border" value={form.tier || ''} onChange={(e) => setForm({ ...form, tier: e.target.value })}>
               <option value="">— Chọn vị trí —</option>
               <option value="management">Tổ trưởng</option>
               <option value="senior">Trưởng bộ môn</option>
-              <option value="instructor">Giảng viên</option>
+              <option value="instructor">Giáo viên</option>
             </select>
             <p className="text-xs text-gray-400 mt-1">Chọn vị trí để phân loại hiển thị (tùy chọn).</p>
           </div>
@@ -159,7 +167,9 @@ const StaffEditorModal = ({ open, item, onClose, onSave, onDelete, onUploadImage
         <div className="mt-4 flex justify-end gap-2">
           {item && item.id && <Button variant="danger" onClick={handleDelete}>Xóa</Button>}
           <Button onClick={onClose} className="bg-slate-100 text-slate-700">Hủy</Button>
-          <Button onClick={handleSave} className="bg-fpt-blue text-white">Lưu</Button>
+          <Button onClick={handleSave} className="bg-fpt-blue text-white" disabled={uploading || !form.full_name || !form.title}>
+            {uploading ? 'Đang tải ảnh...' : 'Lưu'}
+          </Button>
         </div>
       </div>
     </div>

@@ -1,5 +1,6 @@
-import React, { createContext, useCallback, useContext, useState, useRef } from 'react'
-import MediaLibraryModal from '@/components/Admin/MediaLibrary/MediaLibraryModal'
+import React, { createContext, useCallback, useContext, useState, useRef, lazy, Suspense } from 'react'
+
+const MediaLibraryModal = lazy(() => import('@/components/Admin/MediaLibrary/MediaLibraryModal'))
 
 const MediaLibraryContext = createContext({ openMediaLibrary: async () => null })
 
@@ -36,7 +37,11 @@ export const MediaLibraryProvider = ({ children }) => {
   return (
     <MediaLibraryContext.Provider value={{ openMediaLibrary }}>
       {children}
-      <MediaLibraryModal open={open} onClose={handleClose} onSelect={handleSelect} accept={opts.accept} multi={opts.multi} />
+      {open ? (
+        <Suspense fallback={null}>
+          <MediaLibraryModal open={open} onClose={handleClose} onSelect={handleSelect} accept={opts.accept} multi={opts.multi} />
+        </Suspense>
+      ) : null}
     </MediaLibraryContext.Provider>
   )
 }

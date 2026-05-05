@@ -126,9 +126,44 @@ export const AdminUsers = () => {
             />
           </div>
 
-          <div className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-            <User size={16} className="text-slate-500" />
-            <span className="text-sm font-medium text-slate-700">Tổng người dùng: {users.length}</span>
+          <div className="flex items-center gap-2">
+            <div className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+              <User size={16} className="text-slate-500" />
+              <span className="text-sm font-medium text-slate-700">Tổng: {users.length}</span>
+            </div>
+            <Button
+              onClick={() => {
+                if (filteredUsers.length === 0) {
+                  toastError('Không có dữ liệu để xuất.');
+                  return;
+                }
+                const headers = ['ID', 'Email', 'Họ tên', 'Vai trò', 'Trạng thái', 'Ngày tham gia'];
+                const csvRows = [headers.join(',')];
+                for (const u of filteredUsers) {
+                  const safeStr = (str) => `"${(str || '').replace(/"/g, '""')}"`;
+                  csvRows.push([
+                    u.id,
+                    safeStr(u.email),
+                    safeStr(u.full_name),
+                    safeStr(u.role),
+                    u.is_active ? 'Đang hoạt động' : 'Đã khóa',
+                    safeStr(new Date(u.created_at || new Date()).toLocaleString('vi-VN'))
+                  ].join(','));
+                }
+                const csvContent = csvRows.join('\n');
+                const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.setAttribute('href', url);
+                link.setAttribute('download', `nguoi-dung-${new Date().getTime()}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+              }}
+              className="border border-slate-200 bg-white px-3 text-slate-700 hover:bg-slate-100"
+            >
+              Xuất CSV
+            </Button>
           </div>
         </div>
       </Card>

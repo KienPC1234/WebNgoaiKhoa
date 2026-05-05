@@ -1,4 +1,3 @@
-import { getToken, onMessage } from 'firebase/messaging'
 import { apiClient } from '@/lib/apiClient'
 import { toastInfo } from '@/lib/notify'
 import { FCM_DEBUG, FCM_DEBUG_PREFIX, getFirebaseMessaging, isFirebaseConfigured } from '@/lib/firebase.js'
@@ -9,6 +8,17 @@ const TOKEN_CACHE_KEY = 'fcm_token_cached'
 export const PUSH_PROMPT_DECISION_KEY = 'push_permission_prompt_decision'
 const PUSH_PROMPT_DENIED = 'denied'
 let isOnMessageBound = false
+let firebaseMessagingModulePromise = null
+
+const getFirebaseMessagingModule = async () => {
+  if (!firebaseMessagingModulePromise) {
+    firebaseMessagingModulePromise = import('firebase/messaging').catch((error) => {
+      firebaseMessagingModulePromise = null
+      throw error
+    })
+  }
+  return firebaseMessagingModulePromise
+}
 
 const log = (...args) => {
   if (!FCM_DEBUG) return
@@ -114,9 +124,16 @@ export const initWebPush = async ({ requestPermission = false } = {}) => {
   log('Notification permission result', { permission })
 
   if (permission !== 'granted') {
-    rememberPushPromptDenied()
-    warn('Notification permission denied or dismissed')
-    toastInfo('Notifications permission has been blocked as the user has ignored the permission prompt several times. This can be reset in Page Info which can be accessed by clicking the tune icon next to the URL.')
+    // Only permanently remember denial if the user explicitly denied (browser setting).
+    // If permission is still "default" (user dismissed the prompt), do NOT save to localStorage
+    // so the custom prompt can reappear on the next visit.
+    if (permission === 'denied') {
+      rememberPushPromptDenied()
+      warn('Notification permission explicitly denied by browser settings')
+      toastInfo('Notifications permission has been blocked. This can be reset in Page Info which can be accessed by clicking the tune icon next to the URL.')
+    } else {
+      warn('Notification permission prompt was dismissed (default)')
+    }
     return null
   }
 
@@ -136,6 +153,7 @@ export const initWebPush = async ({ requestPermission = false } = {}) => {
 
   let nextToken
   try {
+    const { getToken } = await getFirebaseMessagingModule()
     nextToken = await getToken(messaging, {
       vapidKey: VAPID_KEY,
       serviceWorkerRegistration: swRegistration,
@@ -173,6 +191,7 @@ export const initWebPush = async ({ requestPermission = false } = {}) => {
   }
 
   if (!isOnMessageBound) {
+    const { onMessage } = await getFirebaseMessagingModule()
     onMessage(messaging, (payload) => {
       log('Foreground push payload', payload)
       const title = payload?.notification?.title || 'Thông báo mới'

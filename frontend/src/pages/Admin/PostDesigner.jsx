@@ -21,12 +21,26 @@ const emptyForm = {
   category: 'van',
   subject: 'van',
   content_type: 'an-pham',
+  short_description: '',
   featured_year: '2025-2026',
   author: 'Ban Tổ Chức',
   snippet: '',
   read_time_minutes: 5,
   is_published: true,
   status: 'upcoming',
+}
+
+const MAX_SHORT_DESCRIPTION_CHARS = 220
+
+const normalizeShortDescription = (value) => {
+  const cleaned = String(value || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+  if (!cleaned) return ''
+  return cleaned.slice(0, MAX_SHORT_DESCRIPTION_CHARS)
+}
+
+const extractShortDescriptionFromLayout = (layoutMetadata) => {
+  if (!layoutMetadata || typeof layoutMetadata !== 'object') return ''
+  return normalizeShortDescription(layoutMetadata?.metadata?.short_description || layoutMetadata?.short_description || '')
 }
 
 const createInitialDoc = (title = 'Untitled Article') => {
@@ -49,8 +63,11 @@ export const AdminPostDesigner = () => {
 
   const [loading, setLoading] = useState(isEditing)
   const [saving, setSaving] = useState(false)
+  const [generatingShortDescription, setGeneratingShortDescription] = useState(false)
   const [formData, setFormData] = useState(emptyForm)
   const [notifyOptions, setNotifyOptions] = useState({ sendEmail: true, sendWebpush: true })
+  const [coverUploading, setCoverUploading] = useState(false)
+  const coverInputRef = useRef(null)
   const [initialDocument, setInitialDocument] = useState(() => createInitialDoc())
   const [pdfFile, setPdfFile] = useState(null)
   const [pdfAttachmentUrl, setPdfAttachmentUrl] = useState('')
@@ -169,6 +186,7 @@ export const AdminPostDesigner = () => {
           category: item.category || item.subject || (isStory ? 'Truyền cảm hứng' : isEvent ? 'event' : 'van'),
           subject: item.subject || item.category || (isEvent ? 'event' : 'van'),
           content_type: item.content_type || (isEvent ? 'event' : 'an-pham'),
+          short_description: extractShortDescriptionFromLayout(item.layout_metadata),
           featured_year: item.featured_year || item.event_date || '2025-2026',
           author: item.author || 'Ban Tổ Chức',
           snippet: item.snippet || '',
@@ -225,6 +243,32 @@ export const AdminPostDesigner = () => {
     loadEntity()
   }, [isEditing, isStory, isEvent, entity, publicationId, navigate, buildPdfPreview])
 
+  const triggerCoverUpload = () => {
+    if (coverInputRef.current) coverInputRef.current.click()
+  }
+
+  const handleCoverFile = async (event) => {
+    const file = event?.target?.files?.[0] || null
+    if (!file) return
+    setCoverUploading(true)
+    try {
+      const res = await cmsService.uploadImage(file, 'cover')
+      const url = res?.url || res?.image_url || res?.file_url
+      if (url) {
+        setFormData((prev) => ({ ...prev, image_url: url }))
+        toastSuccess('Ảnh bìa đã tải lên.')
+      } else {
+        toastSuccess('Ảnh đã tải lên (tạm hiển thị).')
+      }
+    } catch (err) {
+      showApiError(err, 'Tải ảnh bìa thất bại.')
+    } finally {
+      setCoverUploading(false)
+      // reset input value so same file can be uploaded again
+      try { if (coverInputRef.current) coverInputRef.current.value = '' } catch (e) {}
+    }
+  }
+
   // Prefill form when creating a new publication via query params (e.g. ?content_type=vinh-danh&subject=van)
   useEffect(() => {
     if (isEditing) return
@@ -244,9 +288,82 @@ export const AdminPostDesigner = () => {
     }
   }, [isEditing, searchParams])
 
+  // Prefill new publication from an event when creating via ?linked_event=<id>
+  useEffect(() => {
+    if (isEditing) return
+    try {
+      const linkedEvent = searchParams.get('linked_event')
+      if (!linkedEvent) return
+      let mounted = true
+      ;(async () => {
+        try {
+          const ev = await cmsService.getEventById(Number(linkedEvent))
+          if (!mounted || !ev) return
+          setFormData((prev) => ({
+            ...prev,
+            title: ev.title || prev.title,
+            image_url: ev.image_url || prev.image_url,
+            // keep existing subject/content_type defaults for publications
+          }))
+
+          const fallback = createInitialDoc(ev.title)
+          if (ev.description) {
+            fallback.blocks = [
+              {
+                id: `legacy-content-${Date.now()}`,
+                type: 'paragraph',
+                props: { colSpan: 12, rowSpan: 1, text: String(ev.description) },
+                children: [],
+              },
+            ]
+          }
+          setInitialDocument(fallback)
+          latestDocumentRef.current = fallback
+        } catch (err) {
+          // ignore prefill failures
+        }
+      })()
+      return () => { mounted = false }
+    } catch (e) {
+      // ignore
+    }
+  }, [isEditing, searchParams])
+
   const handleDocChange = useCallback((nextDocument) => {
     latestDocumentRef.current = nextDocument
   }, [])
+
+  const handleGenerateShortDescription = useCallback(async () => {
+    if (!isPublication) return
+
+    setGeneratingShortDescription(true)
+    try {
+      const sourceDocument = latestDocumentRef.current || initialDocument
+      const sourceContent = deriveHtmlContentFromDocument(sourceDocument)
+      const generated = await cmsService.generatePublicationShortDescription({
+        title: formData.title,
+        subject: formData.subject,
+        contentType: formData.content_type,
+        content: sourceContent,
+        layoutMetadata: sourceDocument,
+      })
+
+      const cleaned = normalizeShortDescription(generated)
+      if (!cleaned) {
+        throw new Error('AI generated an empty description')
+      }
+
+      setFormData((prev) => ({
+        ...prev,
+        short_description: cleaned,
+      }))
+      toastSuccess('Đã tạo mô tả ngắn bằng AI.')
+    } catch (error) {
+      showApiError(error, 'Không thể tạo mô tả bằng AI lúc này.')
+    } finally {
+      setGeneratingShortDescription(false)
+    }
+  }, [isPublication, initialDocument, formData.title, formData.subject, formData.content_type])
 
   const handleAutosave = useCallback(async (doc) => {
     if (!isEditing) return
@@ -261,10 +378,11 @@ export const AdminPostDesigner = () => {
         metadata: {
           ...(currentDocument.metadata || {}),
           entity,
+          short_description: isPublication ? normalizeShortDescription(formData.short_description) : (currentDocument.metadata || {}).short_description,
         },
       }
 
-      if (isStory) {
+        if (isStory) {
         const payload = {
           title: formData.title,
           content: deriveHtmlContentFromDocument(normalizedDoc),
@@ -324,6 +442,7 @@ export const AdminPostDesigner = () => {
       metadata: {
         ...(currentDocument.metadata || {}),
         entity,
+        short_description: isPublication ? normalizeShortDescription(formData.short_description) : (currentDocument.metadata || {}).short_description,
       },
     }
 
@@ -364,7 +483,7 @@ export const AdminPostDesigner = () => {
         } else {
           await cmsService.createStory(payload, notifyOptions)
         }
-      } else if (isEvent) {
+        } else if (isEvent) {
         const payload = {
           ...shared,
           description: deriveHtmlContentFromDocument(normalizedDoc),
@@ -377,7 +496,7 @@ export const AdminPostDesigner = () => {
         } else {
           await cmsService.createEvent(payload, notifyOptions)
         }
-      } else {
+        } else {
         const payload = {
           ...shared,
           content: deriveHtmlContentFromDocument(normalizedDoc),
@@ -387,11 +506,44 @@ export const AdminPostDesigner = () => {
           featured_year: formData.featured_year,
         }
 
-        if (isEditing) {
-          await cmsService.updatePublication(publicationId, payload)
-        } else {
-          await cmsService.createPublication(payload, notifyOptions)
-        }
+          if (isEditing) {
+            await cmsService.updatePublication(publicationId, payload)
+          } else {
+            // create publication and, if requested, link it to an event via ?linked_event=
+            const created = await cmsService.createPublication(payload, notifyOptions)
+            try {
+              const linkedEvent = searchParams.get('linked_event')
+              if (linkedEvent) {
+                const evId = Number(linkedEvent)
+                if (Number.isFinite(evId)) {
+                  // fetch current event and update with linked_post_id set to created.id
+                  try {
+                    const ev = await cmsService.getEventById(evId)
+                    if (ev) {
+                      const evPayload = {
+                        title: ev.title || '',
+                        description: ev.description || '',
+                        event_date: ev.event_date || '',
+                        location: ev.location || '',
+                        rrule: ev.rrule || '',
+                        timezone: ev.timezone || '',
+                        image_url: ev.image_url || '',
+                        status: ev.status || 'upcoming',
+                        linked_post_id: created.id,
+                        is_active: ev.is_active ?? true,
+                      }
+                      await cmsService.updateEvent(evId, evPayload)
+                      toastSuccess('Bài viết được tạo và liên kết với sự kiện.')
+                    }
+                  } catch (err) {
+                    console.error('Failed to link created publication to event', err)
+                  }
+                }
+              }
+            } catch (err) {
+              // ignore linking errors
+            }
+          }
       }
 
       toastSuccess(isEditing ? 'Đã cập nhật nội dung bằng CMS Editor.' : 'Đã tạo nội dung bằng CMS Editor.')
@@ -422,24 +574,36 @@ export const AdminPostDesigner = () => {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
-        <Card className="p-4 rounded-2xl border border-gray-100 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
-          <input
-            required
-            value={formData.title}
-            onChange={(event) => setFormData((prev) => ({ ...prev, title: event.target.value }))}
-            className="w-full px-3 py-2 rounded-lg bg-gray-50 text-sm font-bold"
-            placeholder="Tiêu đề"
-          />
+        <Card className="p-4 rounded-2xl border border-gray-100 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 items-start">
+          <div className="md:col-span-2 xl:col-span-2">
+            <input
+              required
+              value={formData.title}
+              onChange={(event) => setFormData((prev) => ({ ...prev, title: event.target.value }))}
+              className="w-full px-3 py-2 rounded-lg bg-gray-50 text-sm font-bold"
+              placeholder="Tiêu đề"
+            />
+          </div>
 
-          <input
-            value={formData.image_url}
-            onChange={(event) => setFormData((prev) => ({ ...prev, image_url: event.target.value }))}
-            className="w-full px-3 py-2 rounded-lg bg-gray-50 text-sm"
-            placeholder="URL ảnh bìa"
-          />
+          <div className="flex items-center gap-3">
+            <div className="flex-1">
+              <input
+                value={formData.image_url}
+                onChange={(event) => setFormData((prev) => ({ ...prev, image_url: event.target.value }))}
+                className="w-full px-3 py-2 rounded-lg bg-gray-50 text-sm"
+                placeholder="URL ảnh bìa"
+              />
+            </div>
+            <div>
+              <input ref={coverInputRef} type="file" accept="image/*" onChange={handleCoverFile} className="hidden" />
+              <button type="button" onClick={triggerCoverUpload} className="px-3 py-2 rounded-lg bg-white border border-gray-200 text-sm">
+                {coverUploading ? 'Đang tải...' : 'Tải ảnh bìa'}
+              </button>
+            </div>
+          </div>
 
           {isStory ? (
-            <>
+            <div className="grid grid-cols-1 gap-2 w-full">
               <input
                 value={formData.author}
                 onChange={(event) => setFormData((prev) => ({ ...prev, author: event.target.value }))}
@@ -466,9 +630,9 @@ export const AdminPostDesigner = () => {
                 className="w-full px-3 py-2 rounded-lg bg-gray-50 text-sm"
                 placeholder="Mô tả ngắn thẻ câu chuyện"
               />
-            </>
+            </div>
           ) : isEvent ? (
-            <>
+            <div className="grid grid-cols-1 gap-2 w-full">
               <input
                 type="datetime-local"
                 value={formData.featured_year}
@@ -486,9 +650,9 @@ export const AdminPostDesigner = () => {
                 <option value="passed">Passed</option>
                 <option value="cancelled">Cancelled</option>
               </select>
-            </>
+            </div>
           ) : (
-            <>
+            <div className="grid grid-cols-1 gap-2 w-full">
               <select
                 value={formData.subject}
                 onChange={(event) => setFormData((prev) => ({ ...prev, subject: event.target.value, category: event.target.value }))}
@@ -508,8 +672,32 @@ export const AdminPostDesigner = () => {
                 <option value="an-pham">Ấn phẩm</option>
                 <option value="tai-lieu">Tài liệu</option>
                 <option value="vinh-danh">Vinh danh</option>
+                <option value="cuoc-thi">Cuộc thi</option>
               </select>
-            </>
+              <textarea
+                value={formData.short_description}
+                onChange={(event) => {
+                  const nextValue = normalizeShortDescription(event.target.value)
+                  setFormData((prev) => ({ ...prev, short_description: nextValue }))
+                }}
+                rows={4}
+                className="w-full px-3 py-2 rounded-lg bg-gray-50 text-sm resize-y"
+                placeholder="Mô tả ngắn hiển thị ở thẻ bài viết (không bắt buộc)"
+              />
+              <div className="flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={handleGenerateShortDescription}
+                  disabled={generatingShortDescription}
+                  className="inline-flex items-center rounded-lg border border-fpt-orange/30 bg-white px-3 py-2 text-xs font-black uppercase tracking-wider text-fpt-orange disabled:opacity-60"
+                >
+                  {generatingShortDescription ? 'AI đang tạo...' : 'Mô tả bằng AI'}
+                </button>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  {(formData.short_description || '').length}/{MAX_SHORT_DESCRIPTION_CHARS}
+                </span>
+              </div>
+            </div>
           )}
         </Card>
 

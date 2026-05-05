@@ -85,8 +85,8 @@ export const NhanVatStaff = () => {
 
       {/* Instructors Section */}
           <StaffSection
-            title="Đội ngũ giảng viên"
-            subtitle="Giảng viên phụ trách các phân môn và chuyên đề"
+            title="Đội ngũ giáo viên"
+            subtitle="Giáo viên phụ trách các phân môn và chuyên đề"
             members={instructors}
             icon={<GraduationCap size={16} />}
             minCardWidth={90}

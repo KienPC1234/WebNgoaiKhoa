@@ -32,3 +32,5 @@ Thumbs.db
 *.sqlite3
 nohup.out
 .backend_pid
+qdrant_storage
+backend/uploads

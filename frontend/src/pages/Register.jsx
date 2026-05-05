@@ -1,31 +1,35 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Card, Button, Input } from '@/components/UI'
 import { GoogleLogin } from '@react-oauth/google'
 import ReCAPTCHA from 'react-google-recaptcha'
 import { ShieldCheck, Home } from 'lucide-react'
-import { useRef } from 'react'
 import { apiClient } from '@/lib/apiClient'
 import { toastError, toastInfo, toastSuccess } from '@/lib/notify'
-import { AiChatWidget } from '@/components/AiChatWidget'
 import { refreshAuthOverview, roleHasPermission } from '@/lib/rolePolicy'
+import { RECAPTCHA_SITE_KEY, getRecaptchaTokenSafely } from '@/lib/recaptcha'
+import { lazy, Suspense } from 'react'
 
-const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY || ''
+const AiChatWidget = lazy(() =>
+  import('@/components/AiChatWidget').then((m) => ({ default: m.AiChatWidget || m.default }))
+)
+
 const GOOGLE_OAUTH_CLIENT_ID = import.meta.env.VITE_GOOGLE_OAUTH_CLIENT_ID || ''
 
-const getRecaptchaTokenSafely = async (recaptchaRef) => {
-  if (!RECAPTCHA_SITE_KEY || !recaptchaRef.current) return null
+/* ── Password strength helper ─────────────────────────────────── */
+const getPasswordStrength = (pw) => {
+  if (!pw) return { score: 0, label: '', color: '' }
+  let score = 0
+  if (pw.length >= 6) score++
+  if (pw.length >= 10) score++
+  if (/[A-Z]/.test(pw)) score++
+  if (/[0-9]/.test(pw)) score++
+  if (/[^A-Za-z0-9]/.test(pw)) score++
 
-  try {
-    const token = await Promise.race([
-      recaptchaRef.current.executeAsync(),
-      new Promise((resolve) => setTimeout(() => resolve(null), 8000)),
-    ])
-    recaptchaRef.current.reset()
-    return token || null
-  } catch {
-    return null
-  }
+  if (score <= 1) return { score, label: 'Yếu', color: 'bg-red-400' }
+  if (score <= 2) return { score, label: 'Trung bình', color: 'bg-yellow-400' }
+  if (score <= 3) return { score, label: 'Khá', color: 'bg-blue-400' }
+  return { score, label: 'Mạnh', color: 'bg-green-500' }
 }
 
 export const Register = () => {
@@ -41,15 +45,16 @@ export const Register = () => {
   const [loading, setLoading] = useState(false)
   const recaptchaRef = useRef(null)
 
-  const completeLogin = async (payload) => {
+  const strength = getPasswordStrength(form.password)
+
+  const completeGoogleLogin = async (payload) => {
     localStorage.setItem('token', payload.access_token)
     localStorage.setItem('user', JSON.stringify(payload.user))
-    // notify other parts of the app (same-tab listeners) that auth changed
-    try { window.dispatchEvent(new Event('auth-changed')) } catch (e) {}
-    toastSuccess('Đăng nhập bằng Google thành công.')
+    try { window.dispatchEvent(new Event('auth-changed')) } catch (e) { /* noop */ }
+    toastSuccess('Đăng ký/đăng nhập Google thành công.')
     try {
       await refreshAuthOverview()
-    } catch (e) {}
+    } catch (e) { /* ignore */ }
 
     if (roleHasPermission(payload.user.role, 'admin_panel')) {
       navigate('/admin/dashboard')
@@ -70,19 +75,26 @@ export const Register = () => {
       return
     }
 
+    if (form.password.length < 6) {
+      setError('Mật khẩu phải có ít nhất 6 ký tự.')
+      toastError('Mật khẩu phải có ít nhất 6 ký tự.')
+      return
+    }
+
+    if (loading) return // guard against double-submit
     setLoading(true)
     try {
       const recaptchaToken = await getRecaptchaTokenSafely(recaptchaRef)
 
       await apiClient.post('/auth/register', {
-        full_name: form.full_name,
-        email: form.email,
+        full_name: form.full_name.trim(),
+        email: form.email.trim(),
         password: form.password,
         recaptcha_token: recaptchaToken,
       })
       setSuccess('Đăng ký thành công. Vui lòng nhập OTP đã gửi qua email để xác minh tài khoản.')
       toastSuccess('Đăng ký thành công. Vui lòng kiểm tra OTP trong email.')
-      const nextEmail = form.email
+      const nextEmail = form.email.trim()
       setForm({ full_name: '', email: '', password: '', confirmPassword: '' })
       navigate(`/verify-email?email=${encodeURIComponent(nextEmail)}`)
     } catch (err) {
@@ -101,6 +113,7 @@ export const Register = () => {
       return
     }
 
+    if (loading) return
     setLoading(true)
     setError('')
     setSuccess('')
@@ -108,9 +121,9 @@ export const Register = () => {
     try {
       const response = await apiClient.post('/auth/google', {
         id_token: credential,
-        full_name: form.full_name || undefined,
+        full_name: form.full_name.trim() || undefined,
       })
-      await completeLogin(response.data)
+      await completeGoogleLogin(response.data)
     } catch (err) {
       const message = err?.response?.data?.detail || 'Đăng ký/đăng nhập Google thất bại.'
       setError(message)
@@ -137,17 +150,43 @@ export const Register = () => {
           <p className="text-gray-400 font-bold text-xs uppercase tracking-[0.2em]">Tổ xã hội</p>
         </div>
 
-        {error && <div className="bg-red-50 text-red-500 p-4 rounded-xl text-sm font-bold border border-red-100">{error}</div>}
+        {error && <div className="bg-red-50 text-red-500 p-4 rounded-xl text-sm font-bold border border-red-100 animate-[shake_0.4s_ease-in-out]">{error}</div>}
         {success && <div className="bg-green-50 text-green-700 p-4 rounded-xl text-sm font-bold border border-green-100">{success}</div>}
 
         <form onSubmit={submit} className="space-y-5">
-          <Input label="Họ và tên" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} required />
-          <Input label="Email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
-          <Input label="Mật khẩu" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
-          <Input label="Xác nhận mật khẩu" type="password" value={form.confirmPassword} onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })} required />
+          <Input label="Họ và tên" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} autoComplete="name" required />
+          <Input label="Email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} autoComplete="email" required />
+          <div className="space-y-2">
+            <Input label="Mật khẩu" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} autoComplete="new-password" required />
+            {form.password.length > 0 && (
+              <div className="flex items-center gap-2 px-1">
+                <div className="flex-1 h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-300 ${strength.color}`}
+                    style={{ width: `${(strength.score / 5) * 100}%` }}
+                  />
+                </div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{strength.label}</span>
+              </div>
+            )}
+          </div>
+          <Input label="Xác nhận mật khẩu" type="password" value={form.confirmPassword} onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })} autoComplete="new-password" required />
 
-          <Button type="submit" disabled={loading} variant="orange" className="w-full py-4 rounded-xl font-black text-lg">
-            {loading ? 'Đang đăng ký...' : 'Tạo tài khoản'}
+          <Button
+            type="submit"
+            disabled={loading}
+            variant="orange"
+            className="w-full py-4 rounded-xl font-black text-lg relative overflow-hidden"
+          >
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Đang đăng ký...
+              </span>
+            ) : 'Tạo tài khoản'}
           </Button>
           {RECAPTCHA_SITE_KEY && <ReCAPTCHA ref={recaptchaRef} size="invisible" sitekey={RECAPTCHA_SITE_KEY} />}
         </form>
@@ -164,19 +203,25 @@ export const Register = () => {
               <div className="h-px flex-1 bg-slate-200" />
             </div>
             <div className="flex justify-center">
-              <GoogleLogin onSuccess={handleGoogleRegister} onError={() => toastError('Đăng ký Google thất bại.')} />
+              <GoogleLogin
+                onSuccess={handleGoogleRegister}
+                onError={() => toastError('Đăng ký Google thất bại.')}
+                disabled={loading}
+              />
             </div>
           </div>
         ) : null}
 
         <p className="text-center text-sm text-gray-500">
-          Đã có tài khoản? <Link to="/login" className="text-fpt-blue font-black">Đăng nhập</Link>
+          Đã có tài khoản? <Link to="/login" className="text-fpt-blue font-black hover:underline">Đăng nhập</Link>
         </p>
         <p className="text-center text-sm text-gray-500">
-          Đã đăng ký nhưng chưa xác minh? Vui lòng kiểm tra email để nhập mã OTP.
+          Đã đăng ký nhưng chưa xác minh? <Link to="/verify-email" className="text-fpt-blue font-black hover:underline">Nhập OTP</Link>
         </p>
       </Card>
-      <AiChatWidget />
+      <Suspense fallback={null}>
+        <AiChatWidget />
+      </Suspense>
     </div>
   )
 }

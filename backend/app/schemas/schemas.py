@@ -29,7 +29,9 @@ class PublicationBase(BaseModel):
     content_type: Optional[str] = None
     featured_year: Optional[str] = None
     image_url: Optional[str] = None
+    tags: Optional[List[str]] = None
     layout_metadata: Optional[Dict[str, Any]] = None
+    short_description: Optional[str] = None
 
 class PublicationCreate(PublicationBase):
     pass
@@ -43,6 +45,9 @@ class PublicationOut(PublicationBase):
     content_type: str
     created_at: datetime
     comments_enabled: Optional[bool] = True
+    view_count: int = 0
+    favorites_count: int = 0
+    votes_count: int = 0
 
 
 # --- Draft Schemas (partial updates allowed) ---
@@ -54,6 +59,7 @@ class PublicationDraft(BaseModel):
     content_type: Optional[str] = None
     featured_year: Optional[str] = None
     image_url: Optional[str] = None
+    tags: Optional[List[str]] = None
     layout_metadata: Optional[Dict[str, Any]] = None
     is_published: Optional[bool] = None
 
@@ -111,10 +117,19 @@ class PublicationCommentOut(BaseModel):
     id: int
     content: str
     publication_id: int
+    parent_id: Optional[int] = None
     user_id: Optional[int] = None
     created_at: datetime
     author_name: Optional[str] = None
+    author_image_url: Optional[str] = None
+    like_count: int = 0
+    dislike_count: int = 0
+    user_reaction: Optional[str] = None
     mentions: Optional[List[int]] = None
+
+
+class CommentReactionIn(BaseModel):
+    reaction_type: str
 
 
 # --- Event Schemas ---
@@ -281,6 +296,9 @@ class StaffProfileOut(StaffProfileBase):
     image_width: Optional[int] = None
     image_height: Optional[int] = None
     image_blur_placeholder: Optional[str] = None
+    image_srcset: Optional[str] = None
+    image_sizes: Optional[str] = None
+    image_optimized_url: Optional[str] = None
 
 # --- Stats Schemas ---
 class DashboardStats(BaseModel):
@@ -370,6 +388,24 @@ class RoleOut(BaseModel):
     name: str
     permissions: Optional[List[str]] = None
     built_in: bool
+    created_at: datetime
+
+
+# --- Admin Comment Schemas ---
+class AdminCommentOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    content: str
+    user_id: Optional[int] = None
+    author_name: Optional[str] = None
+    author_email: Optional[str] = None
+    publication_id: Optional[int] = None
+    publication_title: Optional[str] = None
+    submission_id: Optional[int] = None
+    submission_title: Optional[str] = None
+    parent_id: Optional[int] = None
+    is_visible: bool = True
     created_at: datetime
 
 

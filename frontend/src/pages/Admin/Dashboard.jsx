@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { cn } from '../../components/UI'
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
@@ -6,7 +6,7 @@ import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@
 import { Users, FileText, Send, AlertCircle, TrendingUp, Calendar, Zap } from 'lucide-react'
 import { cmsService } from '@/lib/cmsService'
 import { roleHasPermission } from '@/lib/rolePolicy'
-import { 
+import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
 
@@ -36,47 +36,104 @@ export const AdminDashboard = () => {
   }
   const currentRole = currentUser?.role || ''
 
+  const wsRef = useRef(null)
+  const retryCountRef = useRef(0)
+
+  const fetchData = useCallback(async () => {
+    try {
+      const rawUser = localStorage.getItem('user')
+      let role = null
+      try { role = rawUser ? JSON.parse(rawUser)?.role : null } catch { role = null }
+      const isAdmin = roleHasPermission(role, 'admin')
+      const canManageWebsite = isAdmin || roleHasPermission(role, 'content_manage')
+      const canReviewSubmissions = isAdmin || roleHasPermission(role, 'submission_review')
+
+      const overviewPromise = typeof cmsService.getAdminOverview === 'function' && (roleHasPermission(role, 'admin_panel') || canManageWebsite || canReviewSubmissions)
+        ? cmsService.getAdminOverview()
+        : Promise.resolve(null)
+
+      const aiOverviewPromise = roleHasPermission(role, 'ai_knowledge') ? cmsService.getAIKnowledgeOverview() : Promise.resolve(null)
+
+      const subsPromise = canReviewSubmissions ? cmsService.getRecentSubmissions() : Promise.resolve([])
+
+      const [statsRes, subsRes, overviewRes, aiOverviewRes] = await Promise.all([
+        cmsService.getStats(),
+        subsPromise,
+        overviewPromise,
+        aiOverviewPromise,
+      ])
+
+      setStats(overviewRes?.stats || statsRes)
+      setRecentSubmissions((subsRes || []).slice(0, 5))
+      setOverview(overviewRes || null)
+      setAiOverview(aiOverviewRes || null)
+    } catch (err) {
+      console.error('Error fetching dashboard data:', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  // Initial data fetch
   useEffect(() => {
-    const fetchData = async () => {
+    fetchData()
+  }, [fetchData])
+
+  // WebSocket for real-time dashboard updates
+  useEffect(() => {
+    const wsBase = import.meta.env.VITE_WS_URL || ''
+    const isLocalHost = ['localhost', '127.0.0.1'].includes(window.location.hostname)
+    const shouldConnect = Boolean(wsBase) || isLocalHost
+    if (!shouldConnect) return
+
+    let reconnectTimeout
+
+    const connectWS = () => {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+      const wsUrl = wsBase
+        ? `${wsBase.replace(/\/$/, '')}/notifications`
+        : `${protocol}//${window.location.host}/ws/notifications`
+
       try {
-        const rawUser = localStorage.getItem('user')
-        let role = null
-        try { role = rawUser ? JSON.parse(rawUser)?.role : null } catch { role = null }
-        // Determine role-based privileges for dashboard UI using server-driven policy
-        const isAdmin = roleHasPermission(role, 'admin')
-        const canManageWebsite = isAdmin || roleHasPermission(role, 'content_manage')
-        const canReviewSubmissions = isAdmin || roleHasPermission(role, 'submission_review')
+        const ws = new WebSocket(wsUrl)
+        wsRef.current = ws
 
-        // Only call admin overview for users with admin-panel access
-        const overviewPromise = typeof cmsService.getAdminOverview === 'function' && (roleHasPermission(role, 'admin_panel') || canManageWebsite || canReviewSubmissions)
-          ? cmsService.getAdminOverview()
-          : Promise.resolve(null)
+        ws.onopen = () => {
+          retryCountRef.current = 0
+        }
 
-        // AI overview is gated by `ai_knowledge` permission
-        const aiOverviewPromise = roleHasPermission(role, 'ai_knowledge') ? cmsService.getAIKnowledgeOverview() : Promise.resolve(null)
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data)
+            // On any real-time event (new submission, notification, etc.),
+            // refresh dashboard data to keep stats and recent submissions current.
+            if (data?.type === 'new_submission' || data?.type === 'notification') {
+              fetchData()
+            }
+          } catch {
+            // ignore invalid payloads
+          }
+        }
 
-        // Recent submissions endpoint is only available to submission reviewers
-        const subsPromise = canReviewSubmissions ? cmsService.getRecentSubmissions() : Promise.resolve([])
-
-        const [statsRes, subsRes, overviewRes, aiOverviewRes] = await Promise.all([
-          cmsService.getStats(),
-          subsPromise,
-          overviewPromise,
-          aiOverviewPromise,
-        ])
-
-        setStats(overviewRes?.stats || statsRes)
-        setRecentSubmissions((subsRes || []).slice(0, 5))
-        setOverview(overviewRes || null)
-        setAiOverview(aiOverviewRes || null)
-      } catch (err) {
-        console.error('Error fetching dashboard data:', err)
-      } finally {
-        setLoading(false)
+        ws.onclose = () => {
+          const delay = Math.min(30000, 3000 * (2 ** retryCountRef.current))
+          retryCountRef.current += 1
+          reconnectTimeout = setTimeout(connectWS, delay)
+        }
+      } catch {
+        const delay = Math.min(30000, 3000 * (2 ** retryCountRef.current))
+        retryCountRef.current += 1
+        reconnectTimeout = setTimeout(connectWS, delay)
       }
     }
-    fetchData()
-  }, [])
+
+    connectWS()
+
+    return () => {
+      if (wsRef.current) wsRef.current.close()
+      if (reconnectTimeout) clearTimeout(reconnectTimeout)
+    }
+  }, [fetchData])
 
   if (loading) return (
     <div className="flex h-full items-center justify-center">
@@ -127,7 +184,7 @@ export const AdminDashboard = () => {
           value={stats.publications} 
           tone="default"
           trend={publicationsToday ? `+${publicationsToday}` : '0'}
-          description="Đã xuất bản hôm nay"
+          description="Bài mới hôm nay"
         />
         <StatCard 
           icon={Send} 
@@ -153,15 +210,15 @@ export const AdminDashboard = () => {
         <Card className="lg:col-span-2 rounded-2xl border border-slate-200 shadow-sm">
           <CardHeader className="border-b border-slate-100 pb-4">
             <CardTitle className="flex items-center gap-2 text-base font-semibold text-slate-800">
-              <TrendingUp size={16} className="text-slate-500" /> Hiệu suất hệ thống
+              <TrendingUp size={16} className="text-slate-500" /> Xu hướng nội dung
             </CardTitle>
-            <p className="text-xs text-slate-500">Lượt truy cập và bài nộp trong tuần</p>
+            <p className="text-xs text-slate-500">Số lượng bài mới và bài nộp trong tuần</p>
           </CardHeader>
           <CardContent className="pt-4">
             <div>
               <div className="mb-4 flex gap-4 text-xs text-slate-500">
-                <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-slate-400" />Views</span>
-                <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-slate-700" />Submissions</span>
+                <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-slate-400" />Ấn phẩm mới</span>
+                <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-slate-700" />Bài dự thi</span>
               </div>
             </div>
             <div className="h-[280px] w-full min-w-0">

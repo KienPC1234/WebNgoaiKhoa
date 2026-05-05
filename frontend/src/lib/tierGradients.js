@@ -27,7 +27,7 @@ export function tierLabel(tier) {
     case 'senior':
       return 'Trưởng bộ môn'
     case 'instructor':
-      return 'Giảng viên'
+      return 'Giáo viên'
     case 'assistant':
       return 'Trợ giảng'
     default:

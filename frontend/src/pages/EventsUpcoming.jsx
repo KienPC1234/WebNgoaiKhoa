@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Card } from '@/components/ui/core'
-import { Calendar, MapPin, ArrowRight, Bell, Sparkles } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { Calendar, MapPin, ArrowRight, Bell, Sparkles, ChevronLeft, ChevronRight as ChevronRightIcon, Clock3 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 const toPlainText = (value) => (value || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+
+const WEEKDAY_LABELS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']
 
 export const EventsUpcoming = () => {
     const navigate = useNavigate()
@@ -16,9 +17,11 @@ export const EventsUpcoming = () => {
     const [highlightedEventId, setHighlightedEventId] = useState(null)
     const eventCardRefs = useRef({})
 
+    const today = new Date()
+    const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+
     const monthStart = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1)
     const monthEnd = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0)
-
     const startWeekday = monthStart.getDay()
     const dayCount = monthEnd.getDate()
 
@@ -26,10 +29,7 @@ export const EventsUpcoming = () => {
 
     const formatDateKey = (dateValue) => {
         const d = new Date(dateValue)
-        const y = d.getFullYear()
-        const m = String(d.getMonth() + 1).padStart(2, '0')
-        const day = String(d.getDate()).padStart(2, '0')
-        return `${y}-${m}-${day}`
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     }
 
     const eventMap = useMemo(() => events.reduce((acc, item) => {
@@ -43,37 +43,22 @@ export const EventsUpcoming = () => {
     const selectedDateEvents = selectedDateKey ? (eventMap[selectedDateKey] || []) : []
 
     const calendarCells = []
-    for (let i = 0; i < startWeekday; i += 1) {
-        calendarCells.push(null)
-    }
-    for (let d = 1; d <= dayCount; d += 1) {
-        calendarCells.push(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), d))
-    }
-    while (calendarCells.length % 7 !== 0) {
-        calendarCells.push(null)
-    }
+    for (let i = 0; i < startWeekday; i += 1) calendarCells.push(null)
+    for (let d = 1; d <= dayCount; d += 1) calendarCells.push(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), d))
+    while (calendarCells.length % 7 !== 0) calendarCells.push(null)
 
     const weekRows = []
-    for (let i = 0; i < calendarCells.length; i += 7) {
-        weekRows.push(calendarCells.slice(i, i + 7))
-    }
+    for (let i = 0; i < calendarCells.length; i += 7) weekRows.push(calendarCells.slice(i, i + 7))
 
     useEffect(() => {
         const controller = new AbortController()
-
         const fetchEvents = async () => {
             setLoading(true)
             try {
-                const response = await fetch(`${API_URL}/public/events/upcoming`, {
-                    signal: controller.signal,
-                    headers: {
-                        Accept: 'application/json',
-                    },
-                })
+                const response = await fetch(`${API_URL}/public/events/upcoming`, { signal: controller.signal, headers: { Accept: 'application/json' } })
                 if (!response.ok) throw new Error(`HTTP ${response.status}`)
                 const fetched = (await response.json()) || []
                 setEvents(fetched)
-
                 if (fetched.length > 0) {
                     const firstDate = new Date(fetched[0].event_date)
                     setCurrentMonth(new Date(firstDate.getFullYear(), firstDate.getMonth(), 1))
@@ -82,34 +67,24 @@ export const EventsUpcoming = () => {
                     setSelectedDate(new Date())
                 }
             } catch (error) {
-                if (error?.name !== 'AbortError') {
-                    console.error('Error fetching upcoming events:', error)
-                }
+                if (error?.name !== 'AbortError') console.error('Error fetching upcoming events:', error)
             } finally {
                 setLoading(false)
             }
         }
         fetchEvents()
-
         return () => controller.abort()
     }, [])
 
-    const goPrevMonth = () => {
-        setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))
-    }
-
-    const goNextMonth = () => {
-        setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))
-    }
+    const goPrevMonth = () => setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))
+    const goNextMonth = () => setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))
 
     const scrollToEventCard = (eventId) => {
         const target = eventCardRefs.current[eventId]
         if (!target) return
         target.scrollIntoView({ behavior: 'smooth', block: 'center' })
         setHighlightedEventId(eventId)
-        window.setTimeout(() => {
-            setHighlightedEventId((prev) => (prev === eventId ? null : prev))
-        }, 1400)
+        window.setTimeout(() => setHighlightedEventId((prev) => (prev === eventId ? null : prev)), 1400)
     }
 
     const openEventPost = (linkedPostId) => {
@@ -118,161 +93,127 @@ export const EventsUpcoming = () => {
     }
 
     return (
-        <div className="page-shell-public bg-gray-50/50">
-            <section className="page-hero page-hero-caro text-slate-700">
-                <div className="max-w-6xl mx-auto relative z-10 text-center space-y-8">
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="inline-flex items-center gap-2 bg-white/90 px-6 py-2 rounded-full text-xs font-black uppercase tracking-[0.3em] border border-orange-200 shadow-xl"
-                    >
-                        <Bell size={16} className="text-fpt-orange" />
-                        <span>Thông báo mới nhất</span>
-                    </motion.div>
-                    <motion.h1
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="text-6xl md:text-8xl font-black italic leading-tight uppercase text-fpt-blue"
-                    >
-                        SỰ KIỆN <br />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-fpt-orange to-orange-500 not-italic inline-block pt-1 md:pt-2 gradient-text-fix">SẮP DIỄN RA</span>
-                    </motion.h1>
-                    <motion.p
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.2 }}
-                        className="text-xl text-slate-500 max-w-3xl mx-auto font-medium leading-relaxed"
-                    >
-                        Cập nhật những hoạt động học thuật, ngoại khóa và giao lưu văn hóa sôi nổi nhất của Tổ Xã hội.
-                    </motion.p>
+        <div className="page-shell-public">
+            <section className="page-hero page-hero-caro">
+                <div className="app-section relative z-10 mx-auto max-w-5xl text-center">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-orange-200/60 bg-white/70 px-4 py-1.5 backdrop-blur-sm">
+                        <span className="h-1.5 w-1.5 rounded-full bg-fpt-orange animate-pulse" />
+                        <span className="text-[10px] font-black uppercase tracking-[0.24em] text-fpt-orange">Tổ xã hội FSC Hoà Lạc</span>
+                    </div>
+                    <h1 className="mt-6 text-balance text-4xl font-black uppercase leading-[0.92] text-fpt-blue sm:text-5xl md:text-6xl">
+                        <span className="block">Lịch sự kiện</span>
+                        <span className="mt-2 block bg-gradient-to-r from-fpt-orange to-orange-400 bg-clip-text text-transparent italic gradient-text-fix pt-3 md:pt-6">Sắp diễn ra</span>
+                    </h1>
+                    <p className="mt-5 max-w-2xl mx-auto text-base font-medium leading-relaxed text-slate-600 md:text-lg">
+                        Cập nhật những hoạt động học thuật, ngoại khóa và giao lưu văn hóa sôi nổi nhất.
+                    </p>
                 </div>
             </section>
 
             <div className="page-content-wrap">
                 <section className="mb-16 cv-auto">
-                    <Card className="page-panel p-8">
-                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-                            <h2 className="text-2xl md:text-3xl font-black text-fpt-blue uppercase italic">Lịch sự kiện theo tháng</h2>
-                            <div className="flex items-center gap-3">
-                                <button
-                                    type="button"
-                                    onClick={goPrevMonth}
-                                    className="tap-target rounded-xl bg-gray-100 px-4 py-2 text-xs font-black uppercase tracking-widest text-gray-700 hover:bg-gray-200"
-                                >
-                                    Tháng trước
+                    <Card className="page-panel overflow-hidden">
+                        <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between md:p-6">
+                            <h2 className="text-lg font-black uppercase tracking-tight text-fpt-blue md:text-xl">Lịch sự kiện</h2>
+                            <div className="flex items-center gap-2">
+                                <button type="button" onClick={goPrevMonth} className="tap-target flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition-colors hover:border-slate-300 hover:text-fpt-blue">
+                                    <ChevronLeft size={16} />
                                 </button>
-                                <span className="px-4 py-2 rounded-xl bg-fpt-blue text-white font-black text-xs uppercase tracking-widest">
-                                    {monthLabel}
-                                </span>
-                                <button
-                                    type="button"
-                                    onClick={goNextMonth}
-                                    className="tap-target rounded-xl bg-gray-100 px-4 py-2 text-xs font-black uppercase tracking-widest text-gray-700 hover:bg-gray-200"
-                                >
-                                    Tháng sau
+                                <span className="min-w-[140px] text-center text-sm font-black capitalize text-slate-800">{monthLabel}</span>
+                                <button type="button" onClick={goNextMonth} className="tap-target flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition-colors hover:border-slate-300 hover:text-fpt-blue">
+                                    <ChevronRightIcon size={16} />
                                 </button>
                             </div>
                         </div>
 
-                        <div className="overflow-x-auto rounded-2xl border border-gray-100">
-                            <table className="w-full border-collapse">
-                                <thead>
-                                    <tr>
-                                        {['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'].map((day) => (
-                                            <th key={day} className="p-3 text-left text-[11px] font-black uppercase tracking-widest text-gray-500 border-b border-gray-100">{day}</th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {weekRows.map((row, rowIdx) => (
-                                        <tr key={rowIdx}>
-                                            {row.map((cell, cellIdx) => {
-                                                if (!cell) {
-                                                    return <td key={`${rowIdx}-${cellIdx}`} className="h-24 border-b border-gray-50" />
-                                                }
+                        <div className="border-t border-slate-100">
+                            <div className="grid grid-cols-7">
+                                {WEEKDAY_LABELS.map((day, idx) => (
+                                    <div key={day} className={`py-2.5 text-center text-[10px] font-black uppercase tracking-widest ${idx === 0 ? 'text-red-400' : 'text-slate-400'}`}>
+                                        {day}
+                                    </div>
+                                ))}
+                            </div>
 
-                                                const cellKey = formatDateKey(cell)
-                                                const hasEvents = Boolean(eventMap[cellKey]?.length)
-                                                const isSelected = selectedDateKey === cellKey
+                            <div className="grid grid-cols-7 border-t border-slate-100">
+                                {weekRows.flat().map((cell, idx) => {
+                                    if (!cell) return <div key={`empty-${idx}`} className="min-h-[56px] border-b border-r border-slate-50 md:min-h-[72px]" />
 
-                                                return (
-                                                    <td key={cellKey} className="h-24 align-top border-b border-gray-50">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => setSelectedDate(cell)}
-                                                            className={`tap-target h-full w-full rounded-xl p-2 text-left transition-all ${isSelected ? 'bg-blue-50 ring-2 ring-fpt-blue/20 shadow-sm' : 'hover:bg-gray-50'}`}
-                                                        >
-                                                            <div className="flex items-start justify-between">
-                                                                <span className={`text-sm font-black ${isSelected ? 'text-fpt-blue' : 'text-gray-700'}`}>
-                                                                    {cell.getDate()}
-                                                                </span>
-                                                                {hasEvents && (
-                                                                    <span className="inline-flex items-center justify-center min-w-6 h-6 px-1 rounded-full bg-fpt-orange text-white text-[10px] font-black">
-                                                                        {eventMap[cellKey].length}
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                            {hasEvents && (
-                                                                <div
-                                                                    title={eventMap[cellKey].map((ev, idx) => `${idx + 1}. ${ev.title}`).join('\n')}
-                                                                    aria-label={`${eventMap[cellKey].length} sự kiện`}
-                                                                    className="mt-3 flex items-center gap-1.5"
-                                                                >
-                                                                    {eventMap[cellKey].slice(0, 3).map((ev, idx) => (
-                                                                        <span
-                                                                            key={`${cellKey}-${ev.id || idx}`}
-                                                                            className={`inline-block h-1.5 w-1.5 rounded-full ${isSelected ? 'bg-fpt-blue' : 'bg-fpt-orange'}`}
-                                                                        />
-                                                                    ))}
-                                                                    {eventMap[cellKey].length > 3 && (
-                                                                        <span className="text-[9px] font-black uppercase tracking-wider text-gray-500">
-                                                                            +{eventMap[cellKey].length - 3}
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-                                                            )}
-                                                        </button>
-                                                    </td>
-                                                )
-                                            })}
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                                    const cellKey = formatDateKey(cell)
+                                    const hasEvents = Boolean(eventMap[cellKey]?.length)
+                                    const isSelected = selectedDateKey === cellKey
+                                    const isToday = cellKey === todayKey
+                                    const isSunday = cell.getDay() === 0
+                                    const eventCount = eventMap[cellKey]?.length || 0
 
-                        <div className="mt-6 p-5 rounded-2xl bg-gradient-to-r from-orange-50/70 via-white to-blue-50/70 border border-orange-100">
-                            <p className="text-xs font-black uppercase tracking-widest text-gray-500 mb-3">
-                                {selectedDate ? `Sự kiện ngày ${new Date(selectedDate).toLocaleDateString('vi-VN')}` : 'Chọn một ngày trong lịch'}
-                            </p>
-                            {selectedDate && selectedDateEvents.length > 0 ? (
-                                <ul className="space-y-2.5">
-                                    {selectedDateEvents.map((ev) => (
-                                        <li key={ev.id}>
+                                    return (
+                                        <div key={cellKey} className="min-h-[56px] border-b border-r border-slate-50 md:min-h-[72px]">
                                             <button
                                                 type="button"
-                                                onClick={() => scrollToEventCard(ev.id)}
-                                                className="tap-target w-full rounded-xl border border-white bg-white/90 px-3 py-2.5 text-left transition-all hover:border-fpt-orange/40 hover:shadow-sm"
+                                                onClick={() => setSelectedDate(cell)}
+                                                className={`flex h-full w-full flex-col items-center gap-1 p-1.5 transition-all sm:p-2 ${isSelected ? 'bg-blue-50/80' : 'hover:bg-orange-50/40'}`}
                                             >
-                                                <div className="flex items-center justify-between gap-2">
-                                                    <div className="min-w-0">
-                                                        <p className="truncate text-sm font-black text-slate-700">{ev.title}</p>
-                                                        <p className="mt-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                                                            {new Date(ev.event_date).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} · {ev.location}
-                                                        </p>
+                                                <span className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-colors ${
+                                                    isSelected ? 'bg-fpt-blue text-white' :
+                                                    isToday ? 'bg-fpt-orange text-white' :
+                                                    isSunday ? 'text-red-400' : 'text-slate-700'
+                                                }`}>
+                                                    {cell.getDate()}
+                                                </span>
+                                                {hasEvents && (
+                                                    <div className="flex items-center gap-0.5">
+                                                        {eventCount <= 3 ? (
+                                                            Array.from({ length: eventCount }).map((_, i) => (
+                                                                <span key={i} className={`h-1 w-1 rounded-full ${isSelected ? 'bg-fpt-blue' : 'bg-fpt-orange'}`} />
+                                                            ))
+                                                        ) : (
+                                                            <span className={`rounded-full px-1.5 py-0.5 text-[8px] font-black ${isSelected ? 'bg-fpt-blue/10 text-fpt-blue' : 'bg-fpt-orange/10 text-fpt-orange'}`}>
+                                                                +{eventCount}
+                                                            </span>
+                                                        )}
                                                     </div>
-                                                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-orange-100 text-fpt-orange">
-                                                        <ArrowRight size={14} />
-                                                    </span>
-                                                </div>
+                                                )}
                                             </button>
-                                        </li>
-                                    ))}
-                                </ul>
-                            ) : (
-                                <p className="text-sm text-gray-400 font-semibold">Không có sự kiện trong ngày này.</p>
-                            )}
+                                        </div>
+                                    )
+                                })}
+                            </div>
                         </div>
+
+                        {selectedDate && (
+                            <div className="border-t border-slate-100 p-4 md:p-5">
+                                <p className="mb-3 text-xs font-black uppercase tracking-widest text-slate-400">
+                                    <Calendar size={12} className="mr-1.5 inline-block" />
+                                    {new Date(selectedDate).toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                </p>
+                                {selectedDateEvents.length > 0 ? (
+                                    <ul className="space-y-2">
+                                        {selectedDateEvents.map((ev) => (
+                                            <li key={ev.id}>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => scrollToEventCard(ev.id)}
+                                                    className="tap-target w-full rounded-xl border border-slate-100 bg-white px-4 py-3 text-left transition-all hover:border-fpt-orange/30 hover:shadow-sm"
+                                                >
+                                                    <div className="flex items-center justify-between gap-3">
+                                                        <div className="min-w-0 flex-1">
+                                                            <p className="truncate text-sm font-bold text-slate-800">{ev.title}</p>
+                                                            <div className="mt-1 flex items-center gap-3 text-[11px] font-semibold text-slate-400">
+                                                                <span className="inline-flex items-center gap-1"><Clock3 size={11} /> {new Date(ev.event_date).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
+                                                                {ev.location && <span className="inline-flex items-center gap-1"><MapPin size={11} /> {ev.location}</span>}
+                                                            </div>
+                                                        </div>
+                                                        <ArrowRight size={14} className="shrink-0 text-slate-300" />
+                                                    </div>
+                                                </button>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : (
+                                    <p className="py-4 text-center text-sm font-medium text-slate-300">Không có sự kiện trong ngày này</p>
+                                )}
+                            </div>
+                        )}
                     </Card>
                 </section>
 
@@ -284,16 +225,14 @@ export const EventsUpcoming = () => {
                     )}
 
                     {!loading && events.map((event, i) => (
-                        <motion.div
+                        <div
                             key={event.id}
                             id={`event-card-${event.id}`}
                             ref={(node) => {
                                 eventCardRefs.current[event.id] = node
                             }}
-                            initial={{ opacity: 0, x: -50 }}
-                            whileInView={{ opacity: 1, x: 0 }}
-                            transition={{ delay: i * 0.1 }}
-                            viewport={{ once: true }}
+                            className="animate-[fadeInEvents_260ms_ease-out]"
+                            style={{ animationDelay: `${Math.min(i * 90, 450)}ms` }}
                         >
                             <Card
                                 onClick={() => openEventPost(event.linked_post_id)}
@@ -354,7 +293,7 @@ export const EventsUpcoming = () => {
                                     </div>
                                 </div>
                             </Card>
-                        </motion.div>
+                        </div>
                     ))}
 
                     {!loading && events.length === 0 && (
@@ -381,6 +320,7 @@ export const EventsUpcoming = () => {
                     </div>
                 </section>
             </div>
+            <style>{`@keyframes fadeInEvents { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }`}</style>
         </div>
     )
 }

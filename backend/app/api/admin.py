@@ -1,22 +1,22 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks, Query
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks, Query, Body
 from fastapi.responses import FileResponse
 from fastapi.responses import StreamingResponse
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 import os
 import uuid
+import json
+import base64
 from app.db.session import get_db
 from app.models.user import User
-from app.models.publication import ContentType, Event, Publication, SocialScale, StaffProfile, Story, Submission, EventAttachment
-from app.models.publication import StaffReaction, PublicationFavorite, PublicationVote, PublicationViewEvent
-from sqlalchemy import func
+from app.models.role import Role
+from app.models.publication import ContentType, Event, Publication, SocialScale, StaffProfile, Story, Submission, EventAttachment, StaffReaction, Comment
 from app.models.media import MediaAsset
-import base64
 from app.api.auth import (
     build_unsubscribe_token,
     get_current_admin,
-    get_current_admin_panel_user,
     get_current_website_manager,
     get_current_submission_judge,
 )
@@ -40,26 +40,26 @@ from app.schemas.schemas import (
     SubmissionOut, DashboardStats, SubmissionStatusUpdate,
     AdminOverview,
     AdminActivityItem,
-    RoleOut,
-    RoleCreate,
     AIKnowledgeAssetOut,
     AIKnowledgeUploadOut,
+    AdminCommentOut,
+    RoleCreate,
+    RoleOut,
     NewsletterDispatchIn,
     NewsletterDispatchOut,
 )
 from typing import List, Optional
-from pydantic import BaseModel
 import logging
 import re
 from io import BytesIO
-from app.models.role import Role
 try:
-    from PIL import Image, ImageFile
+    from PIL import Image, ImageFile, ImageOps
     ImageFile.LOAD_TRUNCATED_IMAGES = True
     _PIL_AVAILABLE = True
 except Exception:
     Image = None
     ImageFile = None
+    ImageOps = None
     _PIL_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
@@ -83,6 +83,11 @@ PUBLICATION_MAX_UPLOAD_SIZE = int(os.getenv("PUBLICATION_MAX_UPLOAD_BYTES", str(
 IMAGE_UPLOAD_DIR = Path(os.getenv("IMAGE_UPLOAD_DIR", "/data/WebNgoaiKhoa/backend/uploads/images"))
 IMAGE_MAX_UPLOAD_SIZE = int(os.getenv("IMAGE_MAX_UPLOAD_BYTES", str(12 * 1024 * 1024)))
 IMAGE_TARGET_MAX_UPLOAD_BYTES = int(os.getenv("IMAGE_TARGET_MAX_UPLOAD_BYTES", str(10 * 1024 * 1024)))
+IMAGE_VARIANTS_DIR = Path(os.getenv("IMAGE_VARIANTS_DIR", str(IMAGE_UPLOAD_DIR / ".variants")))
+STAFF_PREWARM_WIDTHS = (240, 320, 480, 640)
+SITE_TEXTS_FILE = Path(os.getenv("SITE_TEXTS_FILE", "/data/WebNgoaiKhoa/backend/app/site_texts.json"))
+VIDEO_UPLOAD_DIR = Path(os.getenv("VIDEO_UPLOAD_DIR", "/data/WebNgoaiKhoa/backend/uploads/videos"))
+VIDEO_MAX_UPLOAD_SIZE = int(os.getenv("VIDEO_MAX_UPLOAD_BYTES", str(50 * 1024 * 1024)))
 ALLOWED_SUBJECTS = {item.value for item in ai_module.Category} if hasattr(ai_module, "Category") else {"van", "ktpl", "lich-su", "dia-li", "vovinam", "ngoaikhoa"}
 
 
@@ -92,6 +97,16 @@ def _sync_ai_knowledge_if_possible(db: Session):
     except Exception:
         # Avoid blocking admin CRUD if vector sync fails temporarily.
         pass
+
+
+def _is_missing_staff_reactions_error(exc: Exception) -> bool:
+    error_message = str(exc).lower()
+    return "staff_reactions" in error_message or "no such table" in error_message or "doesn't exist" in error_message
+
+
+def _ensure_staff_reactions_table(db: Session) -> None:
+    bind = db.get_bind()
+    StaffReaction.__table__.create(bind=bind, checkfirst=True)
 
 
 def _extract_filenames_from_text(text: Optional[str]) -> set:
@@ -209,8 +224,25 @@ def _delete_image_files_if_unreferenced(filenames: set, db: Session):
             if target.exists() and target.is_file():
                 target.unlink()
                 logger.info(f"Deleted uploaded image file: {target}")
+
+            # Keep media library in sync: remove stale asset row too.
+            try:
+                asset = db.query(MediaAsset).filter(MediaAsset.stored_name == safe_name).first()
+                if asset:
+                    db.delete(asset)
+                    db.commit()
+                    logger.info(f"Deleted MediaAsset row for image: {safe_name}")
+            except Exception:
+                db.rollback()
+                logger.exception("Failed to delete MediaAsset row for image: %s", safe_name)
         except Exception as exc:
             logger.warning(f"Failed to delete image {fname}: {exc}")
+
+
+def _collect_homepage_image_files(payload: Optional[dict]) -> set:
+    if not isinstance(payload, dict):
+        return set()
+    return _collect_images_from_metadata(payload)
 
 
 def _extract_publication_filenames_from_text(text: Optional[str]) -> set:
@@ -293,80 +325,6 @@ def _is_publication_file_referenced(safe_name: str, db: Session) -> bool:
     return False
 
 
-@router.get('/staff/reactions/summary')
-async def admin_staff_reactions_summary(db: Session = Depends(get_db), current_admin: User = Depends(get_current_admin)):
-    # Return aggregated reaction counts per staff profile for admin charts
-    rows = (
-        db.query(StaffReaction.staff_id, StaffProfile.full_name, StaffReaction.reaction_type, func.count(StaffReaction.id))
-        .join(StaffProfile, StaffProfile.id == StaffReaction.staff_id)
-        .group_by(StaffReaction.staff_id, StaffReaction.reaction_type)
-        .all()
-    )
-
-    out = {}
-    for staff_id, full_name, reaction_type, cnt in rows:
-        if staff_id not in out:
-            out[staff_id] = {"staff_id": staff_id, "full_name": full_name, "counts": {}}
-        out[staff_id]["counts"][reaction_type] = cnt
-
-    return list(out.values())
-
-
-@router.get('/staff/{staff_id}/reactions')
-async def admin_staff_reactions_list(staff_id: int, db: Session = Depends(get_db), current_admin: User = Depends(get_current_admin)):
-    """Return list of reactions for a given staff profile, including basic user info when available."""
-    try:
-        rows = (
-            db.query(
-                StaffReaction.id,
-                StaffReaction.user_id,
-                StaffReaction.reaction_type,
-                StaffReaction.created_at,
-                User.email,
-                User.full_name,
-            )
-            .outerjoin(User, User.id == StaffReaction.user_id)
-            .filter(StaffReaction.staff_id == staff_id)
-            .order_by(StaffReaction.created_at.desc())
-            .all()
-        )
-    except Exception:
-        # Ensure table exists in case of missing-table scenarios, then retry
-        try:
-            bind = db.get_bind()
-            StaffReaction.__table__.create(bind=bind, checkfirst=True)
-        except Exception:
-            pass
-        rows = (
-            db.query(
-                StaffReaction.id,
-                StaffReaction.user_id,
-                StaffReaction.reaction_type,
-                StaffReaction.created_at,
-                User.email,
-                User.full_name,
-            )
-            .outerjoin(User, User.id == StaffReaction.user_id)
-            .filter(StaffReaction.staff_id == staff_id)
-            .order_by(StaffReaction.created_at.desc())
-            .all()
-
-        )
-
-    out = []
-    for rid, user_id, reaction_type, created_at, email, full_name in rows:
-        out.append({
-            'id': rid,
-            'user_id': user_id,
-            'user_email': email,
-            'user_full_name': full_name,
-            'reaction_type': reaction_type,
-            'created_at': created_at,
-        })
-
-    return out
-
-
 def _delete_publication_files_if_unreferenced(filenames: set, db: Session):
     if not filenames:
         return
@@ -393,6 +351,67 @@ def _try_save_image_to_bytes(img, fmt: str, **save_kwargs) -> bytes:
     return buf.getvalue()
 
 
+def _is_resizable_image_ext(ext: str) -> bool:
+    return (ext or "").lower().lstrip(".") in {"jpg", "jpeg", "png", "webp"}
+
+
+def _build_variant_filename(source_name: str, width: int, fmt: str) -> str:
+    stem = Path(source_name).stem
+    safe_fmt = (fmt or "webp").lower()
+    return f"{stem}__w{int(width)}.{safe_fmt}"
+
+
+def _extract_image_metadata(payload: bytes, ext: str) -> tuple[Optional[int], Optional[int], Optional[dict]]:
+    if not payload or not _PIL_AVAILABLE:
+        return None, None, None
+    if (ext or "").lower() == ".svg":
+        return None, None, None
+
+    try:
+        with Image.open(BytesIO(payload)) as img:
+            img = ImageOps.exif_transpose(img)
+            width, height = img.size
+
+            metadata_json = None
+            if _is_resizable_image_ext(ext):
+                tiny = img.convert("RGB")
+                tiny.thumbnail((24, 24), Image.LANCZOS)
+                b = BytesIO()
+                tiny.save(b, format="JPEG", quality=35, optimize=True)
+                blur = base64.b64encode(b.getvalue()).decode("ascii")
+                metadata_json = {"blur_placeholder": f"data:image/jpeg;base64,{blur}"}
+
+            return width, height, metadata_json
+    except Exception:
+        return None, None, None
+
+
+def _prewarm_staff_image_variants(target: Path, ext: str, widths: tuple[int, ...] = STAFF_PREWARM_WIDTHS) -> None:
+    if not _PIL_AVAILABLE or not _is_resizable_image_ext(ext):
+        return
+    if not target.exists() or not target.is_file():
+        return
+
+    try:
+        IMAGE_VARIANTS_DIR.mkdir(parents=True, exist_ok=True)
+        with Image.open(str(target)) as img:
+            img = ImageOps.exif_transpose(img).convert("RGB")
+            for width in widths:
+                safe_width = max(64, min(int(width), 2048))
+                variant_path = IMAGE_VARIANTS_DIR / _build_variant_filename(target.name, safe_width, "webp")
+                if variant_path.exists() and variant_path.is_file() and variant_path.stat().st_mtime >= target.stat().st_mtime:
+                    continue
+
+                out = img
+                if img.width > safe_width:
+                    ratio = safe_width / float(img.width)
+                    out_h = max(1, int(img.height * ratio))
+                    out = img.resize((safe_width, out_h), Image.LANCZOS)
+                out.save(str(variant_path), format="WEBP", quality=80, method=6)
+    except Exception:
+        logger.exception("Failed to prewarm staff image variants for %s", target.name)
+
+
 def _compress_image_bytes(payload: bytes, ext: str, max_bytes: int) -> Optional[bytes]:
     """Try to compress image bytes to be <= max_bytes. Returns compressed bytes or None."""
     if not payload:
@@ -405,6 +424,19 @@ def _compress_image_bytes(payload: bytes, ext: str, max_bytes: int) -> Optional[
         im = Image.open(BytesIO(payload))
     except Exception:
         return None
+
+    # Apply EXIF orientation fix before any compression operations so the
+    # resulting image pixels are in the correct orientation (prevents
+    # uploads appearing rotated in the browser).
+    try:
+        if _PIL_AVAILABLE and ImageOps is not None:
+            try:
+                im = ImageOps.exif_transpose(im)
+            except Exception:
+                # Non-fatal: proceed without transpose if it fails
+                pass
+    except Exception:
+        pass
     orig_size = len(payload)
     ext = ext.lower().lstrip('.')
 
@@ -624,7 +656,7 @@ async def upload_image(
     # - others (including no context): compress to 10MB if larger
     compress_threshold = None
     if context in ('doingu', 'cover'):
-        compress_threshold = 5 * 1024 * 1024  # 5 MB
+        compress_threshold = 2.5 * 1024 * 1024  # 5 MB
     elif context == 'cms-editor':
         compress_threshold = 15 * 1024 * 1024  # 15 MB
     else:
@@ -646,6 +678,13 @@ async def upload_image(
     stored_name = f"{uuid.uuid4().hex}{ext}"
     target = IMAGE_UPLOAD_DIR / stored_name
     target.write_bytes(payload)
+
+    width, height, metadata_json = _extract_image_metadata(payload, ext)
+
+    # For staff flow, pre-generate responsive WEBP variants so first public load is instant.
+    if context == 'doingu':
+        _prewarm_staff_image_variants(target, ext)
+
     # Create DB-backed media asset entry
     try:
         asset = MediaAsset(
@@ -655,6 +694,9 @@ async def upload_image(
             file_type=ext.lstrip('.'),
             size_bytes=len(payload),
             uploaded_by=admin.id if admin else None,
+            width=width,
+            height=height,
+            metadata_json=metadata_json,
         )
         db.add(asset)
         db.commit()
@@ -663,53 +705,6 @@ async def upload_image(
         # If DB insert fails, do not block upload — return minimal response
         logger.exception("Failed to create MediaAsset DB row")
         asset = None
-
-    # Attempt to populate image metadata (width/height and a small blur placeholder)
-    if asset:
-        try:
-            if _PIL_AVAILABLE:
-                try:
-                    from PIL import Image
-                    # Use `im` if available from earlier processing, otherwise open the stored file
-                    img = None
-                    if 'im' in locals() and im is not None:
-                        img = im
-                    else:
-                        img = Image.open(target)
-
-                    if getattr(img, "width", None) and getattr(img, "height", None):
-                        asset.width = int(img.width)
-                        asset.height = int(img.height)
-
-                    # Generate tiny blur-up placeholder and store in metadata JSON
-                    try:
-                        thumb = img.copy()
-                        thumb.thumbnail((32, 32), Image.LANCZOS)
-                        buf_small = BytesIO()
-                        try:
-                            thumb.save(buf_small, format="WEBP", quality=50, method=6)
-                            mime = "image/webp"
-                        except Exception:
-                            thumb = thumb.convert("RGB")
-                            thumb.save(buf_small, format="JPEG", quality=50, optimize=True)
-                            mime = "image/jpeg"
-                        placeholder_b64 = base64.b64encode(buf_small.getvalue()).decode("ascii")
-                        data_uri = f"data:{mime};base64,{placeholder_b64}"
-                        md = asset.metadata_json or {}
-                        if not isinstance(md, dict):
-                            md = {}
-                        md["blur_placeholder"] = data_uri
-                        asset.metadata_json = md
-                    except Exception:
-                        pass
-
-                    db.commit()
-                    db.refresh(asset)
-                except Exception:
-                    # Non-fatal: do not block upload on metadata failures
-                    logger.exception("Failed to populate media metadata")
-        except Exception:
-            pass
 
     # Return the public-facing URL where images are served from the public router
     resp = {
@@ -720,6 +715,45 @@ async def upload_image(
     if asset:
         resp["asset_id"] = asset.id
     return resp
+
+
+@router.get("/uploads/images")
+async def list_uploaded_images_compat(
+    context: Optional[str] = Query(None),
+    q: Optional[str] = Query(None),
+    limit: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_website_manager),
+):
+    """Compatibility GET endpoint for clients that hit the upload path directly."""
+    query = db.query(MediaAsset).filter(
+        (MediaAsset.file_type.is_(None)) | (func.lower(MediaAsset.file_type) != "pdf")
+    )
+    if q:
+        term = f"%{q.strip()}%"
+        query = query.filter(
+            (MediaAsset.original_name.ilike(term))
+            | (MediaAsset.stored_name.ilike(term))
+        )
+
+    items = query.order_by(MediaAsset.uploaded_at.desc()).limit(limit).all()
+    return {
+        "context": context,
+        "method": "GET",
+        "upload_method": "POST",
+        "items": [
+            {
+                "id": item.id,
+                "stored_name": item.stored_name,
+                "original_name": item.original_name,
+                "file_type": item.file_type,
+                "size_bytes": item.size_bytes,
+                "uploaded_at": item.uploaded_at,
+                "url": f"/api/public/uploads/images/{item.stored_name}",
+            }
+            for item in items
+        ],
+    }
 
 
 def _queue_newsletter(
@@ -744,6 +778,109 @@ def _queue_newsletter(
         send_webpush,
     )
 
+
+def _load_site_texts_payload() -> dict:
+    if not SITE_TEXTS_FILE.exists():
+        return {}
+    try:
+        return json.loads(SITE_TEXTS_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        logger.exception("Failed to read site_texts.json")
+        return {}
+
+
+def _save_site_texts_payload(payload: dict) -> None:
+    SITE_TEXTS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    SITE_TEXTS_FILE.write_text(
+        json.dumps(payload or {}, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+
+def _cleanup_homepage_removed_images(old_payload: dict, new_payload: dict, db: Session) -> None:
+    try:
+        old_files = _collect_homepage_image_files(old_payload)
+        new_files = _collect_homepage_image_files(new_payload)
+        removed_files = old_files - new_files
+        if removed_files:
+            _delete_image_files_if_unreferenced(removed_files, db)
+    except Exception:
+        logger.exception("Failed to cleanup removed homepage images")
+
+
+# --- Homepage CMS Management ---
+
+@router.get("/homepage")
+async def admin_get_homepage(
+    admin: User = Depends(get_current_website_manager),
+):
+    return _load_site_texts_payload()
+
+
+@router.put("/homepage")
+async def admin_put_homepage(
+    payload: dict = Body(...),
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_website_manager),
+):
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="Payload must be a JSON object")
+    old_payload = _load_site_texts_payload()
+    _save_site_texts_payload(payload)
+    _cleanup_homepage_removed_images(old_payload, payload, db)
+    return payload
+
+
+@router.post("/homepage/videos/upload")
+async def admin_upload_homepage_video(
+    file: UploadFile = File(...),
+    admin: User = Depends(get_current_website_manager),
+):
+    filename = file.filename or ""
+    ext = Path(filename).suffix.lower()
+    allowed_exts = {".mp4", ".webm", ".ogg", ".mov"}
+    if ext not in allowed_exts:
+        raise HTTPException(status_code=400, detail="Chỉ hỗ trợ định dạng video: mp4, webm, ogg, mov")
+
+    payload = await file.read()
+    if not payload:
+        raise HTTPException(status_code=400, detail="Tệp video rỗng")
+    if len(payload) > VIDEO_MAX_UPLOAD_SIZE:
+        raise HTTPException(status_code=400, detail="Tệp video vượt quá dung lượng cho phép")
+
+    VIDEO_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    stored_name = f"{uuid.uuid4().hex}{ext}"
+    target = VIDEO_UPLOAD_DIR / stored_name
+    target.write_bytes(payload)
+
+    return {
+        "url": f"/api/public/uploads/videos/{stored_name}",
+        "file_name": filename,
+        "size_bytes": len(payload),
+    }
+
+
+# Backward compatibility for older clients still calling /site-texts.
+@router.get("/site-texts")
+async def admin_get_site_texts(
+    admin: User = Depends(get_current_website_manager),
+):
+    return _load_site_texts_payload()
+
+
+@router.put("/site-texts")
+async def admin_put_site_texts(
+    payload: dict = Body(...),
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_website_manager),
+):
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="Payload must be a JSON object")
+    old_payload = _load_site_texts_payload()
+    _save_site_texts_payload(payload)
+    _cleanup_homepage_removed_images(old_payload, payload, db)
+    return payload
+
 # --- User Management ---
 
 @router.get("/users", response_model=List[UserOut])
@@ -762,9 +899,11 @@ async def update_user(user_id: int, user_update: UserUpdate, db: Session = Depen
         # Prevent one admin from changing privileges of another admin account.
         if user.role == "admin" and user.id != admin.id:
             raise HTTPException(status_code=403, detail="Không thể thay đổi quyền của tài khoản admin khác")
-        # Validate requested role exists in roles table
-        role_obj = db.query(Role).filter(Role.slug == requested_role).first()
-        if not role_obj:
+
+        # Only allow super admin to assign privileged admin-panel roles.
+        if requested_role in {"admin", "website_manager", "submission_judge", "teacher", "student"}:
+            pass
+        else:
             raise HTTPException(status_code=400, detail="Invalid role")
     
     for key, value in changes.items():
@@ -878,33 +1017,6 @@ async def get_publication_by_id(pub_id: int, db: Session = Depends(get_db), admi
         raise HTTPException(status_code=404, detail="Publication not found")
     return pub
 
-
-@router.get('/popular')
-async def admin_get_popular(limit: int = Query(10, gt=0), db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
-    rows = db.query(Publication).order_by(Publication.view_count.desc(), Publication.created_at.desc()).limit(limit).all()
-    return [
-        {"id": p.id, "title": p.title, "view_count": int(p.view_count or 0), "created_at": p.created_at}
-        for p in rows
-    ]
-
-
-@router.put('/publications/{pub_id}/reset-stats')
-async def admin_reset_publication_stats(pub_id: int, db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
-    pub = db.query(Publication).filter(Publication.id == pub_id).first()
-    if not pub:
-        raise HTTPException(status_code=404, detail="Publication not found")
-
-    try:
-        # reset view_count and remove view events
-        pub.view_count = 0
-        db.query(PublicationViewEvent).filter(PublicationViewEvent.publication_id == pub_id).delete()
-        db.commit()
-    except Exception:
-        db.rollback()
-        raise HTTPException(status_code=500, detail="Could not reset stats")
-
-    return {"id": pub.id, "view_count": 0}
-
 @router.post("/publications", response_model=PublicationOut)
 async def create_publication(
     pub: PublicationCreate,
@@ -924,8 +1036,8 @@ async def create_publication(
     _queue_newsletter(
         background_tasks,
         recipients,
-        title=f"[To xa hoi] Moi: {new_pub.title}",
-        body="Da co an pham/tai lieu moi tren he thong. Hay truy cap de xem chi tiet.",
+        title=f"[Tổ Xã Hội] Mới: {new_pub.title}",
+        body="Đã có ấn phẩm/tài liệu mới trên hệ thống. Hãy truy cập để xem chi tiết.",
         action_url=f"/public-posts/{new_pub.id}",
         send_email=send_email,
         send_webpush=send_webpush,
@@ -1279,6 +1391,12 @@ async def create_media_asset(file: UploadFile = File(...), db: Session = Depends
         logger.exception("Failed to write uploaded media file")
         raise HTTPException(status_code=500, detail="Failed to save file")
 
+    width = None
+    height = None
+    metadata_json = None
+    if ext != '.pdf':
+        width, height, metadata_json = _extract_image_metadata(payload, ext)
+
     try:
         asset = MediaAsset(
             id=uuid.uuid4().hex,
@@ -1287,6 +1405,9 @@ async def create_media_asset(file: UploadFile = File(...), db: Session = Depends
             file_type=ext.lstrip('.'),
             size_bytes=len(payload),
             uploaded_by=admin.id if admin else None,
+            width=width,
+            height=height,
+            metadata_json=metadata_json,
         )
         db.add(asset)
         db.commit()
@@ -1609,8 +1730,8 @@ async def create_event(
     _queue_newsletter(
         background_tasks,
         recipients,
-        title=f"[To xa hoi] Su kien moi: {event.title}",
-        body="He thong vua cap nhat mot su kien moi. Ban co the xem lich va tham gia dang ky.",
+        title=f"[Tổ Xã Hội] Sự kiện mới: {event.title}",
+        body="Hệ thống vừa cập nhật một sự kiện mới. Bạn có thể xem lịch và tham gia đăng ký.",
         action_url="/events/upcoming",
         send_email=send_email,
         send_webpush=send_webpush,
@@ -1718,8 +1839,7 @@ async def import_events_csv(file: UploadFile = File(...), db: Session = Depends(
             payload = {}
             payload['title'] = row.get('title') or 'Untitled'
             payload['description'] = row.get('description') or ''
-            # parse ISO-like date strings into datetime objects
-            payload['event_date'] = _parse_iso(row.get('event_date') or None)
+            payload['event_date'] = row.get('event_date') or None
             payload['location'] = row.get('location') or ''
             payload['rrule'] = row.get('rrule') or None
             payload['timezone'] = row.get('timezone') or None
@@ -1818,8 +1938,8 @@ async def create_story(
     _queue_newsletter(
         background_tasks,
         recipients,
-        title=f"[To xa hoi] Cau chuyen moi: {story.title}",
-        body="Muc truyen cam hung vua co noi dung moi. Mo he thong de doc ngay.",
+        title=f"[Tổ Xã Hội] Câu chuyện mới: {story.title}",
+        body="Mục truyền cảm hứng vừa có nội dung mới. Mở hệ thống để đọc ngay.",
         action_url=f"/stories/inspiring/{story.id}",
         send_email=send_email,
         send_webpush=send_webpush,
@@ -1875,7 +1995,6 @@ async def get_social_scale(db: Session = Depends(get_db), admin: User = Depends(
         item = SocialScale(
             hero_title="Quy mô & phát triển",
             hero_subtitle="Cập nhật dữ liệu quy mô theo từng năm học.",
-            staff_hero="Hội tụ những chuyên gia giàu kinh nghiệm, không ngừng sáng tạo và truyền lửa đam mê cho thế hệ học sinh.",
             vision="Deep learning with love",
             subjects_overview="Ngữ văn, KTPL, Lịch sử, Địa lí, Vovinam",
             roadmap="Cấu trúc tổ chức; chỉ tiêu học thuật; học liệu; báo cáo theo học kỳ",
@@ -1900,50 +2019,131 @@ async def update_social_scale(payload: SocialScaleCreate, db: Session = Depends(
     db.refresh(item)
     return item
 
-# Bulk reorder input model
-class StaffReorderItem(BaseModel):
-    id: int
-    display_order: int
 
-
-@router.put('/staff/reorder')
-async def bulk_reorder_staff(items: List[StaffReorderItem], db: Session = Depends(get_db), admin: User = Depends(get_current_website_manager)):
-    """Bulk update `display_order` for multiple staff profiles in a single request.
-
-    Accepts a list of objects: [{ id: <staff_id>, display_order: <int> }, ...]
-    Performs a single transactional commit and returns success.
-    """
-    if not items:
-        return {"message": "no-op"}
-
-    ids = [i.id for i in items]
-    # Fetch existing profiles
-    rows = db.query(StaffProfile).filter(StaffProfile.id.in_(ids)).all()
-    found_ids = {r.id for r in rows}
-    missing = set(ids) - found_ids
-    if missing:
-        raise HTTPException(status_code=404, detail={"message": "Some staff profiles not found", "missing": list(missing)})
-
-    try:
-        # Map by id for quick lookup
-        by_id = {r.id: r for r in rows}
-        for item in items:
-            p = by_id.get(item.id)
-            if p is not None:
-                p.display_order = int(item.display_order or 0)
-
-        db.commit()
-    except Exception:
-        db.rollback()
-        logger.exception('Failed to bulk reorder staff')
-        raise HTTPException(status_code=500, detail='Failed to reorder staff')
-
-    return {"message": "ok"}
 # --- Staff Profile CMS ---
 
 @router.get("/staff", response_model=List[StaffProfileOut])
 async def get_staff(db: Session = Depends(get_db), admin: User = Depends(get_current_website_manager)):
     return db.query(StaffProfile).order_by(StaffProfile.display_order.asc(), StaffProfile.created_at.desc()).all()
+
+
+@router.put("/staff/reorder")
+async def reorder_staff(
+    payload: List[dict] = Body(..., description="Ordered staff items containing at least `id`"),
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_website_manager),
+):
+    id_order: List[int] = []
+    for item in payload or []:
+        if not isinstance(item, dict):
+            continue
+        raw_id = item.get("id")
+        try:
+            staff_id = int(raw_id)
+        except (TypeError, ValueError):
+            continue
+        id_order.append(staff_id)
+
+    if not id_order:
+        return {"updated": 0}
+
+    existing = db.query(StaffProfile).filter(StaffProfile.id.in_(id_order)).all()
+    by_id = {item.id: item for item in existing}
+
+    updated = 0
+    for index, staff_id in enumerate(id_order, start=1):
+        profile = by_id.get(staff_id)
+        if not profile:
+            continue
+        profile.display_order = index
+        updated += 1
+
+    db.commit()
+    return {"updated": updated}
+
+
+@router.get("/staff/reactions/summary")
+async def get_staff_reactions_summary(
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_website_manager),
+):
+    # Keep endpoint resilient in environments where migrations were not applied yet.
+    _ensure_staff_reactions_table(db)
+
+    staff_rows = (
+        db.query(StaffProfile.id, StaffProfile.full_name)
+        .order_by(StaffProfile.display_order.asc(), StaffProfile.created_at.desc())
+        .all()
+    )
+    summary_map = {
+        row.id: {
+            "staff_id": row.id,
+            "full_name": row.full_name,
+            "counts": {},
+        }
+        for row in staff_rows
+    }
+
+    try:
+        rows = (
+            db.query(
+                StaffReaction.staff_id,
+                StaffReaction.reaction_type,
+                func.count(StaffReaction.id).label("count"),
+            )
+            .group_by(StaffReaction.staff_id, StaffReaction.reaction_type)
+            .all()
+        )
+    except Exception as exc:
+        if not _is_missing_staff_reactions_error(exc):
+            raise
+        _ensure_staff_reactions_table(db)
+        rows = []
+
+    for row in rows:
+        if row.staff_id not in summary_map:
+            # Keep orphan reaction rows visible for diagnostics.
+            summary_map[row.staff_id] = {
+                "staff_id": row.staff_id,
+                "full_name": f"Hồ sơ #{row.staff_id}",
+                "counts": {},
+            }
+        summary_map[row.staff_id]["counts"][row.reaction_type] = int(row.count or 0)
+
+    result = list(summary_map.values())
+    result.sort(
+        key=lambda item: (
+            -sum((item.get("counts") or {}).values()),
+            str(item.get("full_name") or ""),
+        )
+    )
+    return result
+
+
+@router.get("/staff/{staff_id}/reactions")
+async def get_staff_reactions_detail(
+    staff_id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_website_manager),
+):
+    staff = db.query(StaffProfile).filter(StaffProfile.id == staff_id).first()
+    if not staff:
+        raise HTTPException(status_code=404, detail="Staff profile not found")
+
+    _ensure_staff_reactions_table(db)
+    rows = (
+        db.query(StaffReaction.reaction_type, func.count(StaffReaction.id).label("count"))
+        .filter(StaffReaction.staff_id == staff_id)
+        .group_by(StaffReaction.reaction_type)
+        .all()
+    )
+    counts = {row.reaction_type: int(row.count or 0) for row in rows}
+    return {
+        "staff_id": staff.id,
+        "full_name": staff.full_name,
+        "counts": counts,
+        "total": int(sum(counts.values())),
+    }
 
 
 @router.post("/staff", response_model=StaffProfileOut)
@@ -1953,9 +2153,6 @@ async def create_staff(payload: StaffProfileCreate, db: Session = Depends(get_db
     db.commit()
     db.refresh(item)
     return item
-
-
- 
 
 
 @router.put("/staff/{staff_id}", response_model=StaffProfileOut)
@@ -1987,7 +2184,6 @@ async def delete_staff(staff_id: int, db: Session = Depends(get_db), admin: User
         logger.exception("Error while deleting staff profile images")
 
     return {"message": "Staff profile deleted"}
- 
 
 # --- Submission Management ---
 
@@ -2032,50 +2228,48 @@ async def update_submission_status(
 
 @router.get("/auth/overview")
 async def get_auth_overview(db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
-    # Build role counts from existing users
     users = db.query(User).all()
-    role_counts = {}
-    for u in users:
-        slug = (u.role or "other")
-        role_counts[slug] = role_counts.get(slug, 0) + 1
+    role_counts = {
+        "admin": 0,
+        "website_manager": 0,
+        "submission_judge": 0,
+        "teacher": 0,
+        "student": 0,
+        "other": 0,
+    }
 
-    # Fetch configured roles and their permissions
-    roles = db.query(Role).order_by(Role.slug.asc()).all()
-    permissions_map = {}
-    role_details = []
-    if roles:
-        for r in roles:
-            perms = r.permissions or []
-            # normalize to list
-            try:
-                if isinstance(perms, str):
-                    import json
-                    perms = json.loads(perms)
-            except Exception:
-                perms = [perms] if perms else []
-            permissions_map[r.slug] = perms
+    for user in users:
+        role = user.role or "other"
+        if role in role_counts:
+            role_counts[role] += 1
+        else:
+            role_counts["other"] += 1
+    # Include role metadata (role_details) so frontend can render role list without separate call
+    try:
+        role_rows = db.query(Role).order_by(Role.id).all()
+        role_details = []
+        for r in role_rows:
             role_details.append({
                 "id": r.id,
                 "slug": r.slug,
                 "name": r.name,
-                "permissions": perms,
+                "permissions": r.permissions or [],
                 "built_in": bool(r.built_in),
-                "created_at": getattr(r, 'created_at', None),
             })
-    else:
-        # fallback to legacy permissions mapping for compatibility
-        permissions_map = {
+    except Exception:
+        # If roles table is missing or query fails, return empty details but keep counts and fallback permissions
+        role_details = []
+
+    return {
+        "roles": role_counts,
+        "role_details": role_details,
+        "permissions": {
             "admin": ["all", "user_manage", "auth_audit", "ai_knowledge", "content_manage", "submission_review"],
             "website_manager": ["admin_panel", "content_manage"],
             "submission_judge": ["admin_panel", "submission_review"],
             "teacher": ["public_user"],
             "student": ["public_user"],
-        }
-
-    return {
-        "roles": role_counts,
-        "permissions": permissions_map,
-        "role_details": role_details,
+        },
         "policy": {
             "cannot_change_other_admin_role": True,
             "only_admin_can_manage_users": True,
@@ -2083,25 +2277,19 @@ async def get_auth_overview(db: Session = Depends(get_db), admin: User = Depends
     }
 
 
+# --- Roles management ---
 @router.get("/roles", response_model=List[RoleOut])
 async def list_roles(db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
-    items = db.query(Role).order_by(Role.slug.asc()).all()
-    results = []
-    for r in items:
-        results.append({
-            "id": r.id,
-            "slug": r.slug,
-            "name": r.name,
-            "permissions": r.permissions or [],
-            "built_in": bool(r.built_in),
-            "created_at": getattr(r, 'created_at', None),
-        })
-    return results
+    try:
+        rows = db.query(Role).order_by(Role.id).all()
+        return rows
+    except Exception:
+        return []
 
 
 @router.post("/roles", response_model=RoleOut)
 async def create_role(payload: RoleCreate, db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
-    # prevent duplicate slug
+    # ensure slug uniqueness
     existing = db.query(Role).filter(Role.slug == payload.slug).first()
     if existing:
         raise HTTPException(status_code=400, detail="Role slug already exists")
@@ -2110,14 +2298,7 @@ async def create_role(payload: RoleCreate, db: Session = Depends(get_db), admin:
     db.add(role)
     db.commit()
     db.refresh(role)
-    return {
-        "id": role.id,
-        "slug": role.slug,
-        "name": role.name,
-        "permissions": role.permissions or [],
-        "built_in": bool(role.built_in),
-        "created_at": getattr(role, 'created_at', None),
-    }
+    return role
 
 
 @router.put("/roles/{role_id}", response_model=RoleOut)
@@ -2125,24 +2306,21 @@ async def update_role(role_id: int, payload: RoleCreate, db: Session = Depends(g
     role = db.query(Role).filter(Role.id == role_id).first()
     if not role:
         raise HTTPException(status_code=404, detail="Role not found")
-    # prevent changing slug on built-in roles
-    if role.built_in and role.slug != payload.slug:
-        raise HTTPException(status_code=400, detail="Cannot change slug of built-in role")
+
+    # prevent accidental overwrite of slug collisions
+    if payload.slug != role.slug:
+        exists = db.query(Role).filter(Role.slug == payload.slug).first()
+        if exists:
+            raise HTTPException(status_code=400, detail="Another role with this slug already exists")
 
     role.slug = payload.slug
     role.name = payload.name
     role.permissions = payload.permissions or []
+    role.built_in = bool(payload.built_in)
     db.add(role)
     db.commit()
     db.refresh(role)
-    return {
-        "id": role.id,
-        "slug": role.slug,
-        "name": role.name,
-        "permissions": role.permissions or [],
-        "built_in": bool(role.built_in),
-        "created_at": getattr(role, 'created_at', None),
-    }
+    return role
 
 
 @router.delete("/roles/{role_id}")
@@ -2150,20 +2328,22 @@ async def delete_role(role_id: int, db: Session = Depends(get_db), admin: User =
     role = db.query(Role).filter(Role.id == role_id).first()
     if not role:
         raise HTTPException(status_code=404, detail="Role not found")
+
     if role.built_in:
         raise HTTPException(status_code=400, detail="Cannot delete built-in role")
-    # prevent deletion if any user assigned
-    user_count = db.query(User).filter(User.role == role.slug).count()
-    if user_count > 0:
-        raise HTTPException(status_code=400, detail="Role is assigned to users; reassign before deleting")
+
+    assigned_count = db.query(User).filter(User.role == role.slug).count()
+    if assigned_count > 0:
+        raise HTTPException(status_code=400, detail="Role is currently assigned to users")
+
     db.delete(role)
     db.commit()
-    return {"message": "Role deleted", "id": role_id}
+    return {"message": "deleted"}
 
 # --- Stats for Dashboard ---
 
 @router.get("/stats", response_model=DashboardStats)
-async def get_stats(db: Session = Depends(get_db), admin: User = Depends(get_current_admin_panel_user)):
+async def get_stats(db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
     return {
         "users": db.query(User).count(),
         "publications": db.query(Publication).count(),
@@ -2175,7 +2355,7 @@ async def get_stats(db: Session = Depends(get_db), admin: User = Depends(get_cur
 
 
 @router.get("/overview", response_model=AdminOverview)
-async def get_admin_overview(db: Session = Depends(get_db), admin: User = Depends(get_current_admin_panel_user)):
+async def get_admin_overview(db: Session = Depends(get_db), admin: User = Depends(get_current_admin)):
     stats = {
         "users": db.query(User).count(),
         "publications": db.query(Publication).count(),
@@ -2185,25 +2365,13 @@ async def get_admin_overview(db: Session = Depends(get_db), admin: User = Depend
         "stories": db.query(Story).count(),
     }
 
-    # Only include AI health details for full `admin` users. Other admin-panel roles
-    # (website_manager, submission_judge) can still view stats and charts, but
-    # should not see AI internals if they don't have AI privileges.
     try:
-        if getattr(admin, 'role', None) == 'admin':
-            ai_health = ai_module.get_ai_health_snapshot(db)
-            ai_status = ai_health.get("status", "degraded")
-            ai_documents = int(ai_health.get("chroma", {}).get("documents", 0))
-            knowledge_assets = int(ai_health.get("chroma", {}).get("knowledge_assets", 0))
-        else:
-            ai_status = None
-            ai_documents = 0
-            knowledge_assets = 0
+        ai_health = ai_module.get_ai_health_snapshot(db)
+        ai_status = ai_health.get("status", "degraded")
+        ai_documents = int(ai_health.get("chroma", {}).get("documents", 0))
+        knowledge_assets = int(ai_health.get("chroma", {}).get("knowledge_assets", 0))
     except Exception:
-        # On any failure, degrade safely: if admin requested, mark degraded; otherwise hide details.
-        if getattr(admin, 'role', None) == 'admin':
-            ai_status = "degraded"
-        else:
-            ai_status = None
+        ai_status = "degraded"
         ai_documents = 0
         knowledge_assets = 0
 
@@ -2226,27 +2394,6 @@ async def get_admin_overview(db: Session = Depends(get_db), admin: User = Depend
                 "views": publications_count,
                 "submissions": submissions_count,
             })
-        # Compute weekly new users and week-over-week growth.
-        try:
-            # start of this 7-day window (00:00 UTC of the earliest day)
-            start_week_date = today - timedelta(days=6)
-            start_dt = datetime(start_week_date.year, start_week_date.month, start_week_date.day, tzinfo=timezone.utc)
-            # end exclusive is next day after `today` at 00:00 UTC
-            end_dt = datetime(today.year, today.month, today.day, tzinfo=timezone.utc) + timedelta(days=1)
-
-            users_this_week = db.query(User).filter(User.created_at >= start_dt, User.created_at < end_dt).count()
-
-            prev_start_dt = start_dt - timedelta(days=7)
-            prev_end_dt = start_dt
-            users_prev_week = db.query(User).filter(User.created_at >= prev_start_dt, User.created_at < prev_end_dt).count()
-
-            if users_prev_week == 0:
-                user_weekly_growth = None
-            else:
-                user_weekly_growth = round(((users_this_week - users_prev_week) / users_prev_week) * 100, 1)
-        except Exception:
-            users_this_week = 0
-            user_weekly_growth = None
     except Exception:
         weekly_metrics = []
 
@@ -2257,8 +2404,6 @@ async def get_admin_overview(db: Session = Depends(get_db), admin: User = Depend
         "knowledge_assets": knowledge_assets,
         "recent_activity": _collect_recent_activity(db),
         "weekly_metrics": weekly_metrics,
-        "user_weekly_new": users_this_week,
-        "user_weekly_growth": user_weekly_growth,
     }
 
 
@@ -2347,3 +2492,108 @@ async def send_newsletter(
         "newsletter_enabled": newsletter_service.is_newsletter_enabled(),
         "webpush_configured": newsletter_service.is_webpush_channel_enabled(),
     }
+
+
+# ---------------------------------------------------------------------------
+# Admin Comment Management
+# ---------------------------------------------------------------------------
+
+@router.get("/comments")
+async def admin_list_comments(
+    publication_id: int = Query(None),
+    is_visible: bool = Query(None),
+    comment_type: str = Query(None),
+    q: str = Query(None),
+    limit: int = Query(500, ge=1, le=2000),
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    """List all comments with optional filters for admin management."""
+    query = db.query(Comment)
+
+    if publication_id is not None:
+        query = query.filter(Comment.publication_id == publication_id)
+
+    if is_visible is not None:
+        query = query.filter(Comment.is_visible == is_visible)
+
+    if comment_type == "publication":
+        query = query.filter(Comment.publication_id != None)
+    elif comment_type == "submission":
+        query = query.filter(Comment.submission_id != None)
+
+    if q:
+        query = query.filter(Comment.content.ilike(f"%{q}%"))
+
+    comments = query.order_by(Comment.created_at.desc()).limit(limit).all()
+
+    # Enrich with author info
+    result = []
+    for c in comments:
+        author_name = None
+        author_image_url = None
+        if c.user_id:
+            user = db.query(User).filter(User.id == c.user_id).first()
+            if user:
+                author_name = user.full_name or user.email
+                author_image_url = getattr(user, "image_url", None)
+
+        result.append({
+            "id": c.id,
+            "content": c.content,
+            "user_id": c.user_id,
+            "publication_id": c.publication_id,
+            "submission_id": c.submission_id,
+            "parent_id": c.parent_id,
+            "is_visible": c.is_visible,
+            "created_at": c.created_at.isoformat() if c.created_at else None,
+            "author_name": author_name,
+            "author_image_url": author_image_url,
+        })
+
+    return result
+
+
+@router.put("/comments/{comment_id}/visibility")
+async def admin_toggle_comment_visibility(
+    comment_id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    """Toggle comment visibility (show/hide)."""
+    comment = db.query(Comment).filter(Comment.id == comment_id).first()
+    if not comment:
+        raise HTTPException(status_code=404, detail="Comment not found")
+
+    comment.is_visible = not comment.is_visible
+    db.add(comment)
+    db.commit()
+    db.refresh(comment)
+
+    return {
+        "id": comment.id,
+        "is_visible": comment.is_visible,
+        "message": "Comment visibility toggled",
+    }
+
+
+@router.delete("/comments/{comment_id}")
+async def admin_delete_comment(
+    comment_id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    """Delete a comment and all its children (replies)."""
+    comment = db.query(Comment).filter(Comment.id == comment_id).first()
+    if not comment:
+        raise HTTPException(status_code=404, detail="Comment not found")
+
+    # Delete child comments first (one level of nesting)
+    children = db.query(Comment).filter(Comment.parent_id == comment_id).all()
+    for child in children:
+        db.delete(child)
+
+    db.delete(comment)
+    db.commit()
+
+    return {"deleted": True, "id": comment_id}

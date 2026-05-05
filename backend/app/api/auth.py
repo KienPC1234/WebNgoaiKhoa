@@ -89,6 +89,18 @@ class UnsubscribeIn(BaseModel):
     token: str
 
 
+class ForgotPasswordIn(BaseModel):
+    email: str
+    recaptcha_token: Optional[str] = None
+
+
+class ResetPasswordIn(BaseModel):
+    email: str
+    otp: str = Field(min_length=4, max_length=12)
+    new_password: str = Field(min_length=6, max_length=128)
+    recaptcha_token: Optional[str] = None
+
+
 class GoogleAuthIn(BaseModel):
     id_token: str
     full_name: Optional[str] = None
@@ -619,7 +631,7 @@ async def resend_verify_email(payload: VerifyResendIn, db: Session = Depends(get
     except Exception as e:
         print(f"Warning: failed to resend OTP email: {e}")
 
-    return {"message": "Da gui lai ma OTP"}
+    return {"message": "Đã gửi lại mã OTP"}
 
 
 @router.get("/me", response_model=UserOut)
@@ -708,6 +720,84 @@ async def change_password(
     db.add(current_user)
     db.commit()
     return {"message": "Mật khẩu đã được cập nhật"}
+
+
+@router.post("/password/forgot")
+async def forgot_password(payload: ForgotPasswordIn, db: Session = Depends(get_db)):
+    """Send a password-reset OTP to the user's email."""
+    verify_recaptcha_or_raise(payload.recaptcha_token, action="forgot_password")
+
+    normalized_email = normalize_email(payload.email)
+
+    # Always return success to avoid email enumeration
+    user = db.query(User).filter(User.email == normalized_email).first()
+    if not user:
+        return {"message": "Nếu email tồn tại, mã OTP đã được gửi."}
+
+    if not user.is_active:
+        return {"message": "Nếu email tồn tại, mã OTP đã được gửi."}
+
+    otp = make_otp()
+    user.verification_token = otp
+    user.verification_token_expires_at = datetime.now(timezone.utc) + timedelta(minutes=OTP_EXPIRE_MINUTES)
+    user.last_verification_sent_at = datetime.now(timezone.utc)
+    db.add(user)
+    db.commit()
+
+    try:
+        send_otp_email(user.email, otp)
+    except Exception as e:
+        print(f"Warning: failed to send password reset OTP: {e}")
+
+    return {"message": "Nếu email tồn tại, mã OTP đã được gửi."}
+
+
+@router.post("/password/reset")
+async def reset_password(payload: ResetPasswordIn, db: Session = Depends(get_db)):
+    """Reset password using OTP verification."""
+    verify_recaptcha_or_raise(payload.recaptcha_token, action="reset_password")
+
+    normalized_email = normalize_email(payload.email)
+
+    user = db.query(User).filter(User.email == normalized_email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Email không tồn tại")
+
+    if not user.verification_token or payload.otp != str(user.verification_token):
+        raise HTTPException(status_code=400, detail="Mã OTP không hợp lệ")
+
+    expires_at = _ensure_aware(user.verification_token_expires_at)
+    if expires_at and datetime.now(timezone.utc) > expires_at:
+        raise HTTPException(status_code=400, detail="Mã OTP đã hết hạn")
+
+    user.hashed_password = get_password_hash(payload.new_password)
+    user.verification_token = None
+    user.verification_token_expires_at = None
+    # Also mark email as verified since they proved email ownership
+    user.email_verified = True
+    db.add(user)
+    db.commit()
+
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.email},
+        expires_delta=access_token_expires,
+    )
+
+    return {
+        "message": "Mật khẩu đã được đặt lại thành công",
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "role": user.role,
+            "full_name": user.full_name,
+            "image_url": getattr(user, 'image_url', None),
+            "email_verified": user.email_verified,
+            "is_subscribed": user.is_subscribed,
+        },
+    }
 
 
 @router.get("/unsubscribe")

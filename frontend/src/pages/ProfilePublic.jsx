@@ -7,10 +7,14 @@ import { AiChatWidget } from '@/components/AiChatWidget'
 
 export default function ProfilePublic() {
   const { userId } = useParams()
+  const navigate = useNavigate()
+
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState(null)
   const [submissions, setSubmissions] = useState([])
   const [error, setError] = useState(null)
+  const [following, setFollowing] = useState(false)
+  const [showAiWidget, setShowAiWidget] = useState(false)
 
   useEffect(() => {
     if (!userId) return
@@ -29,9 +33,6 @@ export default function ProfilePublic() {
     fetchData()
   }, [userId])
 
-  const navigate = useNavigate()
-
-  const [showAiWidget, setShowAiWidget] = useState(false)
   useEffect(() => {
     // Only render AI widget here if one isn't already mounted globally
     try {
@@ -45,8 +46,6 @@ export default function ProfilePublic() {
   if (error) return <div className="flex min-h-screen items-center justify-center text-red-500 font-bold">{error}</div>
 
   const avatarSrc = user?.image_url || ''
-
-  const [following, setFollowing] = useState(false)
 
   const handleFollow = async () => {
     // Optimistic UI toggle; backend follow endpoint may be implemented later

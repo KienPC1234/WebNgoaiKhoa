@@ -122,7 +122,7 @@ export const PhanMonDiaLi = () => {
                                             )}
                                         </div>
                                         <div className="flex-1 space-y-3 py-1">
-                                            <h4 className="font-black text-lg text-gray-800 group-hover:text-[#004d40] transition-colors leading-snug line-clamp-2">{pub.title}</h4>
+                                            <h4 className="font-black text-lg text-gray-800 group-hover:text-[#004d40] transition-colors leading-snug line-clamp-2 pt-2 md:pt-2">{pub.title}</h4>
                                             <div className="flex flex-wrap items-center gap-3">
                                                 <span className="text-[9px] text-white bg-gradient-to-r from-emerald-400 to-teal-600 font-black px-2 py-1 rounded-md uppercase tracking-widest flex items-center gap-1 shadow-sm">
                                                     <Download size={10} /> DỮ LIỆU ĐỊA LÍ

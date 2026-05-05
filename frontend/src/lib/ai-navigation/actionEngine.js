@@ -2,11 +2,34 @@ import { isWhitelistedPath, searchSitemap } from '@/lib/ai-navigation/sitemap'
 import { findBestElementHint, normalizeCurrentRoute, resolveElementFromHint } from '@/lib/ai-navigation/elementRegistry'
 
 const HIGHLIGHT_CLASS = 'ai-glow-highlight'
+const TENTATIVE_HIGHLIGHT_CLASS = 'ai-highlight-tentative'
+const CONFIRMED_HIGHLIGHT_CLASS = 'ai-highlight-confirmed'
+let __AI_HIGHLIGHT_STYLES_LOADED = false
+
+const ensureAiHighlightStylesLoaded = () => {
+  if (typeof document === 'undefined') return
+  if (__AI_HIGHLIGHT_STYLES_LOADED) return
+  try {
+    const css = `
+/* AI highlight styles (lazy-loaded) */
+.ai-highlight-tentative { position: relative !important; box-shadow: 0 0 0 3px rgba(245,158,11,0.12), 0 8px 24px rgba(245,158,11,0.18); outline: 2px solid rgba(245,158,11,0.92); transition: box-shadow 160ms ease, outline-color 160ms ease; border-radius: 8px !important; z-index: 99999 !important; animation: ai-highlight-pulse 1.6s infinite ease-in-out; }
+.ai-highlight-confirmed { position: relative !important; box-shadow: 0 0 0 3px rgba(6,182,212,0.12), 0 8px 24px rgba(6,182,212,0.18); outline: 2px solid rgba(6,182,212,0.92); transition: box-shadow 160ms ease, outline-color 160ms ease; border-radius: 8px !important; z-index: 99999 !important; }
+@keyframes ai-highlight-pulse { 0% { box-shadow: 0 0 0 0 rgba(245,158,11,0.12); } 70% { box-shadow: 0 0 0 10px rgba(245,158,11,0.00); } 100% { box-shadow: 0 0 0 0 rgba(245,158,11,0.00); } }
+`;
+    const style = document.createElement('style')
+    style.setAttribute('data-ai-highlights', '1')
+    style.appendChild(document.createTextNode(css))
+    document.head.appendChild(style)
+    __AI_HIGHLIGHT_STYLES_LOADED = true
+  } catch (e) {
+    // ignore
+  }
+}
 const activeHighlightTimers = new Map()
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 const SCROLL_BLOCKS = new Set(['start', 'center', 'end', 'nearest'])
 const TEXT_TARGET_MIN_SCORE = 20
-const AUTO_HIGHLIGHT_MIN_CONFIDENCE = 0.62
+const AUTO_HIGHLIGHT_MIN_CONFIDENCE = 0.5
 
 const toInt = (value, fallback) => {
   const parsed = Number.parseInt(value, 10)
@@ -69,35 +92,11 @@ const textScoreToConfidence = (score = 0) => {
   return Math.max(0.25, Math.min(0.9, (bounded * 0.65) + 0.25))
 }
 
-const extractFocusPhrase = (query = '') => {
-  const trimmed = query.trim()
-  if (!trimmed) return ''
-
-  const firstLine = trimmed.split('\n').map((line) => line.trim()).find(Boolean) || trimmed
-
-  const quoteMatch = trimmed.match(/["“”']([^"“”']{2,120})["“”']/)
-  if (quoteMatch?.[1]) return quoteMatch[1].trim()
-
-  const headingMatch = firstLine.match(/(?:tieu\s*de|tiêu\s*đề|heading)\s+(.{2,120})$/i)
-  if (headingMatch?.[1]) {
-    return headingMatch[1]
-      .replace(/^(la|là|ten|tên)\s+/i, '')
-      .replace(/[.,;:!?]+$/g, '')
-      .trim()
-  }
-
-  const cardMatch = trimmed.match(/card\s+(.+?)(?:\s+(?:tren|trên|o|ở)\s+trang|$)/i)
-  if (cardMatch?.[1]) return cardMatch[1].trim()
-
-  const elementMatch = trimmed.match(/(?:phan\s*tu|phần\s*tử|truong|trường|label|input|nut|nút|button)\s+(.+?)(?:\s+(?:trong|tren|trên|o|ở)\s+trang|$)/i)
-  if (elementMatch?.[1]) {
-    return elementMatch[1]
-      .replace(/^(la|là|ten|tên)\s+/i, '')
-      .trim()
-  }
-
-  return ''
-}
+const cleanTargetText = (value = '') =>
+  String(value || '')
+    .replace(/["“”']/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
 
 const getPathname = (path = '') => {
   if (typeof path !== 'string') return ''
@@ -128,6 +127,12 @@ const rerankContentMatches = ({ matches = [], currentPath = '', preferCurrentPat
     .sort((a, b) => (b.__agentAdjustedScore || 0) - (a.__agentAdjustedScore || 0))
 }
 
+const isDetailContentPath = (path = '') => {
+  const pathname = getPathname(path)
+  if (!pathname) return false
+  return /^\/posts\/\d+$/.test(pathname) || /^\/stories\/inspiring\/\d+$/.test(pathname) || /^\/submissions\/\d+$/.test(pathname)
+}
+
 const rerankSitemapMatches = ({ matches = [], currentPath = '', preferHome = false }) => {
   if (!Array.isArray(matches) || matches.length === 0) return []
 
@@ -152,7 +157,82 @@ const resolveTargetElement = (target) => {
   if (!normalizedTarget) return null
 
   if (normalizedTarget.startsWith('text:')) {
-    const phrase = normalizedTarget.slice(5).trim()
+    const phrase = cleanTargetText(normalizedTarget.slice(5).trim())
+    const resolveFormControlByPhrase = (rawPhrase = '') => {
+      const intentPhrase = cleanTargetText(rawPhrase)
+      const formCandidates = Array.from(document.querySelectorAll('input,textarea,select'))
+      if (!intentPhrase || formCandidates.length === 0) return null
+
+      const mapLabelToControl = (labelNode) => {
+        if (!labelNode) return null
+        const htmlFor = labelNode.getAttribute?.('for')
+        if (htmlFor) {
+          const byFor = document.getElementById(htmlFor)
+          if (byFor) return byFor
+        }
+        const fieldContainer = labelNode.closest('div,section,article,form')
+        if (!fieldContainer) return null
+        return fieldContainer.querySelector('input,textarea,select')
+      }
+
+      const labels = Array.from(document.querySelectorAll('label'))
+      let bestLabelControl = null
+      let bestLabelScore = 0
+      for (const labelNode of labels) {
+        const labelText = labelNode.textContent || ''
+        const labelScore = scorePhrase(labelText, intentPhrase)
+        if (labelScore > bestLabelScore) {
+          const control = mapLabelToControl(labelNode)
+          if (control) {
+            bestLabelScore = labelScore
+            bestLabelControl = control
+          }
+        }
+      }
+
+      let bestField = null
+      let bestFieldScore = 0
+      for (const fieldNode of formCandidates) {
+        const fieldText = [
+          fieldNode.getAttribute?.('aria-label') || '',
+          fieldNode.getAttribute?.('placeholder') || '',
+          fieldNode.getAttribute?.('name') || '',
+          fieldNode.getAttribute?.('id') || '',
+          fieldNode.getAttribute?.('title') || '',
+        ].join(' ')
+        const fieldScore = scorePhrase(fieldText, intentPhrase)
+        if (fieldScore > bestFieldScore) {
+          bestFieldScore = fieldScore
+          bestField = fieldNode
+        }
+      }
+
+      if (bestLabelControl && bestLabelScore >= Math.max(TEXT_TARGET_MIN_SCORE, 18)) {
+        return {
+          element: bestLabelControl,
+          confidence: textScoreToConfidence(bestLabelScore + 30),
+          strategy: 'form_label_match',
+          score: bestLabelScore,
+        }
+      }
+
+      if (bestField && bestFieldScore >= Math.max(TEXT_TARGET_MIN_SCORE, 18)) {
+        return {
+          element: bestField,
+          confidence: textScoreToConfidence(bestFieldScore + 20),
+          strategy: 'form_field_match',
+          score: bestFieldScore,
+        }
+      }
+
+      return null
+    }
+
+    const formControl = resolveFormControlByPhrase(phrase)
+    if (formControl?.element) {
+      return formControl
+    }
+
     const indexedHint = findBestElementHint(phrase, normalizeCurrentRoute())
     if (indexedHint) {
       const byHint = resolveElementFromHint(indexedHint)
@@ -317,9 +397,11 @@ const scrollToTarget = (target, block = 'start') => {
 }
 
 const highlightTarget = (target, durationMs = 2000, options = {}) => {
+  ensureAiHighlightStylesLoaded()
   const providedElement = options?.element || null
-  const providedConfidence = Number.isFinite(options?.confidence) ? options.confidence : null
-  const minConfidence = Number.isFinite(options?.minConfidence) ? options.minConfidence : 0
+  const providedConfidence = Number.isFinite(options?.confidence) ? options?.confidence : null
+  const minConfidence = Number.isFinite(options?.minConfidence) ? options?.minConfidence : 0
+  const tentative = options?.tentative === true || options?.state === 'tentative'
 
   const resolved = providedElement
     ? {
@@ -332,7 +414,7 @@ const highlightTarget = (target, durationMs = 2000, options = {}) => {
   if (!resolved?.element) return { ok: false, reason: 'target_not_found' }
 
   const confidence = Number.isFinite(resolved.confidence) ? resolved.confidence : 0
-  if (confidence < minConfidence) {
+  if (confidence < minConfidence && !tentative) {
     return {
       ok: false,
       reason: 'highlight_low_confidence',
@@ -344,23 +426,36 @@ const highlightTarget = (target, durationMs = 2000, options = {}) => {
 
   const { element } = resolved
 
-  const existingTimer = activeHighlightTimers.get(element)
-  if (existingTimer) {
-    window.clearTimeout(existingTimer)
-  }
+  try {
+    const existingTimer = activeHighlightTimers.get(element)
+    if (existingTimer) {
+      window.clearTimeout(existingTimer)
+    }
 
-  element.classList.add(HIGHLIGHT_CLASS)
-  const timer = window.setTimeout(() => {
-    element.classList.remove(HIGHLIGHT_CLASS)
-    activeHighlightTimers.delete(element)
-  }, Math.max(500, durationMs))
+    // Remove any previous ai highlight classes
+    element.classList.remove(TENTATIVE_HIGHLIGHT_CLASS)
+    element.classList.remove(CONFIRMED_HIGHLIGHT_CLASS)
 
-  activeHighlightTimers.set(element, timer)
-  return {
-    ok: true,
-    element,
-    confidence,
-    actionSummary: 'Đã làm nổi bật vị trí bằng viền sáng.',
+    const className = tentative ? TENTATIVE_HIGHLIGHT_CLASS : CONFIRMED_HIGHLIGHT_CLASS
+    element.classList.add(className)
+
+    const timer = window.setTimeout(() => {
+      try {
+        element.classList.remove(className)
+      } catch (e) {}
+      activeHighlightTimers.delete(element)
+    }, Math.max(500, durationMs))
+
+    activeHighlightTimers.set(element, timer)
+    return {
+      ok: true,
+      element,
+      confidence,
+      actionSummary: tentative ? 'Đã khoanh viền tạm (gợi ý).' : 'Đã làm nổi bật vị trí bằng viền sáng.',
+      tentative: !!tentative,
+    }
+  } catch (e) {
+    return { ok: false, reason: 'highlight_error', message: String(e) }
   }
 }
 
@@ -443,6 +538,112 @@ const normalizeCandidateTitle = (item = {}) => {
   return item?.path || 'Không rõ tiêu đề'
 }
 
+const getPathFamily = (path = '') => {
+  const pathname = getPathname(path)
+  if (!pathname) return ''
+  if (pathname.startsWith('/posts/')) return '/posts'
+  if (pathname.startsWith('/stories/inspiring/')) return '/stories/inspiring'
+  if (pathname.startsWith('/submissions/')) return '/submissions'
+  if (pathname.startsWith('/events/')) return '/events'
+  if (pathname.startsWith('/phanmon/')) return '/phanmon'
+  return pathname
+}
+
+const extractYearTokens = (text = '') => {
+  const matches = normalize(text).match(/\b\d{4}\b/g)
+  return Array.isArray(matches) ? Array.from(new Set(matches)) : []
+}
+
+const hasTitleLookupSignals = (query = '') => {
+  const normalizedQuery = normalize(query)
+  if (!normalizedQuery) return false
+  return /\bbai viet\b|\btieu de\b|\btitle\b|\bnhac toi\b|\btrong tieu de\b/.test(normalizedQuery)
+}
+
+const hasFormFocusSignals = (query = '') => {
+  const normalizedQuery = normalize(query)
+  if (!normalizedQuery) return false
+  return /\bnhap\b|\bdien\b|\bo nhap\b|\btruong\b|\blabel\b|\binput\b|\bnop bai\b|\bgui bai\b|\btac gia\b/.test(normalizedQuery)
+}
+
+const selectBestContentMatch = ({ matches = [], query = '', currentPath = '' }) => {
+  if (!Array.isArray(matches) || matches.length === 0) return null
+
+  const queryText = cleanTargetText(query)
+  const hasTitleIntent = hasTitleLookupSignals(queryText)
+  const hasFormIntent = hasFormFocusSignals(queryText)
+  const yearTokens = extractYearTokens(queryText)
+
+  let best = null
+  let bestScore = Number.NEGATIVE_INFINITY
+
+  for (const item of matches) {
+    const path = item?.path || ''
+    const pathname = getPathname(path)
+    const title = shorten(item?.title || '', 140)
+    const snippet = shorten(item?.snippet || '', 180)
+    const haystack = `${title} ${snippet}`.trim()
+
+    let score = Number.isFinite(Number(item?.__agentAdjustedScore)) ? Number(item.__agentAdjustedScore) : Number(item?.score || 0)
+    score += scorePhrase(haystack, queryText)
+
+    if (isDetailContentPath(path)) score += 42
+    if (item?.entity_type === 'publication' || item?.entity_type === 'story') score += 20
+    if (item?.entity_type === 'intent' && hasFormIntent) score += 40
+    if (hasFormIntent && path.includes('?tab=sang-tac')) score += 52
+
+    if (hasTitleIntent && !isDetailContentPath(path)) score -= 34
+    if (hasTitleIntent && pathname.startsWith('/doingu/')) score -= 55
+
+    if (yearTokens.length > 0) {
+      const normalizedHaystack = normalize(haystack)
+      const hasYear = yearTokens.some((year) => normalizedHaystack.includes(year))
+      score += hasYear ? 16 : -24
+    }
+
+    if (pathname && currentPath && pathname === getPathname(currentPath)) {
+      score += 8
+    }
+
+    if (score > bestScore) {
+      bestScore = score
+      best = item
+    }
+  }
+
+  return best
+}
+
+const filterRelevantSuggestions = ({ candidates = [], query = '', selectedPath = '' }) => {
+  if (!Array.isArray(candidates) || candidates.length === 0) return []
+
+  const queryText = cleanTargetText(query)
+  if (!queryText) return []
+
+  const selectedFamily = getPathFamily(selectedPath)
+  const yearTokens = extractYearTokens(queryText)
+
+  return candidates.filter((item) => {
+    const title = normalizeCandidateTitle(item)
+    const snippet = shorten(item?.snippet || '', 140)
+    const haystack = `${title} ${snippet}`.trim()
+    let relevance = scorePhrase(haystack, queryText)
+
+    if (selectedFamily && getPathFamily(item?.path || '') === selectedFamily) {
+      relevance += 14
+    }
+
+    if (yearTokens.length > 0) {
+      const normalizedHaystack = normalize(haystack)
+      const hasYearMatch = yearTokens.some((year) => normalizedHaystack.includes(year))
+      if (!hasYearMatch) return false
+      relevance += 8
+    }
+
+    return relevance >= 46
+  })
+}
+
 const buildCompactSuggestions = (candidates = [], maxItems = 2) => {
   if (!Array.isArray(candidates) || candidates.length === 0) return ''
 
@@ -482,45 +683,29 @@ const mapKnowledgeResultToRoute = (item) => {
 
 const resolveSearchIntent = async (query, limit) => {
   const trimmedQuery = (query || '').trim()
-  const normalizedQuery = normalize(trimmedQuery)
-  const focusPhrase = extractFocusPhrase(trimmedQuery)
+  const focusPhrase = cleanTargetText(trimmedQuery)
   const currentRoute = normalizeCurrentRoute()
   const currentPath = currentRoute.split('?')[0] || currentRoute
-  const mentionsHome = /trang chu|trang chủ|home/.test(normalizedQuery)
   const localPhrase = focusPhrase || trimmedQuery
   const localHint = findBestElementHint(localPhrase, currentRoute)
-  if (localHint?.route && isWhitelistedPath(localHint.route)) {
-    return {
-      path: localHint.route,
-      target: `text:${localHint.text}`,
-      targetLabel: localHint.text,
-      source: 'local_element_index',
-    }
-  }
-
-  if (focusPhrase && isWhitelistedPath(currentPath)) {
-    return {
-      path: currentRoute,
-      target: `text:${focusPhrase}`,
-      targetLabel: focusPhrase,
-      source: 'current_route_phrase',
-    }
-  }
+  const formIntent = hasFormFocusSignals(trimmedQuery)
 
   const contentMatches = await fetchWebsiteContentMatches(trimmedQuery, Math.max(limit, 8))
   const rankedContentMatches = rerankContentMatches({
     matches: contentMatches,
     currentPath,
-    preferCurrentPath: Boolean(focusPhrase),
-    preferHome: mentionsHome,
+    preferCurrentPath: false,
+    preferHome: false,
   })
   if (rankedContentMatches.length > 0) {
-    const bestContent = rankedContentMatches[0]
+    const bestContent = selectBestContentMatch({
+      matches: rankedContentMatches,
+      query: trimmedQuery,
+      currentPath,
+    }) || rankedContentMatches.find((item) => isDetailContentPath(item?.path || '')) || rankedContentMatches[0]
     if (bestContent?.path) {
-      const path = mentionsHome && bestContent.home_path ? bestContent.home_path : bestContent.path
-      const candidateTarget = mentionsHome && bestContent.home_target
-        ? bestContent.home_target
-        : bestContent.target
+      const path = bestContent.path
+      const candidateTarget = bestContent.target
 
       return {
         path,
@@ -536,15 +721,13 @@ const resolveSearchIntent = async (query, limit) => {
     }
   }
 
-  if (mentionsHome) {
-    const homeCandidates = searchSitemap(trimmedQuery, Math.max(limit, 5)).filter((item) => item.path === '/')
-    const bestHome = homeCandidates[0]
-
+  if (formIntent && localHint?.route && isWhitelistedPath(localHint.route) && localHint.route.includes('?')) {
+    const bestTargetText = focusPhrase || localHint.text
     return {
-      path: '/',
-      target: focusPhrase ? `text:${focusPhrase}` : (bestHome?.target ? `anchor:${bestHome.target}` : 'anchor:home-latest-publications'),
-      targetLabel: focusPhrase || bestHome?.targetLabel || 'khu vực liên quan trên Trang chủ',
-      source: 'home_intent',
+      path: localHint.route,
+      target: bestTargetText ? `text:${bestTargetText}` : null,
+      targetLabel: bestTargetText || localHint.text,
+      source: 'local_element_index',
     }
   }
 
@@ -571,7 +754,7 @@ const resolveSearchIntent = async (query, limit) => {
   const sitemapMatches = rerankSitemapMatches({
     matches: searchSitemap(trimmedQuery, limit),
     currentPath,
-    preferHome: mentionsHome,
+    preferHome: false,
   })
   if (sitemapMatches.length > 0) {
     const best = sitemapMatches[0]
@@ -585,6 +768,16 @@ const resolveSearchIntent = async (query, limit) => {
         path: item?.path || '/',
       })),
       source: 'sitemap',
+    }
+  }
+
+  if (localHint?.route && isWhitelistedPath(localHint.route)) {
+    const bestTargetText = focusPhrase || localHint.text
+    return {
+      path: localHint.route,
+      target: bestTargetText ? `text:${bestTargetText}` : null,
+      targetLabel: bestTargetText || localHint.text,
+      source: 'local_element_index',
     }
   }
 
@@ -677,13 +870,17 @@ export const createAiActionEngine = ({ navigate }) => {
       let followupWarning = ''
       if (resolved.target) {
         followup = scrollToTarget(resolved.target, 'center')
-        if (followup.ok) {
+          if (followup.ok) {
           const autoHighlight = highlightTarget(resolved.target, 2200, {
             element: followup.element,
             confidence: followup.confidence,
             minConfidence: AUTO_HIGHLIGHT_MIN_CONFIDENCE,
           })
           if (!autoHighlight.ok && autoHighlight.reason === 'highlight_low_confidence') {
+            try {
+              // show a tentative visual cue even when the confidence is low
+              highlightTarget(resolved.target, 2200, { element: followup.element, tentative: true, confidence: followup.confidence })
+            } catch (e) {}
             followupWarning = 'Mình đã cuộn đến đúng khu vực, nhưng chưa đủ chắc để tự khoanh viền phần tử.'
           }
         } else {
@@ -729,7 +926,14 @@ export const createAiActionEngine = ({ navigate }) => {
         const topSuggestions = resolved.targetLabel
           ? resolved.candidates.filter((item) => shorten(item?.title || '', 90) !== shorten(resolved.targetLabel, 90))
           : resolved.candidates
-        const suggestionText = buildCompactSuggestions(topSuggestions, 2)
+
+        const relevantSuggestions = filterRelevantSuggestions({
+          candidates: topSuggestions,
+          query,
+          selectedPath: resolved.path,
+        })
+
+        const suggestionText = buildCompactSuggestions(relevantSuggestions, 2)
         if (suggestionText) {
           summaryParts.push(suggestionText)
         }
@@ -782,11 +986,17 @@ export const createAiActionEngine = ({ navigate }) => {
           return { ok: false, reason: 'target_not_found', actionSummary: 'Không tìm thấy phần tử theo gợi ý.' }
         }
 
-        const highlighted = highlightTarget(target, 2200, {
+        let highlighted = highlightTarget(target, 2200, {
           element: scrolled.element,
           confidence: scrolled.confidence,
           minConfidence: AUTO_HIGHLIGHT_MIN_CONFIDENCE,
         })
+
+        if (!highlighted.ok && highlighted.reason === 'highlight_low_confidence') {
+          try {
+            highlighted = highlightTarget(target, 2200, { element: scrolled.element, tentative: true, confidence: scrolled.confidence })
+          } catch (e) {}
+        }
 
         return {
           ok: highlighted.ok,
@@ -856,6 +1066,10 @@ export const createAiActionEngine = ({ navigate }) => {
               minConfidence: AUTO_HIGHLIGHT_MIN_CONFIDENCE,
             })
             if (!retriedHighlight.ok && retriedHighlight.reason === 'highlight_low_confidence') {
+              try {
+                // show tentative highlight when confidence is low
+                highlightTarget(target, durationMs, { element: retriedScroll.element, tentative: true, confidence: retriedScroll.confidence })
+              } catch (e) {}
               return {
                 ok: true,
                 action: 'open_and_focus',
@@ -881,23 +1095,55 @@ export const createAiActionEngine = ({ navigate }) => {
         }
       }
 
-      const highlighted = highlightTarget(target, durationMs, {
+      let highlighted = highlightTarget(target, durationMs, {
         element: scrolled.element,
         confidence: scrolled.confidence,
         minConfidence: AUTO_HIGHLIGHT_MIN_CONFIDENCE,
       })
       if (!highlighted.ok && highlighted.reason === 'highlight_low_confidence') {
-        return {
-          ok: true,
-          action: 'open_and_focus',
-          path,
-          target,
-          actionSummary: `Đã mở trang ${path} và cuộn đến khu vực phù hợp, nhưng chưa đủ chắc để tự khoanh viền phần tử.`,
+        try {
+          highlighted = highlightTarget(target, durationMs, { element: scrolled.element, tentative: true, confidence: scrolled.confidence })
+        } catch (e) {}
+        if (!highlighted.ok) {
+          return {
+            ok: true,
+            action: 'open_and_focus',
+            path,
+            target,
+            actionSummary: `Đã mở trang ${path} và cuộn đến khu vực phù hợp, nhưng chưa đủ chắc để tự khoanh viền phần tử.`,
+          }
         }
       }
       return {
         ...highlighted,
         actionSummary: `Đã mở trang ${path} và làm nổi bật đúng vị trí cần tìm.`,
+      }
+    },
+
+    search_element_index: async (args = {}) => {
+      const query = typeof args.query === 'string' ? args.query.trim() : ''
+      const limit = toInt(args.limit, 5)
+      if (!query) return { ok: false, reason: 'query_missing' }
+
+      try {
+        const routeParam = typeof args.route === 'string' && args.route.trim() ? `&route=${encodeURIComponent(args.route.trim())}` : ''
+        const resp = await fetch(`${API_URL}/ai/elements/search?query=${encodeURIComponent(query)}&n_results=${Math.max(1, limit)}${routeParam}`)
+        if (!resp.ok) return { ok: false, reason: 'backend_error' }
+        const payload = await resp.json()
+        const results = Array.isArray(payload?.results) ? payload.results : []
+        if (!results.length) {
+          return { ok: false, reason: 'no_result', actionSummary: 'Mình chưa tìm thấy phần tử UI phù hợp.' }
+        }
+        const top = results[0]
+        return {
+          ok: true,
+          action: 'search_element_index',
+          results,
+          top,
+          actionSummary: `Đã tìm thấy ${results.length} phần tử phù hợp. Ví dụ: ${shorten(top?.text || '', 60)}${top?.route ? ` (${top.route})` : ''}.`,
+        }
+      } catch (e) {
+        return { ok: false, reason: 'tool_exec_error', message: e?.message || String(e) }
       }
     },
 
@@ -948,10 +1194,24 @@ export const createAiActionEngine = ({ navigate }) => {
   const executeToolCalls = async (toolCalls = [], context = {}) => {
     const results = []
     const userQuery = typeof context.userQuery === 'string' ? context.userQuery : ''
+    let settledNavigationAction = false
 
     for (const call of toolCalls) {
       const name = call?.name
       const args = call?.args || {}
+
+       if (
+        settledNavigationAction
+        && ['navigate_to_page', 'search_content', 'open_and_focus', 'scroll_to_target', 'highlight_target', 'compute_selector_for_text'].includes(name)
+      ) {
+        results.push({
+          ok: true,
+          name,
+          skipped: true,
+          reason: 'redundant_navigation_after_settled_action',
+        })
+        continue
+      }
 
       const handler = handlers[name]
 
@@ -963,6 +1223,10 @@ export const createAiActionEngine = ({ navigate }) => {
       try {
         const output = await handler(args)
         results.push({ name, ...output })
+
+        if (output?.ok && (name === 'search_content' || name === 'open_and_focus')) {
+          settledNavigationAction = true
+        }
       } catch (error) {
         results.push({
           ok: false,

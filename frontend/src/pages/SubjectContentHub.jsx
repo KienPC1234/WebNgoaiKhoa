@@ -3,10 +3,9 @@ import { useParams } from 'react-router-dom'
 import { Link } from 'react-router-dom'
 import { Award, BookOpen, Compass, ExternalLink, RefreshCw } from 'lucide-react'
 import { Card } from '@/components/ui/core'
+import { getPublicationCardDescription } from '@/lib/publicationSummary'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
-const toPlainText = (value) => (value || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
-
 const SUBJECT_LABELS = {
   van: 'Ngữ Văn',
   ktpl: 'Kinh tế pháp luật',
@@ -131,8 +130,8 @@ export const SubjectContentHub = () => {
                   )}
                 </div>
                 <div className="p-6 space-y-3">
-                  <h3 className="font-black text-lg text-fpt-blue line-clamp-2">{item.title}</h3>
-                  <p className="text-sm text-gray-500 font-medium line-clamp-4">{toPlainText(item.content)}</p>
+                  <h3 className="font-black text-lg text-fpt-blue line-clamp-2 pt-2 md:pt-2">{item.title}</h3>
+                  <p className="text-sm text-gray-500 font-medium line-clamp-4">{getPublicationCardDescription(item, 220)}</p>
                   <div className="flex items-center justify-between pt-2 border-t border-gray-100">
                     <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
                       {new Date(item.created_at).toLocaleDateString('vi-VN')}

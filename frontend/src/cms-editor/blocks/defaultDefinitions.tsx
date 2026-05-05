@@ -31,8 +31,14 @@ const clamp = (value: number, min: number, max: number) => Math.max(min, Math.mi
 
 const normalizeVideoUrl = (value: string) => {
   if (!value) return ''
+  // YouTube
   if (value.includes('youtube.com/watch?v=')) return value.replace('watch?v=', 'embed/')
   if (value.includes('youtu.be/')) return value.replace('youtu.be/', 'youtube.com/embed/')
+  // Google Drive video — convert various link formats to embeddable /preview
+  const driveMatch = value.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/)
+  if (driveMatch) return `https://drive.google.com/file/d/${driveMatch[1]}/preview`
+  const driveOpenMatch = value.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/)
+  if (driveOpenMatch) return `https://drive.google.com/file/d/${driveOpenMatch[1]}/preview`
   return value
 }
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Button, Card, RichTextEditor } from '@/components/UI'
-import { Plus, Save, Trash2, Users, Building2 } from 'lucide-react'
+import { Plus, Save, Trash2, Users, Building2, ChevronDown } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { cmsService } from '@/lib/cmsService'
 import { confirmAction, showApiError, toastError, toastSuccess } from '@/lib/notify'
 import StaffListContainer from '@/components/Admin/StaffList/StaffListContainer'
@@ -44,6 +45,7 @@ export const AdminNhanVatCMS = () => {
   const [reactionsSummary, setReactionsSummary] = useState([])
   const [reactionsError, setReactionsError] = useState(null)
   const [reactionsLoading, setReactionsLoading] = useState(false)
+  const [reactionsCollapsed, setReactionsCollapsed] = useState(true)
 
   const fetchAll = async () => {
     setLoading(true)
@@ -409,28 +411,47 @@ export const AdminNhanVatCMS = () => {
       </Card>
 
       <Card className="bg-white p-8 rounded-3xl border border-gray-100 shadow-xl shadow-gray-100">
-        <div className="flex items-center gap-3 mb-6">
-          <Building2 className="text-fpt-blue" size={24} />
-          <h2 className="text-2xl font-black text-fpt-blue uppercase tracking-tight">Phản ứng đội ngũ</h2>
-        </div>
-        {reactionsLoading ? (
-          <div className="py-8 text-center text-gray-500">Đang tải dữ liệu phản ứng...</div>
-        ) : reactionsError ? (
-          <div className="py-4 text-sm text-red-600">
-            Lỗi khi tải dữ liệu phản ứng. <button onClick={reloadReactions} className="ml-2 underline">Tải lại</button>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <Building2 className="text-fpt-blue" size={24} />
+            <h2 className="text-2xl font-black text-fpt-blue uppercase tracking-tight">Phản ứng đội ngũ</h2>
           </div>
-        ) : (
-          <>
-            {(!reactionsSummary || reactionsSummary.length === 0) ? (
-              <div className="py-4 text-sm text-gray-500">Chưa có dữ liệu phản ứng. <button onClick={reloadReactions} className="ml-2 underline">Tải lại</button></div>
-            ) : (
-              <>
-                <StaffReactionsSummaryBlock data={reactionsSummary} />
-                <StaffReactionsChart data={reactionsSummary} />
-              </>
-            )}
-          </>
-        )}
+          <div className="flex items-center gap-2">
+            <button
+              aria-expanded={!reactionsCollapsed}
+              onClick={() => setReactionsCollapsed((s) => !s)}
+              className="p-2 bg-white border border-gray-100 rounded-full shadow-sm hover:shadow-md transition-transform"
+              title={reactionsCollapsed ? 'Mở rộng' : 'Thu gọn'}
+            >
+              <ChevronDown className="text-fpt-blue" size={16} style={{ transform: reactionsCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.18s' }} />
+            </button>
+          </div>
+        </div>
+
+        <AnimatePresence initial={false}>
+          {!reactionsCollapsed && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.18 }} className="overflow-hidden">
+              {reactionsLoading ? (
+                <div className="py-8 text-center text-gray-500">Đang tải dữ liệu phản ứng...</div>
+              ) : reactionsError ? (
+                <div className="py-4 text-sm text-red-600">
+                  Lỗi khi tải dữ liệu phản ứng. <button onClick={reloadReactions} className="ml-2 underline">Tải lại</button>
+                </div>
+              ) : (
+                <>
+                  {(!reactionsSummary || reactionsSummary.length === 0) ? (
+                    <div className="py-4 text-sm text-gray-500">Chưa có dữ liệu phản ứng. <button onClick={reloadReactions} className="ml-2 underline">Tải lại</button></div>
+                  ) : (
+                    <>
+                      <StaffReactionsSummaryBlock data={reactionsSummary} />
+                      <StaffReactionsChart data={reactionsSummary} />
+                    </>
+                  )}
+                </>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </Card>
 
       <StaffListContainer />

@@ -1,374 +1,535 @@
-import { useState, useEffect } from 'react'
-import {
-  ArrowRight,
-  BookOpen,
-  Calendar,
-  ChevronRight,
-  Send,
-  Sparkles,
-  Users,
-  Heart,
-  RefreshCw,
-  ShieldCheck,
-  Award,
-  Sun,
-} from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { CalendarDays, ChevronRight, Clock3, PlayCircle, Sparkles } from 'lucide-react'
 import { Button, Card } from '@/components/ui/core'
-import { GridBackground, ShimmerButton, Spotlight } from '@/components/aceternity'
-import { cn } from '@/lib/utils'
 import { Link } from 'react-router-dom'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
+
 const toPlainText = (value) => (value || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
-const toWebpCandidate = (url) => {
-  if (!url || typeof url !== 'string') return undefined
-  const [pathname, query = ''] = url.split('?')
-  if (!pathname) return undefined
-  const converted = pathname.replace(/\.(png|jpe?g)$/i, '.webp')
-  if (converted === pathname) return undefined
-  return `${converted}${query ? `?${query}` : ''}`
+
+const looksLikeLowQualityShortDescription = (value, item) => {
+  const text = toPlainText(value)
+  if (!text) return true
+  if (text.length < 20) return true
+
+  const title = toPlainText(item?.title || '').toLowerCase()
+  const subject = String(item?.subject || '').toLowerCase()
+  const contentType = String(item?.content_type || '').toLowerCase()
+  const normalized = text.toLowerCase()
+
+  if (title && subject && contentType && normalized === `${title} ${subject} ${contentType}`.trim()) {
+    return true
+  }
+
+  return false
 }
 
-const featureCards = [
-  {
-    icon: Heart,
-    title: 'Tôn',
-    description: 'Tôn trọng — tôn trọng người khác, ý kiến và quy trình.',
-    colorClass: 'from-[#f7f3ea] to-white border-amber-100 text-amber-700',
-  },
-  {
-    icon: RefreshCw,
-    title: 'Đổi',
-    description: 'Đổi mới — khuyến khích sáng tạo và cải tiến liên tục.',
-    colorClass: 'from-[#eef5ff] to-white border-blue-100 text-fpt-blue',
-  },
-  {
-    icon: Users,
-    title: 'Đồng',
-    description: 'Đồng đội — làm việc hợp tác, hỗ trợ lẫn nhau.',
-    colorClass: 'from-[#edf9f1] to-white border-emerald-100 text-emerald-700',
-  },
-  {
-    icon: ShieldCheck,
-    title: 'Chí',
-    description: 'Chí công — công bằng, chính trực trong hành động.',
-    colorClass: 'from-[#fff7f0] to-white border-orange-100 text-orange-700',
-  },
-  {
-    icon: Award,
-    title: 'Gương',
-    description: 'Gương mẫu — hành xử làm tấm gương cho người khác noi theo.',
-    colorClass: 'from-[#f0f6ff] to-white border-sky-100 text-sky-700',
-  },
-  {
-    icon: Sun,
-    title: 'Sáng',
-    description: 'Sáng suốt — quyết định rõ ràng, minh bạch và có tầm nhìn.',
-    colorClass: 'from-[#fffaf0] to-white border-yellow-100 text-yellow-700',
-  },
-]
+const getPublicationCardDescription = (item) => {
+  const primary = item?.short_description || ''
+  if (!looksLikeLowQualityShortDescription(primary, item)) {
+    return toPlainText(primary)
+  }
 
-const HeroStat = ({ value, label }) => (
-  <div className="rounded-2xl border border-white/70 bg-white/80 px-4 py-3 shadow-[0_12px_28px_-20px_rgba(15,23,42,0.5)] backdrop-blur">
-    <p className="text-2xl font-black text-fpt-blue md:text-3xl">{value}</p>
-    <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-400">{label}</p>
-  </div>
-)
+  const layoutMeta = item?.layout_metadata || {}
+  const metadata = layoutMeta?.metadata || {}
+  const candidate =
+    metadata?.short_description ||
+    layoutMeta?.short_description ||
+    metadata?.summary ||
+    layoutMeta?.summary ||
+    metadata?.description ||
+    layoutMeta?.description ||
+    item?.content ||
+    item?.snippet ||
+    ''
+
+  return toPlainText(candidate)
+}
+
+/** Returns an embeddable iframe src if the URL is a known embeddable source, otherwise null. */
+const getEmbedUrl = (url) => {
+  if (!url) return null
+  // Google Drive
+  const driveMatch = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/)
+  if (driveMatch) return `https://drive.google.com/file/d/${driveMatch[1]}/preview`
+  const driveOpenMatch = url.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/)
+  if (driveOpenMatch) return `https://drive.google.com/file/d/${driveOpenMatch[1]}/preview`
+  // YouTube
+  if (url.includes('youtube.com/watch?v=')) return url.replace('watch?v=', 'embed/')
+  if (url.includes('youtu.be/')) return url.replace('youtu.be/', 'youtube.com/embed/')
+  return null
+}
+
+const formatDate = (value) => {
+  try {
+    return new Date(value).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  } catch {
+    return ''
+  }
+}
+
+const getCountdown = (eventDate, nowTs) => {
+  const target = new Date(eventDate).getTime()
+  if (!Number.isFinite(target)) return null
+  const diff = Math.max(0, target - nowTs)
+
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+  const seconds = Math.floor((diff % (1000 * 60)) / 1000)
+
+  return {
+    expired: target <= nowTs,
+    days,
+    hours,
+    minutes,
+    seconds,
+  }
+}
+
+const getEventHref = (event) => {
+  if (event?.linked_post_id) return `/posts/${event.linked_post_id}`
+  return '/events/upcoming'
+}
+
+const EventCountdown = ({ eventDate, nowTs, compact = false }) => {
+  const countdown = getCountdown(eventDate, nowTs)
+  if (!countdown) return null
+
+  return (
+    <div className={`mt-3 inline-flex flex-wrap items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 ${compact ? 'text-[10px]' : 'text-xs'}`}>
+      <span className="inline-flex items-center gap-1 font-black uppercase tracking-[0.12em] text-fpt-orange">
+        <Clock3 size={compact ? 11 : 12} /> {countdown.expired ? 'Đang diễn ra' : 'Đếm ngược'}
+      </span>
+      {!countdown.expired ? (
+        <>
+          <span className="rounded-md bg-slate-100 px-1.5 py-0.5 font-black text-slate-700">{countdown.days}N</span>
+          <span className="rounded-md bg-slate-100 px-1.5 py-0.5 font-black text-slate-700">{countdown.hours}G</span>
+          <span className="rounded-md bg-slate-100 px-1.5 py-0.5 font-black text-slate-700">{countdown.minutes}P</span>
+          <span className="rounded-md bg-slate-100 px-1.5 py-0.5 font-black text-slate-700">{countdown.seconds}S</span>
+        </>
+      ) : null}
+    </div>
+  )
+}
 
 export const Home = () => {
-  const [latestPubs, setLatestPubs] = useState([])
-  const [loading, setLoading] = useState(false)
+  const [siteTexts, setSiteTexts] = useState(null)
+  const [newsItems, setNewsItems] = useState([])
+  const [eventItems, setEventItems] = useState([])
+  const [loadingNews, setLoadingNews] = useState(true)
+  const [loadingEvents, setLoadingEvents] = useState(true)
+  const [heroIndex, setHeroIndex] = useState(0)
+  const [prevHeroIndex, setPrevHeroIndex] = useState(null)
+  const [nowTs, setNowTs] = useState(() => Date.now())
+
+  useEffect(() => {
+    const timer = setInterval(() => setNowTs(Date.now()), 1000)
+    return () => clearInterval(timer)
+  }, [])
 
   useEffect(() => {
     const controller = new AbortController()
 
-    const fetchLatest = async () => {
-      setLoading(true)
+    const fetchData = async () => {
+      setLoadingNews(true)
+      setLoadingEvents(true)
       try {
-        const response = await fetch(`${API_URL}/public/publications?sort=trending&limit=6`, {
-          signal: controller.signal,
-          headers: {
-            Accept: 'application/json',
-          },
-        })
-        if (!response.ok) throw new Error(`HTTP ${response.status}`)
-        const data = await response.json()
-        setLatestPubs(Array.isArray(data) ? data.slice(0, 6) : [])
-      } catch (error) {
-        if (error?.name !== 'AbortError') {
-          console.error('Error fetching latest pubs:', error)
+        const [textsResp, contestResp, eventsResp] = await Promise.all([
+          fetch(`${API_URL}/public/site-texts`, { signal: controller.signal, headers: { Accept: 'application/json' } }),
+          fetch(`${API_URL}/public/publications?content_type=cuoc-thi&limit=8`, { signal: controller.signal, headers: { Accept: 'application/json' } }),
+          fetch(`${API_URL}/public/events/upcoming`, { signal: controller.signal, headers: { Accept: 'application/json' } }),
+        ])
+
+        if (textsResp.ok) {
+          const data = await textsResp.json()
+          setSiteTexts(data)
         }
-      } finally {
-        setLoading(false)
+
+        if (contestResp.ok) {
+          const contests = await contestResp.json()
+          setNewsItems(Array.isArray(contests) ? contests.slice(0, 8) : [])
+        }
+        setLoadingNews(false)
+
+        if (eventsResp.ok) {
+          const events = await eventsResp.json()
+          setEventItems(Array.isArray(events) ? events : [])
+        }
+        setLoadingEvents(false)
+      } catch (err) {
+        if (err?.name !== 'AbortError') {
+          console.error('Failed to load homepage data', err)
+        }
+        setLoadingNews(false)
+        setLoadingEvents(false)
       }
     }
 
-    fetchLatest()
-
+    fetchData()
     return () => controller.abort()
   }, [])
 
+  const hero = siteTexts?.hero || {}
+  const newsSection = siteTexts?.news_section || {}
+  const eventsSection = siteTexts?.events_section || {}
+  const videosSection = siteTexts?.videos_section || {}
+
+  const heroImages = useMemo(() => {
+    const list = Array.isArray(hero.background_images) ? hero.background_images.filter(Boolean) : []
+    if (list.length > 0) return list
+    if (hero.background_image_url) return [hero.background_image_url]
+    return []
+  }, [hero.background_images, hero.background_image_url])
+
+  const transitionTimeoutRef = React.useRef(null)
+
+  const goToHeroIndex = React.useCallback((newIndex) => {
+    setHeroIndex((prev) => {
+      setPrevHeroIndex(prev)
+      return newIndex
+    })
+    if (transitionTimeoutRef.current) clearTimeout(transitionTimeoutRef.current)
+    transitionTimeoutRef.current = setTimeout(() => setPrevHeroIndex(null), 900)
+  }, [])
+
+  useEffect(() => {
+    if (heroImages.length <= 1) return undefined
+    const interval = hero.background_transition_interval_ms || 6500
+    const timer = setInterval(() => {
+      goToHeroIndex((heroIndex + 1) % heroImages.length)
+    }, interval)
+    return () => clearInterval(timer)
+  }, [heroImages.length, hero.background_transition_interval_ms, heroIndex, goToHeroIndex])
+
+  useEffect(() => {
+    if (heroIndex >= heroImages.length) goToHeroIndex(0)
+  }, [heroImages.length, heroIndex, goToHeroIndex])
+
+  useEffect(() => () => { if (transitionTimeoutRef.current) clearTimeout(transitionTimeoutRef.current) }, [])
+
+  useEffect(() => {
+    if (heroImages.length <= 1) return
+    const nextIndex = (heroIndex + 1) % heroImages.length
+    const nextSrc = heroImages[nextIndex]
+    if (!nextSrc) return
+
+    const img = new Image()
+    img.src = nextSrc
+  }, [heroImages, heroIndex])
+
+  const currentHeroImage = heroImages[heroIndex] || ''
+
+  const videos = Array.isArray(videosSection.items) ? videosSection.items.filter((v) => v?.url) : []
+  const nextEvent = eventItems.length > 0 ? eventItems[0] : null
+  const nextEventCountdown = nextEvent ? getCountdown(nextEvent.event_date, nowTs) : null
+
   return (
-    <div className="space-y-28 pb-28">
-      <section className="page-hero page-hero-caro min-h-[92vh] border-b border-orange-100 pb-16 pt-20 md:pt-24">
+    <div className="space-y-24 pb-24">
+      <section className="relative min-h-[85vh] overflow-hidden pt-20 md:pt-24">
+        {/* Full-bleed background image carousel */}
         <div className="pointer-events-none absolute inset-0 z-0">
-          <div className="absolute -right-44 -top-56 h-[780px] w-[780px] rounded-full bg-fpt-orange/15 blur-[130px]" />
-          <div className="absolute -bottom-44 -left-32 h-[560px] w-[560px] rounded-full bg-fpt-blue/10 blur-[120px]" />
+          {heroImages.length > 0 ? (
+            <>
+              {/* Exiting image — slides out to left or fades out */}
+              {prevHeroIndex !== null && heroImages[prevHeroIndex] && (
+                <img
+                  key={`prev-${heroImages[prevHeroIndex]}`}
+                  src={heroImages[prevHeroIndex]}
+                  alt=""
+                  aria-hidden="true"
+                  className={`absolute inset-0 h-full w-full object-cover ${
+                    hero.background_transition_effect === 'fade'
+                      ? 'animate-[fadeOut_0.9s_ease-in-out_forwards]'
+                      : 'animate-[slideOut_0.9s_ease-in-out_forwards]'
+                  }`}
+                  decoding="async"
+                />
+              )}
+              {/* Entering image — slides in from right or fades in */}
+              <img
+                key={`cur-${currentHeroImage}`}
+                key={currentHeroImage}
+                src={currentHeroImage}
+                alt="Hero background"
+                className={`absolute inset-0 h-full w-full object-cover ${
+                  prevHeroIndex !== null
+                    ? hero.background_transition_effect === 'fade'
+                      ? 'animate-[fadeIn_0.9s_ease-in-out_forwards]'
+                      : 'animate-[slideIn_0.9s_ease-in-out_forwards]'
+                    : ''
+                }`}
+                fetchpriority="high"
+                decoding="async"
+              />
+              {/* Dark overlay for text readability */}
+              <div className="absolute inset-0 bg-gradient-to-r from-slate-900/70 via-slate-900/50 to-slate-900/30" />
+              <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent" />
+            </>
+          ) : (
+            <div className="absolute inset-0">
+              <div className="absolute -right-32 -top-40 h-[680px] w-[680px] rounded-full bg-fpt-orange/12 blur-[100px]" />
+              <div className="absolute -bottom-32 -left-24 h-[500px] w-[500px] rounded-full bg-fpt-blue/8 blur-[100px]" />
+              <div className="absolute left-1/2 top-1/3 h-[320px] w-[320px] -translate-x-1/2 rounded-full bg-orange-200/20 blur-[80px]" />
+              <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, #F27024 1px, transparent 0)', backgroundSize: '32px 32px' }} />
+              <div className="absolute inset-0 bg-gradient-to-b from-white/0 via-white/40 to-white" />
+            </div>
+          )}
         </div>
 
-        <GridBackground className="opacity-25" />
-        <Spotlight className="opacity-80" />
-
-        <div className="app-section relative z-10 grid grid-cols-1 items-center gap-14 lg:grid-cols-12">
-          <div className="lg:col-span-7" data-aos="fade-right">
-            <h1 className="text-balance text-[52px] font-black uppercase text-fpt-blue sm:text-[72px] lg:text-[108px]">
-              <span className="block leading-[0.9]">Nhịp đập</span>
-              <span className="relative mt-6 inline-block leading-[0.9] italic text-fpt-orange sm:mt-7 lg:mt-8">
-                Sáng tạo
-                <svg className="absolute -bottom-5 left-0 h-7 w-full text-fpt-green/20" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">
-                  <path d="M0 6 Q 25 0 50 6 T 100 6" stroke="currentColor" strokeWidth="10" fill="none" />
-                </svg>
+        <div className="app-section relative z-10 flex min-h-[calc(85vh-5rem)] flex-col justify-center pb-16">
+          <div className="max-w-2xl">
+            <div className="inline-flex w-fit items-center gap-2 rounded-full border border-orange-200/60 bg-white/70 px-4 py-1.5 backdrop-blur-sm">
+              <span className="h-1.5 w-1.5 rounded-full bg-fpt-orange animate-pulse" />
+              <span className="text-[10px] font-black uppercase tracking-[0.24em] text-fpt-orange">Tổ xã hội FSC Hoà Lạc</span>
+            </div>
+            <h1 className={`mt-6 text-balance text-4xl font-black uppercase leading-[0.92] sm:text-6xl md:text-7xl ${heroImages.length > 0 ? 'text-white' : 'text-fpt-blue'}`}>
+              <span className="block">{hero.line1 || 'Trải nghiệm'}</span>
+              <span className="mt-3 block pb-3 md:pb-6">
+                <span className="relative inline-block">
+                  <span className="relative z-10 bg-gradient-to-r from-fpt-orange to-orange-400 bg-clip-text text-transparent italic gradient-text-fix pr-2 md:pr-2">
+                    {hero.line2 || 'Sáng tạo'}
+                  </span>
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute -bottom-1 left-1 right-1 z-0 h-3 -rotate-1 rounded-full bg-fpt-orange/25 motion-safe:animate-[waveFloat_2.6s_ease-in-out_infinite]"
+                    style={{
+                      transformOrigin: 'center',
+                      animationName: 'waveFloat',
+                    }}
+                  />
+                </span>
               </span>
             </h1>
-
-            <p className="mt-8 max-w-2xl text-lg font-medium leading-relaxed text-slate-500 md:text-2xl">
-              Nền tảng kết nối đam mê, khơi nguồn tri thức và lan tỏa tinh thần học tập chủ động cho cộng đồng học sinh FPT.
+            <style>{`@keyframes waveFloat { 0%, 100% { transform: translateY(0) scaleX(1) rotate(-1deg); } 25% { transform: translateY(-2px) scaleX(1.03) rotate(-0.2deg); } 50% { transform: translateY(1px) scaleX(0.98) rotate(-1.4deg); } 75% { transform: translateY(-1px) scaleX(1.02) rotate(-0.6deg); } } @keyframes slideIn { 0% { transform: translateX(100%); } 100% { transform: translateX(0); } } @keyframes slideOut { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } } @keyframes fadeIn { 0% { opacity: 0; } 100% { opacity: 1; } } @keyframes fadeOut { 0% { opacity: 1; } 100% { opacity: 0; } }`}</style>
+            <p className={`mt-6 max-w-xl text-base font-semibold leading-relaxed md:text-lg ${heroImages.length > 0 ? 'text-white/80' : 'text-slate-600'}`}>
+              {hero.description || 'Tôn trọng cá nhân, đề cao sự tự lập và phát triển con người toàn diện.'}
             </p>
 
-            <div className="mt-10 flex flex-wrap gap-4">
-              <Link to="/phanmon/van/an-pham" className="tap-target">
-                <ShimmerButton className="rounded-2xl px-8 py-4 text-sm md:px-10 md:py-5 md:text-base">
-                  Khám phá ngay <ArrowRight size={18} />
-                </ShimmerButton>
-              </Link>
-              <Link to="/stories/inspiring" className="tap-target">
-                <Button className="tap-target rounded-2xl bg-fpt-blue px-8 py-4 text-sm font-black text-white shadow-xl shadow-blue-200 transition-all hover:-translate-y-1 md:px-10 md:py-5 md:text-base">
-                  Câu chuyện truyền cảm hứng
+            <div className="mt-8 flex flex-wrap items-center gap-3">
+              <Link to="/news">
+                <Button className="rounded-2xl bg-fpt-orange px-7 py-4 text-sm font-black uppercase tracking-widest text-white shadow-[0_18px_40px_-16px_rgba(242,112,36,0.75)] hover:bg-[#de631d] hover:shadow-[0_20px_46px_-16px_rgba(242,112,36,0.85)] transition-all">
+                  {hero.cta_primary || 'Khám phá ngay'}
                 </Button>
               </Link>
+              <Link to="/doingu/scale" className={`inline-flex items-center gap-2 rounded-2xl border px-5 py-3.5 text-xs font-black uppercase tracking-widest backdrop-blur-sm transition-all ${heroImages.length > 0 ? 'border-white/30 bg-white/10 text-white hover:bg-white/20' : 'border-slate-200 bg-white/80 text-slate-600 hover:border-slate-300 hover:text-fpt-blue'}`}>
+                Giới thiệu <ChevronRight size={14} />
+              </Link>
             </div>
 
-            <div className="mt-12 grid max-w-xl grid-cols-3 gap-3 border-t border-slate-200/70 pt-6">
-              <HeroStat value="1,200+" label="Học sinh tham gia" />
-              <HeroStat value="50+" label="Nội dung chọn lọc" />
-              <HeroStat value="24/7" label="AI đồng hành" />
-            </div>
-          </div>
-
-          <div className="relative lg:-mt-20 lg:col-span-5" data-aos="fade-left" data-aos-delay="120">
-            <div className="relative mx-auto aspect-[4/5] w-full max-w-[500px]">
-              <div className="absolute right-0 top-2 h-full w-[88%] -rotate-3 rounded-[2.6rem] border border-slate-200 bg-slate-50" />
-              <div className="group absolute right-4 -top-4 h-full w-[88%] rotate-2 overflow-hidden rounded-[2.6rem] border border-slate-100 bg-white p-4 shadow-[0_34px_60px_-45px_rgba(15,23,42,0.65)] transition-transform duration-700 hover:rotate-0">
-                <div className="relative h-full w-full overflow-hidden rounded-[2.2rem] bg-gradient-to-br from-slate-900 via-fpt-blue to-slate-800 px-8 pb-8 pt-18 text-white">
-                  <div className="absolute left-[15%] top-4 inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-slate-900/30 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-white/85">
-                    <BookOpen size={12} /> Editorial Insight
-                  </div>
-                  <h3 className="text-3xl font-black leading-tight">Sáng tạo là hành trình tự do nhất của học sinh FPT.</h3>
-                  <p className="mt-5 text-sm leading-relaxed text-white/80">
-                    Mỗi bài viết là một góc nhìn độc đáo, mỗi dự án là một bước tiến của tinh thần học chủ động.
-                  </p>
-
-                  <div className="mt-8 space-y-3 rounded-2xl border border-white/20 bg-white/10 p-4 backdrop-blur">
-                    <div className="flex items-center justify-between text-xs font-bold uppercase tracking-widest text-white/80">
-                      <span>Creative ranking</span>
-                      <span>#01</span>
-                    </div>
-                    <div className="h-2 rounded-full bg-white/20">
-                      <div className="h-full w-[84%] rounded-full bg-fpt-orange" />
-                    </div>
-                  </div>
-                </div>
+            {/* Carousel dot indicators */}
+            {heroImages.length > 1 ? (
+              <div className="mt-8 flex items-center gap-2">
+                {heroImages.map((_, idx) => (
+                  <button
+                    key={`dot-${idx}`}
+                    type="button"
+                    aria-label={`Chuyển ảnh nền ${idx + 1}`}
+                    onClick={() => goToHeroIndex(idx)}
+                    className={`h-2 rounded-full transition-all ${heroIndex === idx ? 'w-8 bg-fpt-orange' : `w-2 ${heroImages.length > 0 ? 'bg-white/50' : 'bg-slate-400/60'}`}`}
+                  />
+                ))}
               </div>
-
-              <div className="absolute -left-7 -top-8 flex h-24 w-24 flex-col items-center justify-center rounded-[1.6rem] bg-fpt-green text-white shadow-2xl shadow-fpt-green/35">
-                <p className="text-3xl font-black leading-none">01</p>
-                <p className="text-[8px] font-black uppercase tracking-widest">Ranking</p>
-              </div>
-
-              <div className="absolute -bottom-8 -right-8 flex h-32 w-32 flex-col items-center justify-center rounded-full bg-fpt-orange text-white shadow-2xl shadow-fpt-orange/35">
-                <p className="text-3xl font-black italic leading-none">HOT</p>
-                <p className="text-[8px] font-black uppercase tracking-widest">Sáng tác 2026</p>
-              </div>
-            </div>
+            ) : null}
           </div>
         </div>
       </section>
 
-      <section className="app-section cv-auto" data-ai-anchor="home-latest-publications">
-        <div className="mb-14 flex flex-col items-start justify-between gap-8 md:flex-row md:items-end" data-aos="fade-up">
+      <section className="app-section" data-ai-anchor="home-news-contest">
+        <div className="mb-8 flex items-end justify-between gap-4">
           <div>
-            <p className="mb-5 inline-flex items-center gap-2 rounded-full bg-orange-50 px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-fpt-orange">
-              <Sparkles size={14} /> Lựa chọn biên tập
+            <p className="mb-3 inline-flex items-center gap-2 rounded-full bg-orange-50 px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-fpt-orange">
+              <Sparkles size={14} /> Cuộc thi
             </p>
-            <h2 className="text-4xl font-black uppercase tracking-tight text-fpt-blue md:text-6xl">
-              Ấn phẩm <span className="italic text-fpt-orange">Nổi Bật</span>
-            </h2>
-            <p className="mt-4 max-w-2xl text-base font-medium text-slate-500 md:text-lg">
-              Tuyển chọn ấn phẩm nổi bật từ mọi phân môn — bài viết sáng tạo, sâu sắc và hữu ích cho hành trình học tập.
+            <h2 className="text-3xl font-black uppercase text-fpt-blue md:text-5xl">{newsSection.title || 'Tin tức cập nhật'}</h2>
+            <p className="mt-3 max-w-2xl text-sm font-semibold text-slate-500 md:text-base">
+              {newsSection.subtitle || 'Bài viết cuộc thi mới nhất từ học sinh và giáo viên.'}
             </p>
           </div>
-
-          <Link to="/phanmon/van/an-pham" className="tap-target inline-flex items-center gap-2 rounded-full bg-blue-50 px-6 py-3 text-xs font-black uppercase tracking-widest text-fpt-blue transition-all hover:gap-4 hover:bg-blue-100">
-            Xem tất cả <ChevronRight size={16} />
+          <Link to="/phanmon/van?tab=sang-tac" className="hidden items-center gap-2 rounded-full bg-slate-100 px-5 py-2.5 text-xs font-black uppercase tracking-widest text-slate-700 hover:bg-slate-200 md:inline-flex">
+            Xem thêm <ChevronRight size={14} />
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
-          {loading ? (
-            [1, 2, 3, 4, 5, 6].map((i) => <div key={i} className="h-[440px] animate-pulse rounded-[2.2rem] bg-slate-100" />)
-          ) : latestPubs.length === 0 ? (
-            <div className="col-span-1 rounded-[2.2rem] border-2 border-dashed border-slate-200 bg-slate-50 py-20 text-center md:col-span-2 lg:col-span-3" data-aos="zoom-in">
-              <Calendar size={58} className="mx-auto mb-5 text-slate-300" />
-              <p className="text-lg font-black uppercase tracking-widest text-slate-400">Chưa có bản tin nào được cập nhật.</p>
-            </div>
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+          {loadingNews ? (
+            [1, 2, 3].map((i) => <div key={i} className="h-52 animate-pulse rounded-2xl bg-slate-100" />)
+          ) : newsItems.length === 0 ? (
+            <Card className="col-span-1 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 py-12 text-center md:col-span-2 xl:col-span-3">
+              <p className="text-sm font-bold uppercase tracking-wider text-slate-500">Chưa có bài viết cuộc thi mới.</p>
+            </Card>
           ) : (
-            latestPubs.map((pub, idx) => (
-              <Card
-                key={pub.id}
-                data-aos="fade-up"
-                data-aos-delay={idx * 100}
-                data-ai-anchor={`home-latest-card-${pub.id}`}
-                data-ai-card-title={pub.title}
-                className="group flex h-full flex-col overflow-hidden rounded-[2.2rem] border border-slate-100 p-0 shadow-lg transition-all hover:-translate-y-2 hover:shadow-2xl"
-              >
-                <div className="relative h-56 overflow-hidden bg-slate-100">
-                  {pub.image_url ? (
-                    <img
-                      src={pub.image_url}
-                      srcSet={toWebpCandidate(pub.image_url) ? `${toWebpCandidate(pub.image_url)} 1x, ${pub.image_url} 1x` : undefined}
-                      sizes="(max-width: 768px) 100vw, 33vw"
-                      alt={pub.title}
-                      loading="lazy"
-                      decoding="async"
-                      className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 text-slate-400">
-                      <BookOpen size={78} className="opacity-25" />
+            newsItems.map((item, idx) => (
+              <Link key={item.id || idx} to={item.id ? `/posts/${item.id}` : '/events/upcoming'} className="block">
+                <Card className="overflow-hidden rounded-2xl border border-slate-100 p-0 shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg">
+                  <div className="relative h-44 bg-slate-100">
+                    {item.image_url ? (
+                      <img src={item.image_url} alt={item.title} className="h-full w-full object-cover" loading="lazy" />
+                    ) : (
+                      <div className="absolute inset-0 bg-gradient-to-br from-orange-100 to-blue-100" />
+                    )}
+                  </div>
+                  <div className="p-6">
+                    <div className="mb-3 flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                      <span>Cuộc thi</span>
+                      <span>{formatDate(item.created_at)}</span>
                     </div>
-                  )}
-
-                  <div className="absolute left-5 top-5 rounded-xl bg-white/90 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-fpt-blue shadow-md backdrop-blur">
-                    {pub.category === 'van' ? 'Văn học' : pub.category === 'ktpl' ? 'KTPL' : 'Nội dung mới'}
+                    <h3 className="line-clamp-2 pt-2 md:pt-2 text-xl font-black leading-tight text-slate-800">{item.title}</h3>
+                    <p className="mt-3 line-clamp-4 text-sm font-medium leading-relaxed text-slate-500">{getPublicationCardDescription(item)}</p>
+                    <div className="mt-5 border-t border-slate-100 pt-3 text-[11px] font-bold uppercase tracking-wider text-fpt-orange">
+                      Bài viết cuộc thi
+                    </div>
                   </div>
-                </div>
-
-                <div className="flex flex-1 flex-col p-7">
-                  <h3 className="line-clamp-2 text-2xl font-black leading-tight text-slate-800 transition-colors group-hover:text-fpt-orange">
-                    {pub.title}
-                  </h3>
-
-                  <p className="mt-4 flex-1 text-sm font-medium leading-relaxed text-slate-500">
-                    {`${toPlainText(pub.content).slice(0, 155)}...`}
-                  </p>
-
-                  <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-5">
-                    <span className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                      <Calendar size={14} /> {new Date(pub.created_at).toLocaleDateString('vi-VN')}
-                    </span>
-                    <Link to={`/posts/${pub.id}`} className="tap-target flex h-11 w-11 items-center justify-center rounded-full bg-slate-50 text-fpt-blue transition-colors group-hover:bg-fpt-orange group-hover:text-white">
-                      <ArrowRight size={17} />
-                    </Link>
-                  </div>
-                </div>
-              </Card>
+                </Card>
+              </Link>
             ))
           )}
         </div>
       </section>
 
-      <section className="app-section cv-auto">
-        <div className="mb-12 max-w-3xl" data-aos="fade-up">
-          <h2 className="text-4xl font-black uppercase tracking-tight text-fpt-blue md:text-5xl">Giá trị cốt lõi</h2>
-          <p className="mt-4 text-lg font-medium text-slate-500">
-            Tôn - Đổi - Đồng - Chí - Gương - Sáng (Tôn trọng - Đổi mới - Đồng đội - Chí công - Gương mẫu - Sáng suốt).
+      <section className="app-section" data-ai-anchor="home-events-dynamic">
+        <div className="mb-8">
+          <p className="mb-3 inline-flex items-center gap-2 rounded-full bg-blue-50 px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-fpt-blue">
+            <CalendarDays size={14} /> Sự kiện
+          </p>
+          <h2 className="text-3xl font-black uppercase text-fpt-blue md:text-5xl">{eventsSection.title || 'Lịch sự kiện'}</h2>
+          <p className="mt-3 max-w-2xl text-sm font-semibold text-slate-500 md:text-base">
+            {eventsSection.subtitle || 'Theo dõi các sự kiện quan trọng trong thời gian tới.'}
+          </p>
+          {nextEventCountdown ? (
+            <div className="mt-4 inline-flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
+              <span className="inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-[0.14em] text-fpt-orange">
+                <Clock3 size={13} /> {nextEventCountdown.expired ? 'Đang diễn ra' : 'Đếm ngược'}
+              </span>
+              {!nextEventCountdown.expired ? (
+                <>
+                  <span className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-black text-slate-700">{nextEventCountdown.days}N</span>
+                  <span className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-black text-slate-700">{nextEventCountdown.hours}G</span>
+                  <span className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-black text-slate-700">{nextEventCountdown.minutes}P</span>
+                  <span className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-black text-slate-700">{nextEventCountdown.seconds}S</span>
+                </>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+
+        {loadingEvents ? (
+          <div className="h-56 animate-pulse rounded-2xl bg-slate-100" />
+        ) : eventItems.length === 0 ? (
+          <Card className="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 py-12 text-center">
+            <p className="text-sm font-bold uppercase tracking-wider text-slate-500">Chưa có sự kiện sắp diễn ra.</p>
+          </Card>
+        ) : eventItems.length === 1 ? (
+          <Link to={getEventHref(eventItems[0])} className="block">
+            <Card className="overflow-hidden rounded-3xl border border-orange-100 p-0 shadow-[0_24px_50px_-28px_rgba(242,112,36,0.65)] transition-all hover:-translate-y-1 hover:shadow-[0_26px_58px_-30px_rgba(242,112,36,0.7)]">
+              <div className="grid gap-0 md:grid-cols-2">
+                <div className="relative min-h-[260px] bg-slate-100">
+                  {eventItems[0].image_url ? (
+                    <img src={eventItems[0].image_url} alt={eventItems[0].title} className="h-full w-full object-cover" loading="lazy" />
+                  ) : (
+                    <div className="absolute inset-0 bg-gradient-to-br from-fpt-orange/20 to-fpt-blue/20" />
+                  )}
+                </div>
+                <div className="flex flex-col justify-center p-8">
+                  <p className="text-[11px] font-black uppercase tracking-[0.16em] text-fpt-orange">Sự kiện nổi bật</p>
+                  <h3 className="mt-2 text-3xl font-black leading-tight text-slate-900">{eventItems[0].title}</h3>
+                  <p className="mt-3 text-sm font-medium text-slate-600">{toPlainText(eventItems[0].description || '')}</p>
+                  <div className="mt-5 inline-flex w-fit items-center rounded-full bg-slate-100 px-4 py-2 text-xs font-bold uppercase tracking-wider text-slate-600">
+                    {formatDate(eventItems[0].event_date)} • {eventItems[0].location}
+                  </div>
+                  <EventCountdown eventDate={eventItems[0].event_date} nowTs={nowTs} />
+                </div>
+              </div>
+            </Card>
+          </Link>
+        ) : (
+          <div className="grid gap-5 lg:grid-cols-3">
+            <Link to={getEventHref(eventItems[0])} className="block lg:col-span-2">
+              <Card className="rounded-3xl border border-slate-100 p-0 shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg">
+                <div className="grid gap-0 md:grid-cols-2">
+                  <div className="relative min-h-[220px] bg-slate-100">
+                    {eventItems[0].image_url ? (
+                      <img src={eventItems[0].image_url} alt={eventItems[0].title} className="h-full w-full object-cover" loading="lazy" />
+                    ) : (
+                      <div className="absolute inset-0 bg-gradient-to-br from-fpt-blue/15 to-fpt-orange/15" />
+                    )}
+                  </div>
+                  <div className="p-6">
+                    <p className="text-[11px] font-black uppercase tracking-[0.16em] text-fpt-blue">Sắp diễn ra gần nhất</p>
+                    <h3 className="mt-2 text-2xl font-black text-slate-900">{eventItems[0].title}</h3>
+                    <p className="mt-3 line-clamp-3 text-sm text-slate-600">{toPlainText(eventItems[0].description || '')}</p>
+                    <div className="mt-4 text-xs font-bold uppercase tracking-wider text-slate-500">{formatDate(eventItems[0].event_date)} • {eventItems[0].location}</div>
+                    <EventCountdown eventDate={eventItems[0].event_date} nowTs={nowTs} />
+                  </div>
+                </div>
+              </Card>
+            </Link>
+
+            <div className="space-y-4">
+              {eventItems.slice(1, 5).map((event, idx) => (
+                <Link key={event.id || idx} to={getEventHref(event)} className="block">
+                  <Card className="rounded-2xl border border-slate-100 p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+                    <h4 className="line-clamp-2 text-base font-black leading-tight text-slate-900">{event.title}</h4>
+                    <p className="mt-2 line-clamp-2 text-xs text-slate-500">{toPlainText(event.description || '')}</p>
+                    <div className="mt-3 text-[11px] font-bold uppercase tracking-wider text-fpt-orange">{formatDate(event.event_date)} • {event.location}</div>
+                    <EventCountdown eventDate={event.event_date} nowTs={nowTs} compact />
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+      </section>
+
+      <section className="app-section" data-ai-anchor="home-intro-videos">
+        <div className="mb-8">
+          <p className="mb-3 inline-flex items-center gap-2 rounded-full bg-orange-50 px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-fpt-orange">
+            <PlayCircle size={14} /> Media
+          </p>
+          <h2 className="text-3xl font-black uppercase text-fpt-blue md:text-5xl">{videosSection.title || 'Video giới thiệu'}</h2>
+          <p className="mt-3 max-w-2xl text-sm font-semibold text-slate-500 md:text-base">
+            {videosSection.subtitle || 'Khám phá hoạt động và tinh thần học tập qua những thước phim ngắn.'}
           </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-          {featureCards.map((feature, idx) => (
-            <Card
-              key={feature.title}
-              data-aos="fade-up"
-              data-aos-delay={idx * 100}
-              className={cn(
-                'rounded-[1.8rem] border bg-gradient-to-br p-7 transition-all hover:-translate-y-1 hover:shadow-xl',
-                feature.colorClass
-              )}
-            >
-              <div className="mb-5 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-white shadow-sm">
-                <feature.icon size={20} />
-              </div>
-              <h3 className="text-2xl font-black leading-tight">{feature.title}</h3>
-              <p className="mt-3 text-sm font-semibold leading-relaxed text-slate-500">{feature.description}</p>
-            </Card>
-          ))}
-        </div>
-      </section>
-
-      <section className="app-section cv-auto" data-aos="zoom-in" data-ai-anchor="home-creative-board">
-        <div className="relative overflow-hidden rounded-[3rem] bg-fpt-blue p-10 shadow-2xl md:p-16">
-          <div className="absolute -right-16 -top-16 h-72 w-72 rounded-full bg-fpt-orange/30 blur-3xl" />
-          <div className="absolute -bottom-24 -left-20 h-72 w-72 rounded-full bg-cyan-400/20 blur-3xl" />
-
-          <div className="relative z-10 grid grid-cols-1 items-center gap-10 lg:grid-cols-2">
-            <div>
-              <p className="mb-4 inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-white">
-                <Users size={14} /> Community board
-              </p>
-              <h2 className="text-4xl font-black uppercase leading-tight text-white md:text-6xl">
-                Bảng tin
-                <br />
-                <span className="text-fpt-orange">Sáng tác</span>
-              </h2>
-              <p className="mt-6 max-w-lg text-base font-medium leading-relaxed text-white/80 md:text-lg">
-                Gửi tác phẩm, theo dõi bài nổi bật và kết nối với cộng đồng học sinh cùng tinh thần học thật, làm thật.
-              </p>
-            </div>
-
-            <div className="rounded-[2rem] border border-white/20 bg-white/10 p-6 backdrop-blur md:p-8">
-              <div className="space-y-4">
-                <Link to="/phanmon/van/an-pham" className="tap-target flex items-center justify-between rounded-2xl bg-white/10 px-4 py-4 text-sm font-black uppercase tracking-widest text-white transition-colors hover:bg-white/20">
-                  Khám phá ấn phẩm mới
-                  <ChevronRight size={16} />
-                </Link>
-                <Link to="/stories/inspiring" className="tap-target flex items-center justify-between rounded-2xl bg-white/10 px-4 py-4 text-sm font-black uppercase tracking-widest text-white transition-colors hover:bg-white/20">
-                  Xem câu chuyện nổi bật
-                  <ChevronRight size={16} />
-                </Link>
-                <Link to="/events/upcoming" className="tap-target flex items-center justify-between rounded-2xl bg-white/10 px-4 py-4 text-sm font-black uppercase tracking-widest text-white transition-colors hover:bg-white/20">
-                  Lịch sự kiện sắp tới
-                  <ChevronRight size={16} />
-                </Link>
-              </div>
-
-              <Link to="/phanmon/van?tab=sang-tac" className="mt-6 block">
-                <Button className="tap-target w-full rounded-2xl border-none bg-fpt-orange py-4 text-sm font-black uppercase tracking-widest text-white shadow-[0_18px_40px_-24px_rgba(242,112,36,0.95)] hover:bg-[#de631d]">
-                  <Send size={17} /> Gửi bài ngay
-                </Button>
-              </Link>
-            </div>
+        {videos.length === 0 ? (
+          <Card className="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 py-12 text-center">
+            <p className="text-sm font-bold uppercase tracking-wider text-slate-500">Chưa có video giới thiệu.</p>
+          </Card>
+        ) : (
+          <div className="custom-scrollbar flex snap-x snap-mandatory gap-6 overflow-x-auto pb-3">
+            {videos.map((video, idx) => {
+              const embedUrl = getEmbedUrl(video.url)
+              return (
+                <Card key={`${video.url}-${idx}`} className="min-w-[380px] max-w-[480px] snap-start rounded-2xl border border-slate-100 p-0 shadow-sm overflow-hidden">
+                  <div className="relative w-full aspect-video bg-slate-900">
+                    {embedUrl ? (
+                      <iframe
+                        src={embedUrl}
+                        title={video.title || 'Video giới thiệu'}
+                        className="absolute inset-0 h-full w-full border-0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    ) : (
+                      <video
+                        src={video.url}
+                        poster={video.thumbnail_url || undefined}
+                        controls
+                        preload="metadata"
+                        className="absolute inset-0 h-full w-full object-cover"
+                      />
+                    )}
+                  </div>
+                  <div className="p-4">
+                    <h4 className="line-clamp-2 text-base font-black text-slate-900">{video.title || 'Video giới thiệu'}</h4>
+                    <p className="mt-1.5 line-clamp-2 text-sm text-slate-500">{video.description || 'Nội dung giới thiệu về hoạt động nổi bật.'}</p>
+                  </div>
+                </Card>
+              )
+            })}
           </div>
-        </div>
-      </section>
-
-      <section className="app-section cv-auto" data-ai-anchor="home-submit-entry">
-        <div className="rounded-[2rem] border border-orange-200 bg-gradient-to-r from-orange-50 via-white to-blue-50 p-6 shadow-[0_20px_40px_-30px_rgba(15,23,42,0.45)] md:p-8">
-          <div className="flex flex-col items-start gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-fpt-orange">Lối vào nhanh</p>
-              <h3 className="mt-1 text-2xl font-black text-fpt-blue md:text-3xl">Nộp Bài Sáng Tác Nhái Bén</h3>
-              <p className="mt-2 text-sm font-semibold text-slate-500 md:text-base">
-                Đi thẳng tới tab Sáng tác để nộp bài, có thể đính kèm file PDF (tối đa 15MB).
-              </p>
-            </div>
-            <Link to="/phanmon/van?tab=sang-tac">
-              <Button className="tap-target rounded-2xl border-none bg-fpt-orange px-6 py-3 text-sm font-black uppercase tracking-widest text-white hover:bg-[#de631d]">
-                <Send size={16} /> Mở trang nộp bài
-              </Button>
-            </Link>
-          </div>
-        </div>
+        )}
       </section>
     </div>
   )

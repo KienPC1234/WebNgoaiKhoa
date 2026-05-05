@@ -1,14 +1,25 @@
 import React, { createContext, useCallback, useEffect, useRef, useState } from 'react'
-import { initWebPush, unregisterWebPushToken, isWebPushSubscribed as _isWebPushSubscribed } from '@/lib/pushNotifications'
 import { getNotifications, markNotificationAsRead, markAllNotificationsRead } from '@/lib/notificationsService'
 
 const NotificationsContext = createContext(null)
+
+let pushNotificationsModulePromise = null
+
+const loadPushNotificationsModule = async () => {
+  if (!pushNotificationsModulePromise) {
+    pushNotificationsModulePromise = import('@/lib/pushNotifications').catch((error) => {
+      pushNotificationsModulePromise = null
+      throw error
+    })
+  }
+  return pushNotificationsModulePromise
+}
 
 export function NotificationsProvider({ children }) {
   const [notifications, setNotifications] = useState([])
   const [toasts, setToasts] = useState([]) // ephemeral toast notifications shown in MainLayout
   const [unreadCount, setUnreadCount] = useState(0)
-  const [isSubscribed, setIsSubscribed] = useState(() => Boolean(_isWebPushSubscribed && _isWebPushSubscribed()))
+  const [isSubscribed, setIsSubscribed] = useState(false)
 
   const fetchInProgress = useRef(false)
 
@@ -31,6 +42,17 @@ export function NotificationsProvider({ children }) {
       fetchInProgress.current = false
     }
   }, [refreshUnread])
+
+  useEffect(() => {
+    loadPushNotificationsModule()
+      .then((module) => {
+        const checkSubscribed = module?.isWebPushSubscribed
+        setIsSubscribed(Boolean(checkSubscribed && checkSubscribed()))
+      })
+      .catch(() => {
+        setIsSubscribed(false)
+      })
+  }, [])
 
   useEffect(() => {
     // Only fetch notifications and open WS when we have an auth token.
@@ -167,7 +189,8 @@ export function NotificationsProvider({ children }) {
 
   const subscribeToPush = useCallback(async () => {
     try {
-      const token = await initWebPush({ requestPermission: true })
+      const module = await loadPushNotificationsModule()
+      const token = await module.initWebPush({ requestPermission: true })
       setIsSubscribed(Boolean(token))
       return token
     } catch (e) {
@@ -178,7 +201,8 @@ export function NotificationsProvider({ children }) {
 
   const unsubscribeFromPush = useCallback(async () => {
     try {
-      await unregisterWebPushToken()
+      const module = await loadPushNotificationsModule()
+      await module.unregisterWebPushToken()
     } finally {
       setIsSubscribed(false)
     }

@@ -86,6 +86,23 @@
   0% { opacity: 0; transform: translateY(20px); }
   100% { opacity: 1; transform: translateY(0); }
 }
+@keyframes ripple {
+  0% { transform: scale(0); opacity: 0.5; }
+  100% { transform: scale(1); opacity: 0; }
+}
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+  20%, 40%, 60%, 80% { transform: translateX(4px); }
+}
+@keyframes fadeInPage {
+  0% { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes breathe {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.08); }
+}
 
 @layer base {
   :root {
@@ -348,6 +365,23 @@
   box-shadow: 0 14px 40px -28px rgba(29, 42, 87, 0.35) !important;
 }
 
+.low-spec-device .glass-nav,
+.low-spec-device .glass-card,
+.low-spec-device .surface,
+.low-spec-device .surface-strong,
+.low-spec-device .page-panel,
+.low-spec-device .btn-ghost {
+  backdrop-filter: none !important;
+}
+
+.low-spec-device .surface,
+.low-spec-device .surface-strong,
+.low-spec-device .glass-card,
+.low-spec-device .glass-nav {
+  will-change: auto !important;
+  transform: none !important;
+}
+
 @layer utilities {
   .cv-auto {
     content-visibility: visible;
@@ -416,6 +450,33 @@
 
 .rich-editor-compact .ck-editor__editable {
   min-height: 120px;
+}
+
+/* Keep font dropdown usable with long font lists */
+.ck.ck-dropdown__panel .ck.ck-list,
+.ck.ck-dropdown__panel .ck.ck-list[role="menu"],
+.ck.ck-dropdown__panel .ck.ck-list[role="listbox"],
+.ck.ck-dropdown__panel .ck.ck-list__items,
+.ck.ck-dropdown__panel .ck.ck-list__items[role="listbox"] {
+  max-height: 260px !important;
+  overflow-y: auto !important;
+}
+
+.ck.ck-dropdown__panel .ck.ck-list::-webkit-scrollbar,
+.ck.ck-dropdown__panel .ck.ck-list[role="menu"]::-webkit-scrollbar,
+.ck.ck-dropdown__panel .ck.ck-list[role="listbox"]::-webkit-scrollbar,
+.ck.ck-dropdown__panel .ck.ck-list__items::-webkit-scrollbar,
+.ck.ck-dropdown__panel .ck.ck-list__items[role="listbox"]::-webkit-scrollbar {
+  width: 8px;
+}
+
+.ck.ck-dropdown__panel .ck.ck-list::-webkit-scrollbar-thumb,
+.ck.ck-dropdown__panel .ck.ck-list[role="menu"]::-webkit-scrollbar-thumb,
+.ck.ck-dropdown__panel .ck.ck-list[role="listbox"]::-webkit-scrollbar-thumb,
+.ck.ck-dropdown__panel .ck.ck-list__items::-webkit-scrollbar-thumb,
+.ck.ck-dropdown__panel .ck.ck-list__items[role="listbox"]::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background: rgba(148, 163, 184, 0.8);
 }
 
 /* Rendered CKEditor content inside CMS canvas */
@@ -492,6 +553,111 @@
 .cms-ckeditor-content table,
 .cms-ckeditor-content figure {
   margin: 0.65rem 0;
+}
+
+/* Mention links rendered in public comments */
+.comment-mention-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(29, 42, 87, 0.12);
+  background: rgba(29, 42, 87, 0.05);
+  color: #1d2a57;
+  padding: 0.02rem 0.4rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease;
+}
+
+.comment-mention-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.comment-mention-link:hover {
+  border-color: rgba(29, 42, 87, 0.24);
+  background: rgba(29, 42, 87, 0.1);
+  color: #162147;
+}
+
+.comment-mention-tooltip-card {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 0.55rem);
+  transform: translateX(-50%);
+  width: min(280px, 76vw);
+  border-radius: 0.8rem;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(15, 23, 42, 0.96);
+  color: #f8fafc;
+  padding: 0.58rem 0.65rem;
+  box-shadow: 0 16px 32px -14px rgba(2, 6, 23, 0.85);
+  z-index: 35;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.14s ease, transform 0.14s ease, visibility 0.14s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 0.24rem;
+}
+
+.comment-mention-wrap:hover .comment-mention-tooltip-card,
+.comment-mention-wrap:focus-within .comment-mention-tooltip-card {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(-2px);
+}
+
+.comment-mention-tooltip-card::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  transform: translateX(-50%);
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid rgba(15, 23, 42, 0.96);
+}
+
+.comment-mention-tooltip-name {
+  font-size: 0.76rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.comment-mention-tooltip-meta {
+  font-size: 0.7rem;
+  line-height: 1.28;
+  color: rgba(226, 232, 240, 0.92);
+}
+
+.comment-mention-tooltip-cta {
+  margin-top: 0.22rem;
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+  color: #fda35e;
+}
+
+.comment-mention-link:focus-visible {
+  outline: 2px solid rgba(29, 42, 87, 0.32);
+  outline-offset: 2px;
+}
+
+/* keep native title fallback style disabled for rich cards */
+.comment-mention-link[data-mention-tooltip]:hover::after,
+.comment-mention-link[data-mention-tooltip]:focus-visible::after {
+  content: none;
+}
+
+.comment-mention-link[data-mention-tooltip]:hover::before,
+.comment-mention-link[data-mention-tooltip]:focus-visible::before {
+  content: none;
 }
 
 .cms-ckeditor-content > :first-child {

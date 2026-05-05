@@ -1,8 +1,6 @@
 import { getApp, getApps, initializeApp } from 'firebase/app'
-import { getAnalytics, isSupported as isAnalyticsSupported } from 'firebase/analytics'
-import { getMessaging, isSupported as isMessagingSupported } from 'firebase/messaging'
 
-export const FCM_DEBUG = String(import.meta.env.VITE_DEBUG_FCM || 'true').toLowerCase() === 'true'
+export const FCM_DEBUG = String(import.meta.env.VITE_DEBUG_FCM || 'false').toLowerCase() === 'true'
 export const FCM_DEBUG_PREFIX = '[FCM_DEBUG]'
 
 const fcmLog = (...args) => {
@@ -68,6 +66,7 @@ export const setupFirebaseAnalytics = async () => {
   }
 
   try {
+    const { getAnalytics, isSupported: isAnalyticsSupported } = await import('firebase/analytics')
     const supported = await isAnalyticsSupported()
     fcmLog('Analytics support check', { supported })
     if (!supported) return null
@@ -85,6 +84,7 @@ export const getFirebaseMessaging = async () => {
   }
 
   try {
+    const { getMessaging, isSupported: isMessagingSupported } = await import('firebase/messaging')
     const supported = await isMessagingSupported()
     fcmLog('Messaging support check', { supported })
     if (!supported) return null

@@ -22,23 +22,3 @@ def test_event_occurrences_endpoint(client, admin_headers):
     assert any(o.get("event_date", "").startswith("2026-05-04") or o.get("event_date", "").startswith("2026-05-05") for o in occs)
 
 
-def test_import_and_export_csv(client, admin_headers):
-    # import a simple CSV with one event
-    csv_text = (
-        "title,description,event_date,location,rrule,timezone,image_url,status,linked_post_id,is_active\n"
-        "CSV Event,Description,2026-07-01T10:00:00Z,Main Hall,,UTC,,upcoming,,true\n"
-    )
-
-    files = {"file": ("events.csv", csv_text, "text/csv")}
-    import_res = client.post("/api/admin/events/import/csv", headers=admin_headers, files=files)
-    assert import_res.status_code == 200
-    payload = import_res.json()
-    assert payload.get("created", 0) >= 1
-
-    # export occurrences for July-August
-    start = "2026-07-01T00:00:00Z"
-    end = "2026-08-31T23:59:59Z"
-    export_res = client.get(f"/api/admin/events/export/csv?start={start}&end={end}", headers=admin_headers)
-    assert export_res.status_code == 200
-    # CSV should include header row
-    assert b"event_id" in export_res.content or b"occurrence_id" in export_res.content

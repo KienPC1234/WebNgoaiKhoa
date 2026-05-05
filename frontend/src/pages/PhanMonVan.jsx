@@ -5,6 +5,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import ReCAPTCHA from 'react-google-recaptcha'
 import { showApiError, toastError, toastInfo, toastSuccess } from '@/lib/notify'
 import { apiClient } from '@/lib/apiClient'
+import { roleHasPermission } from '@/lib/rolePolicy'
 import { PageFlip } from 'page-flip'
 import * as pdfjsLib from 'pdfjs-dist'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
@@ -17,6 +18,21 @@ const CONTENT_MIN_LENGTH = 30
 const FLIP_PREVIEW_WIDTH = 360
 const FLIP_PREVIEW_MIN_HEIGHT = 440
 const FLIP_PREVIEW_MAX_HEIGHT = 620
+
+const getRecaptchaTokenSafely = async (recaptchaRef) => {
+  if (!RECAPTCHA_SITE_KEY || !recaptchaRef.current) return null
+
+  try {
+    const token = await Promise.race([
+      recaptchaRef.current.executeAsync(),
+      new Promise((resolve) => setTimeout(() => resolve(null), 8000)),
+    ])
+    recaptchaRef.current.reset()
+    return token || null
+  } catch {
+    return null
+  }
+}
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString()
 
@@ -67,7 +83,15 @@ export const PhanMonVan = () => {
     if (activeTab === 'bai-thi') {
       fetchApprovedSubmissions()
       if (token) {
-        fetchMyVotedSubmissionIds()
+        let role = null
+        try {
+          role = JSON.parse(localStorage.getItem('user'))?.role
+        } catch (e) {
+          role = null
+        }
+        if (roleHasPermission(role, 'contestant')) {
+          fetchMyVotedSubmissionIds()
+        }
       }
     }
   }, [activeTab, token])
@@ -110,6 +134,13 @@ export const PhanMonVan = () => {
 
   useEffect(() => {
     if (activeTab === 'sang-tac' && token) {
+      let role = null
+      try {
+        role = JSON.parse(localStorage.getItem('user'))?.role
+      } catch (e) {
+        role = null
+      }
+      if (!roleHasPermission(role, 'contestant')) return
       fetchMySubmissions()
     }
   }, [activeTab, token])
@@ -325,11 +356,7 @@ export const PhanMonVan = () => {
 
     setSubmissionStatus('loading')
     try {
-      let recaptchaToken = null
-      if (RECAPTCHA_SITE_KEY && recaptchaRef.current) {
-        recaptchaToken = await recaptchaRef.current.executeAsync()
-        recaptchaRef.current.reset()
-      }
+      const recaptchaToken = await getRecaptchaTokenSafely(recaptchaRef)
 
       if (pdfFile) {
         const formData = new FormData()
@@ -386,43 +413,61 @@ export const PhanMonVan = () => {
       return
     }
 
-    if (votedSubmissionIds.includes(id)) {
-      toastInfo('Bạn đã bình chọn cho bài thi này rồi.')
-      return
-    }
-
     if (votingSubmissionIds.includes(id)) {
       return
     }
 
+    const alreadyVoted = votedSubmissionIds.includes(id)
     setVotingSubmissionIds((prev) => [...prev, id])
 
     try {
-      let recaptchaToken = null
-      if (RECAPTCHA_SITE_KEY && recaptchaRef.current) {
-        recaptchaToken = await recaptchaRef.current.executeAsync()
-        recaptchaRef.current.reset()
+      if (alreadyVoted) {
+        // Perform un-vote
+        const response = await apiClient.delete(`/public/submissions/${id}/vote`)
+        const nextVotes = response.data.votes
+        
+        setApprovedSubmissions(prev => prev.map(s => s.id === id ? { ...s, votes: nextVotes ?? Math.max(0, s.votes - 1) } : s))
+        setSelectedSubmission((prev) => {
+          if (!prev || prev.id !== id) return prev
+          return { ...prev, votes: nextVotes ?? Math.max(0, prev.votes - 1) }
+        })
+        setVotedSubmissionIds((prev) => prev.filter(vid => vid !== id))
+        toastInfo('Đã bỏ bình chọn.')
+      } else {
+        // Perform vote
+        const recaptchaToken = await getRecaptchaTokenSafely(recaptchaRef)
+        const response = await apiClient.post(`/public/submissions/${id}/vote`, {
+          recaptcha_token: recaptchaToken,
+        })
+        const nextVotes = response.data.votes
+        
+        setApprovedSubmissions(prev => prev.map(s => s.id === id ? { ...s, votes: nextVotes || (s.votes + 1) } : s))
+        setSelectedSubmission((prev) => {
+          if (!prev || prev.id !== id) return prev
+          return { ...prev, votes: nextVotes || (prev.votes + 1) }
+        })
+        setVotedSubmissionIds((prev) => (prev.includes(id) ? prev : [...prev, id]))
+        toastSuccess('Đã bình chọn thành công.')
       }
-
-      const response = await apiClient.post(`/public/submissions/${id}/vote`, {
-        recaptcha_token: recaptchaToken,
-      })
-      const nextVotes = response.data.votes
-      setApprovedSubmissions(prev => prev.map(s => s.id === id ? { ...s, votes: nextVotes || (s.votes + 1) } : s))
-      setSelectedSubmission((prev) => {
-        if (!prev || prev.id !== id) return prev
-        return { ...prev, votes: nextVotes || (prev.votes + 1) }
-      })
-      setVotedSubmissionIds((prev) => (prev.includes(id) ? prev : [...prev, id]))
-      toastSuccess('Đã bình chọn thành công.')
     } catch (error) {
       console.error('Vote error:', error)
       const statusCode = error?.response?.status
+      const errorData = error?.response?.data?.detail
+
       if (statusCode === 409) {
         setVotedSubmissionIds((prev) => (prev.includes(id) ? prev : [...prev, id]))
+        // Sync latest vote count if backend provided it in the 409 error detail
+        if (errorData && typeof errorData.votes === 'number') {
+          const latestVotes = errorData.votes
+          setApprovedSubmissions(prev => prev.map(s => s.id === id ? { ...s, votes: latestVotes } : s))
+          setSelectedSubmission((prev) => {
+            if (!prev || prev.id !== id) return prev
+            return { ...prev, votes: latestVotes }
+          })
+        }
         toastInfo('Bạn đã bình chọn cho bài thi này rồi.')
       } else {
-        showApiError(error, 'Bình chọn thất bại.')
+        showApiError(error, 'Thao tác thất bại.')
       }
     } finally {
       setVotingSubmissionIds((prev) => prev.filter((item) => item !== id))
@@ -478,7 +523,8 @@ export const PhanMonVan = () => {
       return
     }
 
-    const plainText = commentEditorValue.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim()
+    const normalizedCommentValue = typeof commentEditorValue === 'string' ? commentEditorValue : String(commentEditorValue || '')
+    const plainText = normalizedCommentValue.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim()
     if (!plainText || plainText.length < 2) {
       toastError('Bình luận cần tối thiểu 2 ký tự.')
       return
@@ -486,16 +532,12 @@ export const PhanMonVan = () => {
 
     setCommentSubmitting(true)
     try {
-      let recaptchaToken = null
-      if (RECAPTCHA_SITE_KEY && recaptchaRef.current) {
-        recaptchaToken = await recaptchaRef.current.executeAsync()
-        recaptchaRef.current.reset()
-      }
+      const recaptchaToken = await getRecaptchaTokenSafely(recaptchaRef)
 
       const response = await apiClient.post(
         `/public/submissions/${selectedSubmission.id}/comments`,
         {
-          content: commentEditorValue,
+          content: normalizedCommentValue,
           recaptcha_token: recaptchaToken,
         },
       )

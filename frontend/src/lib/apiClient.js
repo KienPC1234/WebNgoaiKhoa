@@ -30,7 +30,7 @@ apiClient.interceptors.response.use(
     if (status === 401) {
       localStorage.removeItem('token')
       localStorage.removeItem('user')
-      toastError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.')
+      try { window.dispatchEvent(new Event('auth-changed')) } catch (e) { /* noop */ }
     } else {
       const message = extractErrorMessage(error, 'Không thể kết nối tới máy chủ.')
       toastError(message)

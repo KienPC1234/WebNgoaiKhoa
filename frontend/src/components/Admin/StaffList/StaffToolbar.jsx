@@ -22,7 +22,7 @@ const StaffToolbar = ({ view, setView, query, setQuery, onCreateToggle, onRefres
           <option value="">Tất cả vị trí</option>
           <option value="management">Tổ trưởng</option>
           <option value="senior">Trưởng bộ môn</option>
-          <option value="instructor">Giảng viên</option>
+          <option value="instructor">Giáo viên</option>
         </select>
 
         <Button size="sm" onClick={onCreateToggle} className="bg-fpt-orange">Thêm</Button>

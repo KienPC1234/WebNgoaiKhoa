@@ -1,32 +1,20 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { Card, Button, Input } from '@/components/UI'
 import { GoogleLogin } from '@react-oauth/google'
 import ReCAPTCHA from 'react-google-recaptcha'
 import { ShieldCheck, Home } from 'lucide-react'
-import { useRef } from 'react'
 import { apiClient } from '@/lib/apiClient'
 import { toastError, toastInfo, toastSuccess } from '@/lib/notify'
-import { AiChatWidget } from '@/components/AiChatWidget'
 import { refreshAuthOverview, roleHasPermission } from '@/lib/rolePolicy'
+import { RECAPTCHA_SITE_KEY, getRecaptchaTokenSafely } from '@/lib/recaptcha'
+import { lazy, Suspense } from 'react'
 
-const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY || ''
+const AiChatWidget = lazy(() =>
+  import('@/components/AiChatWidget').then((m) => ({ default: m.AiChatWidget || m.default }))
+)
+
 const GOOGLE_OAUTH_CLIENT_ID = import.meta.env.VITE_GOOGLE_OAUTH_CLIENT_ID || ''
-
-const getRecaptchaTokenSafely = async (recaptchaRef) => {
-  if (!RECAPTCHA_SITE_KEY || !recaptchaRef.current) return null
-
-  try {
-    const token = await Promise.race([
-      recaptchaRef.current.executeAsync(),
-      new Promise((resolve) => setTimeout(() => resolve(null), 8000)),
-    ])
-    recaptchaRef.current.reset()
-    return token || null
-  } catch {
-    return null
-  }
-}
 
 export const Login = () => {
   const [email, setEmail] = useState('')
@@ -40,19 +28,17 @@ export const Login = () => {
   const completeLogin = async (payload) => {
     localStorage.setItem('token', payload.access_token)
     localStorage.setItem('user', JSON.stringify(payload.user))
-    try { window.dispatchEvent(new Event('auth-changed')) } catch (e) {}
+    try { window.dispatchEvent(new Event('auth-changed')) } catch (e) { /* noop */ }
     toastSuccess('Đăng nhập thành công.')
 
     try {
       await refreshAuthOverview()
     } catch (e) {
-      // ignore refresh errors
+      // ignore refresh errors — fallback permissions still work
     }
 
     const returnTo = location.state?.from
     if (returnTo) {
-      // If returning to an admin route but the user lacks admin permission,
-      // fall back to home.
       if (returnTo.startsWith('/admin') && !roleHasPermission(payload.user.role, 'admin_panel')) {
         navigate('/')
         return
@@ -71,6 +57,7 @@ export const Login = () => {
 
   const handleLogin = async (e) => {
     e.preventDefault()
+    if (loading) return // guard against double-submit
     setLoading(true)
     setError('')
 
@@ -78,7 +65,7 @@ export const Login = () => {
       const formData = new FormData()
       const recaptchaToken = await getRecaptchaTokenSafely(recaptchaRef)
 
-      formData.append('username', email)
+      formData.append('username', email.trim())
       formData.append('password', password)
       if (recaptchaToken) formData.append('recaptcha_token', recaptchaToken)
 
@@ -100,6 +87,7 @@ export const Login = () => {
       return
     }
 
+    if (loading) return
     setLoading(true)
     setError('')
     try {
@@ -134,7 +122,7 @@ export const Login = () => {
         </div>
 
         {error && (
-          <div className="bg-red-50 text-red-500 p-4 rounded-xl text-sm font-bold border border-red-100">
+          <div className="bg-red-50 text-red-500 p-4 rounded-xl text-sm font-bold border border-red-100 animate-[shake_0.4s_ease-in-out]">
             {error}
           </div>
         )}
@@ -146,6 +134,7 @@ export const Login = () => {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="ban@email.com"
+            autoComplete="email"
             required
           />
           <Input
@@ -154,11 +143,25 @@ export const Login = () => {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••••"
+            autoComplete="current-password"
             required
           />
 
-          <Button type="submit" disabled={loading} variant="orange" className="w-full py-4 rounded-xl font-black text-lg">
-            {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
+          <Button
+            type="submit"
+            disabled={loading}
+            variant="orange"
+            className="w-full py-4 rounded-xl font-black text-lg relative overflow-hidden"
+          >
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Đang đăng nhập...
+              </span>
+            ) : 'Đăng nhập'}
           </Button>
           {RECAPTCHA_SITE_KEY && <ReCAPTCHA ref={recaptchaRef} size="invisible" sitekey={RECAPTCHA_SITE_KEY} />}
         </form>
@@ -171,21 +174,30 @@ export const Login = () => {
               <div className="h-px flex-1 bg-slate-200" />
             </div>
             <div className="flex justify-center">
-              <GoogleLogin onSuccess={handleGoogleLogin} onError={() => toastError('Đăng nhập Google thất bại.')} />
+              <GoogleLogin
+                onSuccess={handleGoogleLogin}
+                onError={() => toastError('Đăng nhập Google thất bại.')}
+                disabled={loading}
+              />
             </div>
           </div>
         ) : null}
 
         <div className="text-center text-sm text-gray-500 space-y-2">
           <p>
-            Chưa có tài khoản? <Link to="/register" className="text-fpt-blue font-black">Đăng ký ngay</Link>
+            Chưa có tài khoản? <Link to="/register" className="text-fpt-blue font-black hover:underline">Đăng ký ngay</Link>
           </p>
           <p>
-            Cần xác minh email? Vui lòng kiểm tra email để lấy mã OTP.
+            <Link to="/forgot-password" className="text-fpt-orange font-black hover:underline">Quên mật khẩu?</Link>
+          </p>
+          <p>
+            Cần xác minh email? <Link to="/verify-email" className="text-fpt-blue font-black hover:underline">Nhập OTP</Link>
           </p>
         </div>
       </Card>
-      <AiChatWidget />
+      <Suspense fallback={null}>
+        <AiChatWidget />
+      </Suspense>
     </div>
   )
 }

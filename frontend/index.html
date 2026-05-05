@@ -2,10 +2,6 @@
 <html lang="vi">
   <head>
     <meta charset="UTF-8" />
-    <link rel="dns-prefetch" href="//fonts.googleapis.com" />
-    <link rel="dns-prefetch" href="//fonts.gstatic.com" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="shortcut icon" href="/favicon.ico" />
@@ -17,29 +13,6 @@
   </head>
   <body>
     <div id="root"></div>
-    <!--
-      Fallback for environments that serve source files with incorrect MIME headers
-      (some dev/proxy setups return no Content-Type for /src/*.css). We try a HEAD
-      request for the CSS; if the Content-Type is missing or incorrect we append a
-      regular <link rel="stylesheet"> so the browser still loads styles.
-    -->
-    <script>
-      (async function(){
-        try {
-          const url = '/src/index.css?t=' + Date.now();
-          const resp = await fetch(url, { method: 'HEAD', cache: 'no-store' });
-          const ct = resp.headers.get('content-type') || '';
-          if (!ct.includes('text/css')) {
-            const l = document.createElement('link');
-            l.rel = 'stylesheet';
-            l.href = '/src/index.css';
-            document.head.appendChild(l);
-          }
-        } catch (e) {
-          // ignore network errors — fallback is best-effort
-        }
-      })();
-    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

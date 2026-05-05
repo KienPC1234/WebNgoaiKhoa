@@ -5,6 +5,17 @@ import ClassicEditor from '@/libs/ckeditor-custom-wrapper'
 import { cn } from '@/lib/utils'
 import { apiClient } from '@/lib/apiClient'
 
+const deriveUsername = (user) => {
+  const email = String(user?.email || '').trim()
+  if (email.includes('@')) {
+    const local = email.split('@')[0].trim()
+    if (local) return local
+  }
+  const name = String(user?.full_name || '').trim()
+  if (name) return name.replace(/\s+/g, '').toLowerCase()
+  return `user${user?.id || ''}`
+}
+
 class Base64UploadAdapter {
   constructor(loader) {
     this.loader = loader
@@ -153,8 +164,18 @@ export const RichTextEditor = ({
                         try {
                           const q = (query || '').trim()
                           const resp = await apiClient.get(`/public/users/mentions?q=${encodeURIComponent(q)}`)
-                          // resp.data returns PublicProfileOut list; map to { id, name }
-                          return (resp.data || []).map((item) => ({ id: item.user.id, name: item.user.full_name || item.user.email }))
+                          // Return CKEditor mention items with stable string ids.
+                          // We encode the numeric id in `@u:<id>:<username>` so backend can
+                          // reliably parse mentions and send notifications.
+                          return (resp.data || []).map((item) => {
+                            const user = item?.user || {}
+                            const username = deriveUsername(user)
+                            return {
+                              id: `@u:${user.id}:${username}`,
+                              text: `@${username}`,
+                              name: user.full_name || user.email || username,
+                            }
+                          })
                         } catch (err) {
                           return []
                         }
@@ -179,8 +200,12 @@ export const RichTextEditor = ({
               }, 0)
             }
           }}
-          onError={() => {
-            setHasCkError(true)
+          onError={(_, details) => {
+            // CKEditor may emit recoverable runtime errors and restart itself.
+            // Only fall back to textarea when initialization truly fails.
+            if (details?.phase === 'initialization' && !details?.willEditorRestart) {
+              setHasCkError(true)
+            }
           }}
           onChange={(_, editor) => {
             const data = editor.getData()

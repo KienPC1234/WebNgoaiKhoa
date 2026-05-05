@@ -132,6 +132,42 @@ export const AdminSubmissions = () => {
             />
             </div>
             <Button
+              onClick={() => {
+                if (filteredSubs.length === 0) {
+                  toastError('Không có dữ liệu để xuất.');
+                  return;
+                }
+                const headers = ['ID', 'Tên học sinh', 'Email', 'Tiêu đề', 'Nội dung', 'Ngày gửi', 'Trạng thái', 'Link đính kèm', 'Lượt vote'];
+                const csvRows = [headers.join(',')];
+                for (const sub of filteredSubs) {
+                  const safeStr = (str) => `"${(str || '').replace(/"/g, '""')}"`;
+                  csvRows.push([
+                    sub.id,
+                    safeStr(sub.student_name),
+                    safeStr(sub.student_email),
+                    safeStr(sub.title),
+                    safeStr(sub.content),
+                    safeStr(new Date(sub.created_at).toLocaleString('vi-VN')),
+                    sub.status,
+                    safeStr(sub.attachment_url),
+                    sub.votes || 0
+                  ].join(','));
+                }
+                const csvContent = csvRows.join('\n');
+                const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.setAttribute('href', url);
+                link.setAttribute('download', `bai-du-thi-${new Date().getTime()}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+              }}
+              className="border border-slate-200 bg-white px-4 text-slate-700 hover:bg-slate-100"
+            >
+              Xuất CSV
+            </Button>
+            <Button
               onClick={fetchSubs}
               className="border border-slate-200 bg-white px-4 text-slate-700 hover:bg-slate-100"
             >

@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { apiClient } from '@/lib/apiClient'
 import { toastError, toastInfo, toastSuccess } from '@/lib/notify'
+import { roleHasPermission } from '@/lib/rolePolicy'
 
 export default function useProfile() {
   const navigate = useNavigate()
@@ -23,14 +24,27 @@ export default function useProfile() {
     }
     setLoading(true)
     try {
-      const [meRes, submissionsRes] = await Promise.all([
-        apiClient.get('/auth/me'),
-        apiClient.get('/public/submissions/me'),
-      ])
+      // First fetch the authenticated user info. Then only attempt
+      // to fetch contestant-only submissions when the user's role
+      // has the `contestant` permission to avoid 403 errors.
+      const meRes = await apiClient.get('/auth/me')
       const res = meRes
       setMe(res.data)
       setName(res.data.full_name || '')
-      setMySubmissions(submissionsRes.data || [])
+
+      let submissions = []
+      try {
+        const userRole = res.data?.role
+        if (roleHasPermission(userRole, 'contestant')) {
+          const submissionsRes = await apiClient.get('/public/submissions/me')
+          submissions = submissionsRes.data || []
+        }
+      } catch (err) {
+        // Ignore errors when fetching contestant-only data (e.g., 403)
+        submissions = []
+      }
+
+      setMySubmissions(submissions)
     } catch (err) {
       localStorage.removeItem('token')
       localStorage.removeItem('user')

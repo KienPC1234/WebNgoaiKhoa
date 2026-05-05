@@ -133,6 +133,9 @@ const mapPublication = (item) => ({
   content_type: item.content_type,
   featured_year: item.featured_year,
   layout_metadata: item.layout_metadata,
+  view_count: item.view_count || 0,
+  votes_count: item.votes_count || 0,
+  favorites_count: item.favorites_count || 0,
 })
 
 const mapStory = (item) => ({
@@ -706,7 +709,8 @@ export const AdminPublications = () => {
                       <tr>
                         <th className="px-4 py-3 font-medium">Tiêu đề</th>
                         <th className="px-4 py-3 font-medium">Danh mục</th>
-                        <th className="px-4 py-3 font-medium">Ngày tạo</th>
+                        <th className="px-4 py-3 font-medium">Danh mục</th>
+                        <th className="px-4 py-3 font-medium">Tương tác</th>
                         <th className="px-4 py-3 font-medium text-right">Thao tác</th>
                       </tr>
                     </thead>
@@ -720,9 +724,14 @@ export const AdminPublications = () => {
                               <p className="max-w-[420px] truncate font-medium text-slate-800">{item.title}</p>
                               <p className="mt-0.5 text-xs text-slate-500 line-clamp-1" dangerouslySetInnerHTML={{ __html: previewHtml.slice(0, 140) }} />
                             </td>
-                            <td className="px-4 py-3 text-slate-600">{toSubjectLabel(item.subject)} · {item.content_type || '-'}</td>
+                            <td className="px-4 py-3 text-slate-600">{toSubjectLabel(item.subject)}</td>
+                            <td className="px-4 py-3 text-slate-600">{item.content_type || '-'}</td>
                             <td className="px-4 py-3 text-slate-600">
-                              <span className="inline-flex items-center gap-1"><Calendar size={13} /> {new Date(item.created_at).toLocaleDateString('vi-VN')}</span>
+                              <div className="flex flex-col gap-1">
+                                <span className="inline-flex items-center gap-1 text-xs"><Eye size={12} /> {item.view_count || 0}</span>
+                                <span className="inline-flex items-center gap-1 text-xs"><ThumbsUp size={12} className="text-fpt-orange" /> {item.votes_count || 0}</span>
+                                <span className="inline-flex items-center gap-1 text-xs"><Heart size={12} className="text-red-400" /> {item.favorites_count || 0}</span>
+                              </div>
                             </td>
                             <td className="px-4 py-3 text-right">
                               <div className="inline-flex gap-2">
@@ -764,7 +773,8 @@ export const AdminPublications = () => {
                   <th className="px-4 py-3 font-medium">Tiêu đề</th>
                   <th className="px-4 py-3 font-medium">Loại</th>
                   <th className="px-4 py-3 font-medium">Danh mục</th>
-                  <th className="px-4 py-3 font-medium">Ngày tạo</th>
+                  <th className="px-4 py-3 font-medium">Danh mục</th>
+                  <th className="px-4 py-3 font-medium">Tương tác</th>
                   <th className="px-4 py-3 font-medium text-right">Thao tác</th>
                 </tr>
               </thead>
@@ -784,7 +794,10 @@ export const AdminPublications = () => {
                       </td>
                       <td className="px-4 py-3 text-slate-600">{toSubjectLabel(item.subject) || item.content_type || '-'}</td>
                       <td className="px-4 py-3 text-slate-600">
-                        <span className="inline-flex items-center gap-1"><Calendar size={13} /> {new Date(item.created_at).toLocaleDateString('vi-VN')}</span>
+                        <div className="flex flex-col gap-1">
+                          <span className="inline-flex items-center gap-1 text-xs"><Eye size={12} /> {item.view_count || 0}</span>
+                          <span className="inline-flex items-center gap-1 text-xs"><ThumbsUp size={12} className="text-fpt-orange" /> {item.votes_count || 0}</span>
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="inline-flex gap-2">

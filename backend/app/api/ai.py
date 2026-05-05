@@ -16,16 +16,20 @@ from datetime import datetime, timezone
 from uuid import uuid4
 from pathlib import Path
 from io import BytesIO
-try:
-    import chromadb
-    from chromadb.config import Settings
-except Exception:
-    chromadb = None
-    Settings = None
+from app.services.vector_db import (
+    get_knowledge_collection,
+    get_navigation_collection,
+    KNOWLEDGE_COLLECTION,
+    NAVIGATION_COLLECTION,
+    QDRANT_URL,
+)
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.models.publication import Event, Publication, Story, Submission
+from app.models.publication import Event, Publication, Story, Submission, SocialScale, StaffProfile
+from app.models.user import User
+from jose import JWTError, jwt
+from app.api.auth import role_has_permission
 
 load_dotenv()
 
@@ -61,13 +65,21 @@ class ChatHistoryItem(BaseModel):
     created_at: str
 
 
+class PublicationShortDescriptionRequest(BaseModel):
+    title: Optional[str] = None
+    subject: Optional[str] = None
+    content_type: Optional[str] = None
+    content: Optional[str] = None
+    layout_metadata: Optional[Dict[str, Any]] = None
+
+
 chat_sessions: Dict[str, List[dict]] = {}
 chat_feedbacks: List[dict] = []
 
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 DEFAULT_MODEL = os.getenv("OLLAMA_MODEL", "gpt-oss:120b-cloud")
-CHROMA_COLLECTION_NAME = os.getenv("CHROMA_COLLECTION_NAME", "webngoaikhoa_knowledge")
-NAV_CHROMA_COLLECTION_NAME = os.getenv("CHROMA_NAV_COLLECTION_NAME", "webngoaikhoa_navigation")
+CHROMA_COLLECTION_NAME = KNOWLEDGE_COLLECTION
+NAV_CHROMA_COLLECTION_NAME = NAVIGATION_COLLECTION
 CHROMA_DB_PATH = os.getenv(
     "CHROMA_DB_PATH",
     str(Path(__file__).resolve().parent.parent.parent / "chroma_db"),
@@ -79,8 +91,6 @@ STATIC_SITE_KNOWLEDGE_PATH = Path(
     )
 )
 
-_chroma_client = None
-_chroma_collection = None
 _http_client: Optional[httpx.AsyncClient] = None
 KNOWLEDGE_INDEX_PATH = Path(CHROMA_DB_PATH) / "knowledge_assets.json"
 _last_sync_at: Optional[str] = None
@@ -131,131 +141,14 @@ RATE_LIMIT_STATE: Dict[str, Deque[float]] = {}
 # Cached static public element index (loaded from frontend build output)
 _PUBLIC_ELEMENT_INDEX: Optional[Dict[str, Any]] = None
 
-AI_SEARCH_INTENT_KEYWORDS = {
-    "tim",
-    "tim kiem",
-    "tra cuu",
-    "tra",
-    "kiem",
-    "liet ke",
-    "goi y",
-    "noi dung nao",
-    "bai nao",
-    "chi tiet",
-    "thong tin",
-}
-AI_NAV_INTENT_KEYWORDS = {
-    "mo",
-    "mo trang",
-    "di den",
-    "chuyen den",
-    "truy cap",
-    "vao trang",
-    "toi trang",
-    "route",
-}
-AI_ELEMENT_FOCUS_KEYWORDS = {
-    "danh dau",
-    "đánh dấu",
-    "khoanh vien",
-    "khoanh viền",
-    "khoanh",
-    "highlight",
-    "lam noi bat",
-    "làm nổi bật",
-    "tieu de",
-    "tiêu đề",
-    "heading",
-    "phan tu",
-    "phần tử",
-    "label",
-    "input",
-    "field",
-    "form",
-    "o nhap",
-    "ô nhập",
-    "o dien",
-    "ô điền",
-    "nhap",
-    "nhập",
-    "nhap ten",
-    "nhập tên",
-    "cho nhap",
-    "chỗ nhập",
-    "cho dien",
-    "chỗ điền",
-    "ho va ten",
-    "họ và tên",
-    "ten tac gia",
-    "tên tác giả",
-    "tac gia",
-    "tác giả",
-    "button",
-    "scroll",
-    "nop",
-    "nộp",
-    "nop bai",
-    "nộp bài",
-    "gui",
-    "gửi",
-    "gui bai",
-    "gửi bài",
-    "upload",
-    "dinh kem",
-    "đính kèm",
-    "sinh vien",
-    "sinh viên",
-}
-AI_CONTENT_DISCOVERY_KEYWORDS = {
-    "bai viet",
-    "an pham",
-    "nhai ben",
-    "su kien",
-    "hoat dong",
-    "mua he",
-    "campus",
-    "story",
-    "cau chuyen",
-    "tin",
-}
-AI_WEBSITE_SCOPE_HINTS = {
-    "to xa hoi",
-    "tổ xã hội",
-    "fpt",
-    "website",
-    "trang",
-    "route",
-    "nhai ben",
-    "nhái bén",
-    "an pham",
-    "ấn phẩm",
-    "su kien",
-    "sự kiện",
-    "phan mon",
-    "phân môn",
-    "van",
-    "ktpl",
-    "lich su",
-    "dia li",
-    "vovinam",
-    "dang nhap",
-    "dang ky",
-    "profile",
-    "admin",
-}
-
-AI_WEBSITE_SCOPE_FALLBACK = (
-    "Mình chỉ hỗ trợ các nội dung liên quan trực tiếp đến website Tổ xã hội (trang, mục, bài viết, "
-    "sự kiện, phân môn, và thao tác điều hướng/khoanh viền phần tử trên web). "
-    "Bạn hãy nêu câu hỏi theo ngữ cảnh website để mình hỗ trợ chính xác hơn."
-)
-
 FACTUAL_GUARDRAILS = (
     "\n\nNGUYÊN TẮC CHỐNG ẢO GIÁC (BẮT BUỘC):\n"
     "- Chỉ khẳng định thông tin khi có trong dữ liệu đã biết (ngữ cảnh/tool/sitemap).\n"
     "- Không bịa số liệu, tên bài, đường dẫn, sự kiện, mốc thời gian hoặc trích dẫn.\n"
     "- Nếu thiếu dữ liệu xác thực: trả lời rõ 'Mình chưa có dữ liệu để xác nhận thông tin này.'\n"
     "- Không suy diễn như sự thật; nếu nêu giả định phải ghi rõ là giả định.\n"
+    "- Nếu dữ liệu chỉ có tiêu đề/snippet ngắn: chỉ tóm tắt sát dữ liệu trong tối đa 1-2 câu, không tự thêm bối cảnh/diễn biến/bài học.\n"
+    "- Với yêu cầu mở/chuyển/vào/xem nội dung, không viết lại nội dung bài từ trí nhớ; ưu tiên điều hướng bằng tool.\n"
 )
 
 
@@ -312,6 +205,195 @@ def _sanitize_message_content(value: str, max_chars: int) -> str:
     if not normalized:
         return ""
     return normalized[:max_chars]
+
+
+def _strip_html_for_summary(value: str) -> str:
+    if not value:
+        return ""
+    no_tags = re.sub(r"<[^>]*>", " ", str(value))
+    return _normalize_text(no_tags)
+
+
+SHORT_DESC_NOISE_TERMS = (
+    "publication",
+    "story",
+    "event",
+    "submission",
+    "draft",
+    "published",
+    "layout",
+    "metadata",
+    "json",
+    "vi-vn",
+    "en-us",
+    "content_type",
+    "subject",
+    "category",
+)
+
+
+def _remove_repeated_adjacent_words(value: str) -> str:
+    if not value:
+        return ""
+    return re.sub(r"\b([^\W\d_]+)(\s+\1\b)+", r"\1", value, flags=re.IGNORECASE)
+
+
+def _soften_uppercase_sentence(value: str) -> str:
+    text = _normalize_text(value)
+    if not text:
+        return ""
+
+    letters = [ch for ch in text if ch.isalpha()]
+    if len(letters) < 8:
+        return text
+
+    uppercase_ratio = sum(1 for ch in letters if ch.isupper()) / max(1, len(letters))
+    if uppercase_ratio < 0.72:
+        return text
+
+    lowered = text.lower()
+    lowered = re.sub(r"(?<=[.!?])\s+([\wÀ-ỹ])", lambda m: m.group(1).upper(), lowered)
+    return lowered[:1].upper() + lowered[1:]
+
+
+def _remove_short_description_noise(value: str) -> str:
+    text = _strip_html_for_summary(value)
+    if not text:
+        return ""
+
+    # Remove leading route/tag-like prefixes such as "cuoc-thi - van:".
+    text = re.sub(r"^\s*[a-z0-9_-]+\s*-\s*[a-z0-9_-]+\s*:\s*", "", text, flags=re.IGNORECASE)
+
+    # Drop frequent technical tokens that may leak from CMS metadata.
+    for term in SHORT_DESC_NOISE_TERMS:
+        text = re.sub(rf"\b{re.escape(term)}\b", " ", text, flags=re.IGNORECASE)
+
+    text = _normalize_text(text)
+    text = re.sub(r"\s*[-–—:]{1,2}\s*", " ", text)
+    text = _remove_repeated_adjacent_words(text)
+    text = _normalize_text(text)
+    return text
+
+
+def _looks_like_noise_only(value: str) -> bool:
+    cleaned = _normalize_for_match(_remove_short_description_noise(value))
+    if not cleaned:
+        return True
+
+    tokens = [token for token in re.split(r"[^a-z0-9]+", cleaned) if token]
+    if not tokens:
+        return True
+
+    meaningful = [token for token in tokens if token not in {
+        "publication", "story", "event", "submission", "draft", "published",
+        "layout", "metadata", "json", "vi", "vn", "en", "us",
+        "content", "type", "subject", "category", "true", "false", "null",
+    }]
+    return len(meaningful) == 0
+
+
+def _pick_first_readable_sentence(value: str) -> str:
+    text = _remove_short_description_noise(value)
+    if not text:
+        return ""
+
+    candidates = [segment.strip() for segment in re.split(r"(?<=[.!?;])\s+", text) if segment.strip()]
+    if not candidates:
+        return _soften_uppercase_sentence(text)
+
+    for segment in candidates:
+        if len(segment) < 18:
+            continue
+        if _looks_like_noise_only(segment):
+            continue
+        return _soften_uppercase_sentence(segment)
+
+    return _soften_uppercase_sentence(candidates[0])
+
+
+def _normalize_short_description_result(value: str, max_chars: int = 220) -> str:
+    cleaned = _pick_first_readable_sentence(value)
+    cleaned = cleaned.strip(" \n\t\"'`-•")
+    if not cleaned:
+        return ""
+    if len(cleaned) <= max_chars:
+        return cleaned
+    return cleaned[:max_chars].rstrip(" ,.;:!?-")
+
+
+def _collect_layout_text(layout: Any, limit: int = 4000) -> str:
+    chunks: List[str] = []
+
+    def walk(node: Any, depth: int = 0):
+        if depth > 8:
+            return
+        if len(" ".join(chunks)) >= limit:
+            return
+
+        if isinstance(node, str):
+            text = _remove_short_description_noise(node)
+            if text and not _looks_like_noise_only(text):
+                chunks.append(text)
+            return
+
+        if isinstance(node, dict):
+            preferred_keys = [
+                "title",
+                "heading",
+                "subtitle",
+                "text",
+                "content",
+                "snippet",
+                "caption",
+                "description",
+                "label",
+                "alt",
+            ]
+            for key in preferred_keys:
+                value = node.get(key)
+                if isinstance(value, str):
+                    text = _remove_short_description_noise(value)
+                    if text and not _looks_like_noise_only(text):
+                        chunks.append(text)
+
+            for key in ("props", "data", "blocks", "children"):
+                if key in node:
+                    walk(node.get(key), depth + 1)
+
+            metadata_node = node.get("metadata")
+            if isinstance(metadata_node, dict):
+                for key in ("short_description", "description", "title"):
+                    value = metadata_node.get(key)
+                    if isinstance(value, str):
+                        text = _remove_short_description_noise(value)
+                        if text and not _looks_like_noise_only(text):
+                            chunks.append(text)
+            return
+
+        if isinstance(node, list):
+            for item in node[:120]:
+                walk(item, depth + 1)
+
+    walk(layout)
+    joined = _normalize_text(" ".join(chunks))
+    if len(joined) > limit:
+        return joined[:limit]
+    return joined
+
+
+def _build_publication_short_description_fallback(payload: PublicationShortDescriptionRequest, max_chars: int = 220) -> str:
+    title = _remove_short_description_noise(payload.title or "")
+    content = _remove_short_description_noise(payload.content or "")
+    body = content or _collect_layout_text(payload.layout_metadata or {})
+
+    if body:
+        sentence = _pick_first_readable_sentence(body)
+    elif title:
+        sentence = _pick_first_readable_sentence(title)
+    else:
+        sentence = "Bài viết mới đang được cập nhật nội dung chi tiết."
+
+    return _normalize_short_description_result(sentence, max_chars=max_chars)
 
 
 def _build_model_history(history_items: Optional[List[ChatRequestHistoryItem]]) -> List[Dict[str, str]]:
@@ -573,31 +655,13 @@ except Exception:
 
 
 def _get_chroma_collection():
-    global _chroma_client, _chroma_collection
-
-    if _chroma_collection is not None:
-        return _chroma_collection
-
-    _chroma_client = chromadb.PersistentClient(
-        path=CHROMA_DB_PATH,
-        settings=Settings(anonymized_telemetry=False),
-    )
-    _chroma_collection = _chroma_client.get_or_create_collection(CHROMA_COLLECTION_NAME)
-    return _chroma_collection
+    """Return the main knowledge vector collection (Qdrant-backed)."""
+    return get_knowledge_collection()
 
 
 def _get_navigation_chroma_collection():
-    global _chroma_client
-
-    if _chroma_client is None:
-        # ensure client initialized
-        _get_chroma_collection()
-
-    try:
-        nav_collection = _chroma_client.get_or_create_collection(NAV_CHROMA_COLLECTION_NAME)
-    except Exception:
-        nav_collection = _chroma_client.get_or_create_collection(NAV_CHROMA_COLLECTION_NAME)
-    return nav_collection
+    """Return the navigation elements vector collection (Qdrant-backed)."""
+    return get_navigation_collection()
 
 
 def _get_http_client() -> httpx.AsyncClient:
@@ -1246,6 +1310,40 @@ def _retrieve_context(query: str, n_results: int = 4) -> str:
     return "\n\n".join(chunks)
 
 
+def _sanitized_user_context(db: Session, user: Optional[User]) -> Dict[str, Any]:
+    """Return a small, sanitized user context object for LLM runtime.
+
+    Contains: roles (list), account_type (role slug), posts (id,title,slug,published_at)
+    Never include emails or other PII.
+    """
+    if not user:
+        return {"roles": [], "account_type": None, "posts": []}
+
+    # Basic role/account_type
+    role = getattr(user, "role", None)
+
+    # Pull recent publications authored by the user (metadata only)
+    try:
+        publications = db.query(Publication).filter(Publication.author_id == user.id).order_by(Publication.created_at.desc()).limit(8).all()
+    except Exception:
+        publications = []
+
+    posts = []
+    for p in publications:
+        posts.append({
+            "id": p.id,
+            "title": _normalize_text(p.title)[:AI_TITLE_TRUNC],
+            "path": f"/posts/{p.id}",
+            "created_at": p.created_at.isoformat() if getattr(p, "created_at", None) else None,
+        })
+
+    return {
+        "roles": [role] if role else [],
+        "account_type": role,
+        "posts": posts,
+    }
+
+
 def _search_knowledge_records(query: str, n_results: int = 5) -> List[Dict[str, Any]]:
     collection = _get_chroma_collection()
     results = collection.query(query_texts=[query], n_results=n_results)
@@ -1274,78 +1372,6 @@ def _search_knowledge_records(query: str, n_results: int = 5) -> List[Dict[str, 
         )
 
     return items
-
-
-def _is_search_intent(normalized_query: str) -> bool:
-    if not normalized_query:
-        return False
-    return any(keyword in normalized_query for keyword in AI_SEARCH_INTENT_KEYWORDS)
-
-
-def _is_navigation_intent(normalized_query: str) -> bool:
-    if not normalized_query:
-        return False
-
-    if normalized_query.startswith("/"):
-        return True
-    if any(keyword in normalized_query for keyword in AI_NAV_INTENT_KEYWORDS):
-        return True
-    if _is_element_focus_intent(normalized_query):
-        return True
-    return any(item.get("path", "") in normalized_query for item in AI_ROUTE_SITEMAP)
-
-
-def _is_content_discovery_intent(normalized_query: str) -> bool:
-    if not normalized_query:
-        return False
-    return any(keyword in normalized_query for keyword in AI_CONTENT_DISCOVERY_KEYWORDS)
-
-
-def _is_element_focus_intent(normalized_query: str) -> bool:
-    if not normalized_query:
-        return False
-    return any(keyword in normalized_query for keyword in AI_ELEMENT_FOCUS_KEYWORDS)
-
-
-def _is_smalltalk_query(normalized_query: str) -> bool:
-    if not normalized_query:
-        return True
-
-    # Be tolerant to punctuation/spacing/diacritics by tokenizing the input.
-    tokens = _tokenize_for_match(normalized_query)
-    if not tokens:
-        return False
-
-    # Only treat short messages as smalltalk to avoid false positives.
-    if len(tokens) > 4 or len(normalized_query) > 100:
-        return False
-
-    token_set = set(tokens)
-
-    # Simple greeting tokens
-    if token_set & {"hi", "hello", "helo", "hey", "alo", "chao"}:
-        return True
-
-    # Common two-word smalltalk phrases (e.g., "xin chao", "cam on")
-    if "xin" in token_set and "chao" in token_set:
-        return True
-    if "cam" in token_set and "on" in token_set:
-        return True
-    # No special-case heuristics for typed variants (keep detection simple)
-
-    return False
-
-
-def _is_website_scope_query(normalized_query: str) -> bool:
-    if not normalized_query:
-        return True
-    if _is_smalltalk_query(normalized_query):
-        return True
-    if _is_navigation_intent(normalized_query) or _is_search_intent(normalized_query) or _is_content_discovery_intent(normalized_query):
-        return True
-    if any(keyword in normalized_query for keyword in AI_WEBSITE_SCOPE_HINTS):
-        return True
-    return any(item.get("path", "") in normalized_query for item in AI_ROUTE_SITEMAP)
 
 
 def _build_search_context(db: Session, query: str) -> str:
@@ -1384,67 +1410,13 @@ def _build_search_context(db: Session, query: str) -> str:
     return "\n\n".join(parts).strip()
 
 
-def _build_sitemap_quick_context(query: str, limit: int = 5) -> str:
-    query_norm = _normalize_for_match(query)
-    query_tokens = _tokenize_for_match(query)
-
-    scored_routes: List[Tuple[float, dict]] = []
-    for route in AI_ROUTE_SITEMAP:
-        score = _score_match(
-            query_norm=query_norm,
-            query_tokens=query_tokens,
-            title=route.get("title", ""),
-            body=route.get("path", ""),
-            aliases=route.get("aliases", []) or [],
-        )
-        if score <= 0:
-            continue
-        scored_routes.append((score, route))
-
-    scored_routes.sort(key=lambda item: item[0], reverse=True)
-    top_routes = scored_routes[: max(1, limit)]
-
-    if not top_routes:
-        top_routes = [(0, item) for item in AI_ROUTE_SITEMAP[: min(limit, len(AI_ROUTE_SITEMAP))]]
-
-    lines = [
-        "SITEMAP NHANH (ưu tiên route phù hợp):",
-    ]
-    for _, route in top_routes:
-        lines.append(f"- {route.get('title', 'Không rõ tiêu đề')}: {route.get('path', '/')}")
-
-    return "\n".join(lines)
-
-
 def _resolve_chat_strategy(question: str, enable_tools: bool) -> Dict[str, Any]:
-    normalized_query = _normalize_for_match(question)
-    asks_for_content_discovery = _is_content_discovery_intent(normalized_query)
-    asks_for_element_focus = _is_element_focus_intent(normalized_query)
-    mentions_known_route = normalized_query.startswith("/") or any(item.get("path", "") in normalized_query for item in AI_ROUTE_SITEMAP)
-
-    if _is_search_intent(normalized_query) or asks_for_content_discovery:
-        return {
-            "mode": "search",
-            "enable_tools": bool(enable_tools),
-            "include_search_tools": bool(enable_tools),
-            "use_heavy_context": True,
-            "context": "",
-        }
-
-    if _is_navigation_intent(normalized_query):
-        include_search_tools = bool(enable_tools and (asks_for_element_focus or not mentions_known_route))
-        return {
-            "mode": "navigate",
-            "enable_tools": bool(enable_tools),
-            "include_search_tools": include_search_tools,
-            "use_heavy_context": False,
-            "context": _build_sitemap_quick_context(question),
-        }
-
+    # Avoid keyword-based intent routing; let the model decide when/how to use tools.
+    # Keep runtime lightweight and always tool-capable when enable_tools=True.
     return {
         "mode": "simple",
-        "enable_tools": False,
-        "include_search_tools": False,
+        "enable_tools": bool(enable_tools),
+        "include_search_tools": bool(enable_tools),
         "use_heavy_context": False,
         "context": "",
     }
@@ -1474,6 +1446,9 @@ def _prepare_chat_runtime(question: str, db: Session, enable_tools: bool) -> Dic
         except Exception:
             logger.exception("Failed to retrieve lightweight context for question=%s", question)
 
+    # Attach a placeholder for user context; it will be filled at request time using dependency
+    strategy["user_context_required"] = True
+
     return strategy
 
 
@@ -1486,19 +1461,24 @@ def _build_prompt_with_context(
     tool_instructions = ""
     if enable_tools:
         tool_instructions = (
-            "\n\nHƯỚNG DẪN DÙNG TOOL:\n"
+            "\n\nHƯỚNG DẪN DÙNG TOOL (BẮT BUỘC):\n"
             "- Nếu cần điều hướng hoặc thao tác UI, ưu tiên gọi tool thay vì chỉ mô tả chung chung.\n"
             "- Chỉ điều hướng đến route có trong sitemap whitelist.\n"
-            "- Với yêu cầu tìm vị trí card hoặc section, chỉ gọi search_content khi người dùng thật sự yêu cầu tìm kiếm.\n"
-            "- Chỉ gọi search_ai_knowledge khi yêu cầu tra cứu nội dung, không gọi cho câu chào/hỏi đơn giản.\n"
-            "- Sau khi mở trang, nếu có mục tiêu cụ thể thì gọi scroll_to_target hoặc open_and_focus.\n"
+            "- Dựa trên ngữ cảnh hội thoại để tự quyết định dùng tool phù hợp.\n"
+            "- Khi người dùng yêu cầu vào/mở/xem một nội dung cụ thể hoặc bất kỳ: ưu tiên gọi `search_content` hoặc `open_and_focus`.\n"
+            "- TUYỆT ĐỐI KHÔNG hiển thị output thô của tool (JSON, tên hàm, args, selector, anchor) trong phản hồi.\n"
+            "- Sau khi gọi tool, chỉ phản hồi ngắn gọn bằng tiếng Việt tự nhiên: ví dụ 'Đã mở trang X cho bạn.', 'Mình đã chuyển đến phần Y.', 'Không tìm thấy nội dung phù hợp.'\n"
+            "- Không lặp lại đường dẫn, selector, hoặc chi tiết kỹ thuật trong câu trả lời.\n"
             "\nSITEMAP WHITELIST:\n"
             f"{json.dumps(AI_ROUTE_SITEMAP, ensure_ascii=False, indent=2)}"
         )
 
     mode_instruction = ""
     if chat_mode == "simple":
-        mode_instruction = "\n\nCHẾ ĐỘ TỐI ƯU TỐC ĐỘ: đây là câu chat đơn giản, ưu tiên trả lời ngắn gọn và trực tiếp, không tra cứu nặng."
+        mode_instruction = (
+            "\n\nCHẾ ĐỘ TỐI ƯU TỐC ĐỘ: đây là câu chat đơn giản, ưu tiên trả lời ngắn gọn và trực tiếp, không tra cứu nặng."
+            " Không viết dài theo kiểu kể chuyện khi chỉ có dữ liệu ngắn hoặc chưa chắc chắn."
+        )
     elif chat_mode == "navigate":
         mode_instruction = "\n\nCHẾ ĐỘ ĐIỀU HƯỚNG: ưu tiên route theo sitemap nhanh, không thực hiện tra cứu tri thức nặng."
     elif chat_mode == "search":
@@ -1507,7 +1487,16 @@ def _build_prompt_with_context(
             "Nếu có kết quả, bắt buộc nêu rõ ít nhất 1-3 mục với tiêu đề, mô tả ngắn và đường dẫn path tương ứng."
         )
 
-    if not context:
+    # context may be either a plain string (knowledge context) or a runtime dict
+    knowledge_ctx = ""
+    user_ctx = {}
+    if isinstance(context, dict):
+        knowledge_ctx = context.get("context", "") or ""
+        user_ctx = context.get("user_context", {}) or {}
+    else:
+        knowledge_ctx = str(context or "")
+
+    if not knowledge_ctx and not user_ctx:
         return (
             "Bạn là trợ lý AI thông minh của hệ thống Tổ xã hội tại FPT Education. "
             "Trả lời bằng tiếng Việt, rõ ràng và hữu ích. "
@@ -1519,20 +1508,32 @@ def _build_prompt_with_context(
             + f"\n\nCâu hỏi: {question}"
         )
 
-    return (
-        "Bạn là trợ lý AI thông minh của hệ thống Tổ xã hội tại FPT Education. "
-        "Hãy ưu tiên trả lời dựa trên NGỮ CẢNH TRI THỨC được cung cấp. "
-        "Chỉ hỗ trợ nội dung liên quan trực tiếp đến website này; từ chối chủ đề ngoài phạm vi website. "
-        "Nếu không đủ dữ liệu trong ngữ cảnh, hãy nói rõ phần chưa chắc chắn thay vì bịa thông tin. "
-        "Trả lời bằng tiếng Việt, hỗ trợ Markdown và LaTeX khi cần."
-        + FACTUAL_GUARDRAILS
-        + mode_instruction
-        + "\n\nNGỮ CẢNH TRI THỨC:\n"
-        f"{context}"
-        + tool_instructions
-        + "\n\nCÂU HỎI NGƯỜI DÙNG:\n"
-        f"{question}"
-    )
+    prompt_parts = [
+        "Bạn là trợ lý AI thông minh của hệ thống Tổ xã hội tại FPT Education.",
+        "Hãy ưu tiên trả lời dựa trên NGỮ CẢNH TRI THỨC được cung cấp.",
+        "Chỉ hỗ trợ nội dung liên quan trực tiếp đến website này; từ chối chủ đề ngoài phạm vi website.",
+        "Nếu không đủ dữ liệu trong ngữ cảnh, hãy nói rõ phần chưa chắc chắn thay vì bịa thông tin.",
+        "Trả lời bằng tiếng Việt, hỗ trợ Markdown và LaTeX khi cần.",
+        FACTUAL_GUARDRAILS,
+        mode_instruction,
+    ]
+
+    if knowledge_ctx:
+        prompt_parts.append("\nNGỮ CẢNH TRI THỨC:\n")
+        prompt_parts.append(knowledge_ctx)
+
+    if user_ctx:
+        try:
+            prompt_parts.append("\nNGỮ CẢNH NGƯỜI DÙNG (SANITIZED):\n")
+            prompt_parts.append(json.dumps(user_ctx, ensure_ascii=False))
+        except Exception:
+            prompt_parts.append("\nNGƯỜI DÙNG: (không thể hiển thị chi tiết)")
+
+    prompt_parts.append(tool_instructions)
+    prompt_parts.append("\n\nCÂU HỎI NGƯỜI DÙNG:\n")
+    prompt_parts.append(question)
+
+    return "\n\n".join([str(p) for p in prompt_parts if p is not None])
 
 
 def _validate_tool_call(item: dict) -> Optional[dict]:
@@ -1596,7 +1597,7 @@ def _compress_tool_calls(tool_calls: List[dict]) -> List[dict]:
     if not tool_calls:
         return []
 
-    # Keep tool flow concise to avoid repetitive UI feedback.
+    # Keep tool flow concise but avoid hard exclusions that reduce flexibility.
     priority_order = {
         "open_and_focus": 0,
         "compute_selector_for_text": 1,
@@ -1608,22 +1609,22 @@ def _compress_tool_calls(tool_calls: List[dict]) -> List[dict]:
         "search_ai_knowledge": 7,
     }
 
-    has_open_and_focus = any(item.get("name") == "open_and_focus" for item in tool_calls)
-    has_search_content = any(item.get("name") == "search_content" for item in tool_calls)
+    deduped: List[dict] = []
+    seen = set()
 
-    filtered: List[dict] = []
     for item in tool_calls:
         name = item.get("name")
-        if has_open_and_focus and name in {"navigate_to_page", "scroll_to_target", "highlight_target"}:
+        args = item.get("args") if isinstance(item.get("args"), dict) else {}
+        signature = (name, json.dumps(args, ensure_ascii=False, sort_keys=True))
+        if signature in seen:
             continue
-        if has_search_content and name == "search_ai_knowledge":
-            continue
-        filtered.append(item)
+        seen.add(signature)
+        deduped.append(item)
 
-    filtered.sort(key=lambda item: priority_order.get(item.get("name"), 99))
+    deduped.sort(key=lambda item: priority_order.get(item.get("name"), 99))
 
-    # Prevent long chains of mostly equivalent actions in one turn.
-    return filtered[:2]
+    # Still cap chain length to keep responses snappy.
+    return deduped[:3]
 
 
 def _load_knowledge_assets() -> List[dict]:
@@ -1755,8 +1756,8 @@ def assemble_full_asset_text(asset_id: str, max_chars: Optional[int] = None) -> 
     try:
         data = collection.get(ids=ids, include=["documents", "metadatas"]) or {}
     except Exception:
-        logger.exception("Failed to assemble asset from chroma for asset_id=%s", asset_id)
-        return {"ok": False, "reason": "chroma_error"}
+        logger.exception("Failed to assemble asset from vector db for asset_id=%s", asset_id)
+        return {"ok": False, "reason": "vector_db_error"}
 
     docs = data.get("documents", []) or []
     metas = data.get("metadatas", []) or []
@@ -1816,12 +1817,127 @@ def get_ai_health_snapshot(db: Session) -> Dict[str, Any]:
         "status": "ok",
         "chroma": {
             "available": True,
-            "path": CHROMA_DB_PATH,
+            "path": QDRANT_URL,
             "collection": CHROMA_COLLECTION_NAME,
             "documents": collection.count(),
             "knowledge_assets": len(list_knowledge_files()),
         },
     }
+
+
+@router.get('/site-context')
+def get_site_context(request: Request, db: Session = Depends(get_db)):
+    """Return structured site context for the AI: publications, stories, events, social scale, and staff (sanitized).
+
+    Access rules: full item bodies only for editors/admins; otherwise return metadata and short snippets.
+    """
+    try:
+        # Determine privilege by inspecting Authorization header if present
+        is_privileged = False
+        current_user = None
+        try:
+            auth_header = request.headers.get('authorization') or request.headers.get('Authorization')
+            if auth_header and auth_header.lower().startswith('bearer '):
+                token = auth_header.split(' ', 1)[1].strip()
+                try:
+                    payload_jwt = jwt.decode(token, os.getenv('SECRET_KEY', 'your-secret-key-for-development'), algorithms=[os.getenv('ALGORITHM', 'HS256')])
+                    email = payload_jwt.get('sub')
+                    if email:
+                        current_user = db.query(User).filter(User.email == email).first()
+                except Exception:
+                    current_user = None
+        except Exception:
+            current_user = None
+
+        if current_user and getattr(current_user, 'role', None):
+            is_privileged = role_has_permission(db, current_user.role, 'content_manage') or role_has_permission(db, current_user.role, 'admin')
+
+        publications = db.query(Publication).order_by(Publication.created_at.desc()).limit(40).all()
+        stories = db.query(Story).order_by(Story.created_at.desc()).limit(40).all()
+        events = db.query(Event).order_by(Event.event_date.asc()).limit(40).all()
+        try:
+            scale = db.query(SocialScale).order_by(SocialScale.created_at.desc()).first()
+        except Exception:
+            scale = None
+        staff = db.query(StaffProfile).filter(StaffProfile.is_active == True).order_by(StaffProfile.display_order.asc()).all()
+
+        def pub_to_item(p):
+            return {
+                'id': p.id,
+                'title': _normalize_text(p.title)[:AI_TITLE_TRUNC],
+                'path': f'/posts/{p.id}',
+                'snippet': (_normalize_text(p.short_description) or _normalize_text(p.content)[:AI_RETRIEVE_PER_DOC_CHARS]) if not is_privileged else _normalize_text(p.content)[:AI_RETRIEVE_PER_DOC_CHARS],
+                'content': _normalize_text(p.content)[:AI_RETRIEVE_PER_DOC_CHARS] if is_privileged else None,
+            }
+
+        def story_to_item(s):
+            return {
+                'id': s.id,
+                'title': _normalize_text(s.title)[:AI_TITLE_TRUNC],
+                'path': f'/stories/inspiring/{s.id}',
+                'snippet': _normalize_text(s.snippet) or (_normalize_text(s.content)[:AI_RETRIEVE_PER_DOC_CHARS] if not is_privileged else _normalize_text(s.content)[:AI_RETRIEVE_PER_DOC_CHARS]),
+                'content': _normalize_text(s.content)[:AI_RETRIEVE_PER_DOC_CHARS] if is_privileged else None,
+            }
+
+        def event_to_item(e):
+            return {
+                'id': e.id,
+                'title': _normalize_text(e.title)[:AI_TITLE_TRUNC],
+                'path': '/events/upcoming',
+                'snippet': _normalize_text(e.description)[:AI_EVENT_SNIPPET_TRUNC],
+                'target': f'#event-card-{e.id}',
+                'content': _normalize_text(e.description)[:AI_EVENT_SNIPPET_TRUNC] if is_privileged else None,
+            }
+
+        def staff_to_item(s):
+            return {
+                'id': s.id,
+                'name': _normalize_text(s.full_name)[:AI_META_STUDENT_NAME_TRUNC],
+                'title': _normalize_text(s.title)[:AI_META_CATEGORY_TRUNC],
+                'expertise': _normalize_text(s.expertise)[:AI_META_CATEGORY_TRUNC],
+                # intentionally omit email
+            }
+
+        result = {
+            'publications': [pub_to_item(p) for p in publications],
+            'stories': [story_to_item(s) for s in stories],
+            'events': [event_to_item(e) for e in events],
+            'social_scale': {
+                'hero_title': _normalize_text(scale.hero_title) if scale else None,
+                'hero_subtitle': _normalize_text(scale.hero_subtitle) if scale else None,
+                'vision': _normalize_text(scale.vision) if scale else None,
+            },
+            'staff': [staff_to_item(s) for s in staff],
+            'privileged': is_privileged,
+        }
+
+        return JSONResponse(content=result)
+    except Exception:
+        logger.exception('Failed to build site context for AI')
+        raise HTTPException(status_code=500, detail='failed to build site context')
+
+
+@router.get('/user-context')
+def get_user_context(request: Request, db: Session = Depends(get_db)):
+    """Return sanitized user context for the currently authenticated user (if any)."""
+    try:
+        auth_header = request.headers.get('authorization') or request.headers.get('Authorization')
+        current_user = None
+        if auth_header and auth_header.lower().startswith('bearer '):
+            token = auth_header.split(' ', 1)[1].strip()
+            try:
+                payload_jwt = jwt.decode(token, os.getenv('SECRET_KEY', 'your-secret-key-for-development'), algorithms=[os.getenv('ALGORITHM', 'HS256')])
+                email = payload_jwt.get('sub')
+                if email:
+                    current_user = db.query(User).filter(User.email == email).first()
+            except Exception:
+                current_user = None
+
+        context = _sanitized_user_context(db, current_user)
+        return JSONResponse(content={"ok": True, "user_context": context})
+    except Exception:
+        logger.exception('Failed to build user context')
+        raise HTTPException(status_code=500, detail='failed to build user context')
 
 
 @router.get("/elements")
@@ -1902,7 +2018,7 @@ def ingest_public_elements():
     try:
         collection.upsert(ids=ids, documents=docs, metadatas=metadatas)
     except Exception:
-        raise HTTPException(status_code=500, detail="failed to upsert elements into chroma")
+        raise HTTPException(status_code=500, detail="failed to upsert elements into vector db")
 
     return JSONResponse(content={"ok": True, "imported": len(ids)})
 
@@ -2030,7 +2146,7 @@ def compute_selector_for_text(request: Dict[str, Any]):
 
 async def ollama_stream(
     question: str,
-    context: str,
+    context: Any,
     model: str,
     history: Optional[List[Dict[str, str]]] = None,
     enable_tools: bool = True,
@@ -2039,6 +2155,7 @@ async def ollama_stream(
     route_paths: Optional[List[str]] = None,
 ):
     full_response = ""
+    thinking_response = ""
     collected_tool_calls: List[dict] = []
     warnings: List[str] = []
     system_prompt = _build_prompt_with_context("", context, enable_tools, chat_mode)
@@ -2102,6 +2219,11 @@ async def ollama_stream(
                                     full_response += text_chunk
                                     yield json.dumps({"type": "chunk", "text": text_chunk}, ensure_ascii=False) + "\n"
 
+                                think_chunk = message.get("thinking")
+                                if think_chunk:
+                                    thinking_response += think_chunk
+                                    yield json.dumps({"type": "thinking", "text": think_chunk}, ensure_ascii=False) + "\n"
+
                                 raw_tool_calls = message.get("tool_calls")
                                 if raw_tool_calls:
                                     valid_calls, call_warnings = _extract_ollama_tool_calls(raw_tool_calls)
@@ -2116,7 +2238,7 @@ async def ollama_stream(
                                 warnings.append("upstream_chunk_json_decode_error")
                                 continue
 
-                deduped_tool_calls: List[dict] = []
+            deduped_tool_calls: List[dict] = []
             seen_signatures = set()
             for call in collected_tool_calls:
                 signature = json.dumps(call, sort_keys=True, ensure_ascii=False)
@@ -2125,12 +2247,13 @@ async def ollama_stream(
                 seen_signatures.add(signature)
                 deduped_tool_calls.append(call)
 
-                deduped_tool_calls = _compress_tool_calls(deduped_tool_calls)
+            deduped_tool_calls = _compress_tool_calls(deduped_tool_calls)
 
             yield json.dumps(
                 {
                     "type": "meta",
                     "assistant_text": full_response.strip(),
+                    "thinking_text": thinking_response.strip(),
                     "tool_calls": deduped_tool_calls,
                     "warnings": list(dict.fromkeys(warnings)),
                 },
@@ -2164,6 +2287,31 @@ async def chat_with_ai(request: Request, payload: ChatRequest, db: Session = Dep
     model_to_use = payload.model if payload.model else DEFAULT_MODEL
     runtime = _prepare_chat_runtime(message_to_use, db, bool(payload.enable_tools))
     model_history = _build_model_history(payload.history)
+
+    # Resolve current user from auth token if provided; do not raise on missing token.
+    current_user = None
+    try:
+        # Attempt to reuse existing auth dependency behavior: check Authorization header for bearer token
+        auth_header = request.headers.get('authorization') or request.headers.get('Authorization')
+        if auth_header and auth_header.lower().startswith('bearer '):
+            token = auth_header.split(' ', 1)[1].strip()
+            # decode token to obtain subject (email)
+            try:
+                payload_jwt = jwt.decode(token, os.getenv('SECRET_KEY', 'your-secret-key-for-development'), algorithms=[os.getenv('ALGORITHM', 'HS256')])
+                email = payload_jwt.get('sub')
+                if email:
+                    current_user = db.query(User).filter(User.email == email).first()
+            except Exception:
+                current_user = None
+    except Exception:
+        current_user = None
+
+    # Attach sanitized user context into runtime if requested
+    if runtime.get('user_context_required'):
+        try:
+            runtime['user_context'] = _sanitized_user_context(db, current_user)
+        except Exception:
+            runtime['user_context'] = {"roles": [], "account_type": None, "posts": []}
 
     # Build route whitelist including dynamic content paths so model tools can navigate to posts
     try:
@@ -2207,7 +2355,7 @@ async def chat_with_ai(request: Request, payload: ChatRequest, db: Session = Dep
     return StreamingResponse(
         _safe_ollama_stream(
             message_to_use,
-            runtime.get("context", ""),
+            runtime,
             model_to_use,
             model_history,
             bool(runtime.get("enable_tools", False)),
@@ -2233,7 +2381,7 @@ async def chat_basic(request: Request, request_payload: ChatRequest, db: Session
     runtime = _prepare_chat_runtime(message_to_use, db, bool(request_payload.enable_tools))
     system_prompt = _build_prompt_with_context(
         "",
-        str(runtime.get("context", "")),
+        runtime,
         bool(runtime.get("enable_tools", False)),
         str(runtime.get("mode", "simple")),
     )
@@ -2264,7 +2412,7 @@ async def chat_basic(request: Request, request_payload: ChatRequest, db: Session
     try:
         payload_prompt = _build_prompt_with_context(
             message_to_use,
-            str(runtime.get("context", "")),
+            runtime,
             bool(runtime.get("enable_tools", False)),
             str(runtime.get("mode", "simple")),
         )
@@ -2320,6 +2468,100 @@ async def chat_basic(request: Request, request_payload: ChatRequest, db: Session
     }
 
 
+@router.post("/publication/short-description")
+async def publication_short_description(request: Request, payload: PublicationShortDescriptionRequest):
+    _enforce_rate_limit(request, "chat_basic")
+
+    model_to_use = DEFAULT_MODEL
+    layout = payload.layout_metadata or {}
+
+    try:
+        serialized_layout = json.dumps(layout, ensure_ascii=False)
+    except Exception:
+        serialized_layout = "{}"
+
+    if len(serialized_layout) > 9000:
+        serialized_layout = serialized_layout[:9000] + "..."
+
+    serialized_content = _remove_short_description_noise(payload.content or "")
+    if len(serialized_content) > 6000:
+        serialized_content = serialized_content[:6000] + "..."
+
+    system_prompt = (
+        "Bạn là trợ lý biên tập nội dung tiếng Việt. "
+        "Nhiệm vụ: tạo 1 mô tả ngắn cho thẻ bài viết dựa trên metadata và JSON layout. "
+        "Yêu cầu: tối đa 220 ký tự, 1 câu, không markdown, không hashtag, không viết hoa toàn bộ, không lặp lại cụm từ đầu, không bịa thêm dữ kiện. "
+        "Kết quả chỉ là một câu mô tả ngắn gọn, tự nhiên, không chứa các nhãn nhập liệu như Tieu de, Phan mon, Loai noi dung, Layout JSON."
+    )
+
+    user_prompt = (
+        f"Tieu de: {_normalize_text(payload.title or '')}\n"
+        f"Phan mon: {_normalize_text(payload.subject or '')}\n"
+        f"Loai noi dung: {_normalize_text(payload.content_type or '')}\n"
+        f"Noi dung bai viet: {serialized_content}\n"
+        f"Layout JSON: {serialized_layout}\n"
+        "Trich xuat thong tin chinh xac va tra ve duy nhat 1 cau mo ta ngan."
+    )
+
+    upstream_payload: Dict[str, Any] = {
+        "model": model_to_use,
+        "stream": False,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        "options": {
+            "temperature": 0.1,
+            "top_p": 0.85,
+        },
+    }
+
+    fallback_description = _build_publication_short_description_fallback(payload)
+    client = _get_http_client()
+
+    try:
+        response = await client.post(
+            f"{OLLAMA_BASE_URL}/api/chat",
+            json=upstream_payload,
+            timeout=httpx.Timeout(connect=4.0, read=20.0, write=10.0, pool=10.0),
+        )
+        if response.status_code != 200:
+            return {
+                "description": fallback_description,
+                "source": "fallback",
+                "model": model_to_use,
+            }
+
+        data = response.json() if response.content else {}
+        model_answer = ""
+        if isinstance(data, dict):
+            message_obj = data.get("message")
+            if isinstance(message_obj, dict):
+                model_answer = str(message_obj.get("content") or message_obj.get("text") or "")
+            if not model_answer:
+                model_answer = str(data.get("response") or data.get("answer") or data.get("text") or "")
+
+        normalized = _normalize_short_description_result(model_answer, max_chars=220)
+        if not normalized:
+            normalized = fallback_description
+            source = "fallback"
+        else:
+            source = "model"
+
+        return {
+            "description": normalized,
+            "source": source,
+            "model": model_to_use,
+        }
+    except Exception as exc:
+        logger.exception("AI service error (publication/short-description) when calling %s: %s", OLLAMA_BASE_URL, str(exc))
+        return {
+            "description": fallback_description,
+            "source": "fallback",
+            "model": model_to_use,
+        }
+
+
 @router.get("/history", response_model=List[ChatHistoryItem])
 async def get_chat_history(session_id: str):
     return chat_sessions.get(session_id, [])
@@ -2352,7 +2594,7 @@ async def ai_health(db: Session = Depends(get_db)):
             "status": "degraded",
             "chroma": {
                 "available": False,
-                "path": CHROMA_DB_PATH,
+                "path": QDRANT_URL,
                 "collection": CHROMA_COLLECTION_NAME,
                 "documents": 0,
                 "error": "internal_error",

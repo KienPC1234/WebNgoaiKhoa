@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Card, Button, RichTextEditor } from '@/components/UI'
-import { BookHeart, Plus, Save, Trash2, Mail, BellRing } from 'lucide-react'
+import { BookHeart, Plus, Save, Trash2, Mail, BellRing, ImagePlus } from 'lucide-react'
 import { cmsService } from '@/lib/cmsService'
 import { confirmAction, showApiError, toastError, toastSuccess } from '@/lib/notify'
 
@@ -30,6 +30,23 @@ export const AdminStories = () => {
   })
   const [newsletterSending, setNewsletterSending] = useState(false)
   const [roleOptions, setRoleOptions] = useState([])
+  const [uploadingImage, setUploadingImage] = useState(false)
+
+  const uploadStoryImage = async (file) => {
+    if (!file) return
+    setUploadingImage(true)
+    try {
+      const res = await cmsService.uploadImage(file, 'story')
+      const url = res?.url || ''
+      if (!url) throw new Error('Upload không trả về URL')
+      setForm((prev) => ({ ...prev, image_url: url }))
+      toastSuccess('Đã tải ảnh câu chuyện')
+    } catch (err) {
+      showApiError(err, 'Tải ảnh thất bại')
+    } finally {
+      setUploadingImage(false)
+    }
+  }
 
   const fetchStories = async () => {
     setLoading(true)
@@ -243,7 +260,33 @@ export const AdminStories = () => {
           <input className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="Tác giả" value={form.author} onChange={(e) => setForm({ ...form, author: e.target.value })} />
           <input className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="Chuyên mục" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
           <input type="number" className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="Phút đọc" value={form.read_time_minutes} onChange={(e) => setForm({ ...form, read_time_minutes: Number(e.target.value) || 5 })} />
-          <input className="px-4 py-3 rounded-xl bg-gray-50 font-bold md:col-span-2" placeholder="Image URL" value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} />
+          <div className="md:col-span-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100">
+                <ImagePlus size={14} /> {uploadingImage ? 'Đang tải...' : 'Upload ảnh'}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  disabled={uploadingImage}
+                  onChange={(e) => {
+                    const file = e.target.files && e.target.files[0]
+                    if (file) uploadStoryImage(file)
+                    e.target.value = ''
+                  }}
+                />
+              </label>
+              <input className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" placeholder="Hoặc dán URL ảnh" value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} />
+            </div>
+            {form.image_url ? (
+              <div className="mt-2 flex items-start gap-3">
+                <img src={form.image_url} alt="Preview" className="h-24 w-36 rounded-lg border border-slate-200 object-cover" />
+                <button type="button" onClick={() => setForm({ ...form, image_url: '' })} className="mt-1 inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-700">
+                  <Trash2 size={12} /> Xóa ảnh
+                </button>
+              </div>
+            ) : null}
+          </div>
           <RichTextEditor
             className="md:col-span-2"
             size="compact"

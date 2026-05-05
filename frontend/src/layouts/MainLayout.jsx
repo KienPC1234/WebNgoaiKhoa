@@ -17,15 +17,19 @@ import {
   Menu,
   PanelRightClose,
   LogOut,
+  MessageCircle,
 } from 'lucide-react'
-import { useState, useEffect, useRef } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { ShimmerButton } from '@/components/aceternity'
-import { AiChatWidget } from '@/components/AiChatWidget'
+import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import NotificationButton from '@/components/NotificationButton'
 import { cn } from '@/lib/utils'
 import aiSitemap from '@/lib/aiSitemap.json'
 import { roleHasPermission } from '@/lib/rolePolicy'
+
+const AiChatWidget = lazy(() =>
+  import('@/components/AiChatWidget').then((module) => ({
+    default: module.AiChatWidget || module.default,
+  }))
+)
 
 const introMenu = [
   {
@@ -105,9 +109,9 @@ export const MainLayout = () => {
   const [isLowSpecDevice, setIsLowSpecDevice] = useState(false)
   const [isScrollPerfMode, setIsScrollPerfMode] = useState(false)
   const [pendingAiOpen, setPendingAiOpen] = useState(false)
+  const [shouldMountAiWidget, setShouldMountAiWidget] = useState(false)
   const [authHoverOpen, setAuthHoverOpen] = useState(false)
   const authCloseTimerRef = useRef(null)
-  const [notifications, setNotifications] = useState([])
   const navRef = useRef(null)
   const floatingBottom = 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)'
   const FLOATING_BOTTOM_OFFSET = 'calc(env(safe-area-inset-bottom, 0px) + 1.25rem)'
@@ -131,7 +135,8 @@ export const MainLayout = () => {
   const activeStories =
     location.pathname.startsWith('/doingu/honors') ||
     location.pathname.startsWith('/events') ||
-    location.pathname.startsWith('/stories')
+    location.pathname.startsWith('/stories') ||
+    location.pathname.startsWith('/news')
 
   useEffect(() => {
     const nav = typeof navigator !== 'undefined' ? navigator : null
@@ -221,12 +226,18 @@ export const MainLayout = () => {
     return () => document.removeEventListener('keydown', handleKey)
   }, [mobileMenuOpen])
 
+  useEffect(() => {
+    try {
+      if (localStorage.getItem('fpt_edu_ai_chat_open') === 'true') {
+        setShouldMountAiWidget(true)
+      }
+    } catch (error) {
+      // ignore storage read errors
+    }
+  }, [])
+
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
-
-  const removeNotification = (id) => {
-    setNotifications(prev => prev.filter(n => n.id !== id))
   }
 
   const handleLogout = () => {
@@ -236,10 +247,11 @@ export const MainLayout = () => {
   }
 
   const handleOpenAiChat = () => {
+    setShouldMountAiWidget(true)
     setPendingAiOpen(true)
-    window.requestAnimationFrame(() => {
+    window.setTimeout(() => {
       window.dispatchEvent(new CustomEvent('toggle-ai-chat'))
-    })
+    }, 0)
   }
 
   const handleNestedScroll = (event) => {
@@ -291,7 +303,7 @@ export const MainLayout = () => {
   // width-sync logic removed to avoid unnecessary reflows
 
   return (
-    <div className={cn('app-shell relative overflow-x-clip', isScrollPerfMode && 'performance-scrolling')}>
+    <div className={cn('app-shell relative overflow-x-clip', isLowSpecDevice && 'low-spec-device', isScrollPerfMode && 'performance-scrolling')}>
       <header className={cn(
         'glass-nav top-0 z-[100] overflow-visible sticky',
         isScrollPerfMode && 'bg-[#fffaf3]/95'
@@ -304,12 +316,9 @@ export const MainLayout = () => {
               : 'shadow-[0_20px_52px_-38px_rgba(15,23,42,0.35)]'
           )}>
             <Link to="/" className="group flex items-center gap-3">
-              <motion.div
-                whileHover={{ scale: 1.06 }}
-                className="flex h-12 w-12 items-center justify-center rounded-xl border border-orange-100 bg-[#fff9f1] shadow-[0_14px_28px_-18px_rgba(242,112,36,0.85)]"
-              >
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-orange-100 bg-[#fff9f1] shadow-[0_14px_28px_-18px_rgba(242,112,36,0.85)] transition-transform group-hover:scale-105">
                 <img src="/favicon.svg" alt="Logo Tổ xã hội" className="h-7 w-7 object-contain" />
-              </motion.div>
+              </div>
               <div className="space-y-0.5">
                 <p className="font-display text-lg font-extrabold uppercase tracking-tight text-fpt-blue md:text-xl">Tổ xã hội FSC Hoà Lạc</p>
                 <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-fpt-orange md:text-[11px]">Deep learning with love</p>
@@ -349,30 +358,25 @@ export const MainLayout = () => {
                 active={activeSubject}
                 align="center"
               >
-                <div className="w-[min(860px,calc(100vw-2.5rem))] p-3">
-                  <DropdownHeading
-                    title="Bản đồ chuyên môn"
-                    subtitle="Chọn phân môn và loại nội dung để đi nhanh tới tài nguyên môn học"
-                  />
-                  <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                <div className="w-[min(760px,calc(100vw-2.5rem))] p-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     {subjects.map((subject) => (
                       <div key={subject.slug} className="rounded-2xl border border-slate-200/80 bg-gradient-to-b from-slate-50 to-white p-3 shadow-[0_14px_30px_-24px_rgba(15,23,42,0.5)]">
-                        <Link
-                          to={`/phanmon/${subject.slug}`}
+                        <p
                           className={cn(
-                            'mb-3 inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-widest hover:text-fpt-orange',
+                            'mb-2 inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-widest',
                             subjectTextClasses[subject.slug] || 'text-fpt-blue'
                           )}
                         >
                           {subject.name}
                           <GraduationCap size={14} className="text-slate-400" />
-                        </Link>
-                        <div className="space-y-2">
+                        </p>
+                        <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
                           {subjectContent.map((content) => (
                             <Link
                               key={`${subject.slug}-${content.slug}`}
                               to={`/phanmon/${subject.slug}/${content.slug}`}
-                              className="flex items-center gap-2 rounded-xl border border-transparent px-2 py-2 text-[10px] font-black uppercase tracking-widest text-slate-500 transition-all hover:border-orange-100 hover:bg-orange-50/70 hover:text-fpt-orange"
+                              className="flex items-center gap-2 rounded-lg border border-transparent px-2 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-500 transition-all hover:border-orange-100 hover:bg-orange-50/70 hover:text-fpt-orange"
                             >
                               <content.icon size={14} />
                               {content.label}
@@ -394,6 +398,7 @@ export const MainLayout = () => {
                 onClose={() => setOpenMenu(null)}
                 active={activeStories}
                 align="right"
+                onPrimaryClick={() => navigate('/news')}
               >
                 <div className="w-[min(380px,calc(100vw-2.5rem))] space-y-2 p-2">
                   {overflowMenu.map((item) => (
@@ -439,37 +444,31 @@ export const MainLayout = () => {
                       Đăng ký
                     </Link>
 
-                    <AnimatePresence>
-                      {authHoverOpen && (
-                        <motion.div
-                          initial={{ opacity: 0, y: -10, scale: 0.98 }}
-                          animate={{ opacity: 1, y: 6, scale: 1 }}
-                          exit={{ opacity: 0, y: -8, scale: 0.98 }}
-                          transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-                          className="absolute top-full mt-3 right-0 z-50 pointer-events-auto"
-                          onMouseEnter={cancelCloseAuth}
-                          onMouseLeave={() => scheduleCloseAuth()}
-                        >
-                          <div className="rounded-xl border border-transparent bg-transparent p-1 min-w-max pointer-events-auto shadow-sm">
-                            <Link to={{ pathname: '/login', state: { from: location.pathname } }} className="btn-ghost block text-left px-4 py-2 whitespace-nowrap">
-                              Đăng nhập
-                            </Link>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                    {authHoverOpen && (
+                      <div
+                        className="absolute top-full mt-3 right-0 z-50 pointer-events-auto animate-[fadeInMenu_180ms_ease-out]"
+                        onMouseEnter={cancelCloseAuth}
+                        onMouseLeave={() => scheduleCloseAuth()}
+                      >
+                        <div className="rounded-xl border border-transparent bg-transparent p-1 min-w-max pointer-events-auto shadow-sm">
+                          <Link to={{ pathname: '/login', state: { from: location.pathname } }} className="btn-ghost block text-left px-4 py-2 whitespace-nowrap">
+                            Đăng nhập
+                          </Link>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </>
               )}
 
-              <ShimmerButton
+              <button
                 type="button"
                 onClick={handleOpenAiChat}
-                className="tap-target hidden 2xl:inline-flex"
+                className="tap-target hidden 2xl:inline-flex items-center gap-2 rounded-full border border-orange-200 bg-white/90 px-4 py-2 text-[11px] font-black uppercase tracking-[0.11em] text-fpt-orange transition-all hover:bg-orange-50"
               >
                 <Sparkles size={16} />
                 AI Chat
-              </ShimmerButton>
+              </button>
 
               <div className="hidden 2xl:inline-flex">
                 <NotificationButton />
@@ -491,23 +490,14 @@ export const MainLayout = () => {
             the menu when clicked. */}
       </header>
 
-      <AnimatePresence>
-        {mobileMenuOpen && (
-          <motion.div
+      {mobileMenuOpen && (
+          <div
             key="mobile-menu-overlay"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[110] 2xl:hidden"
+            className="fixed inset-0 z-[110] 2xl:hidden animate-[fadeInMenu_180ms_ease-out]"
           >
-            <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)} />
+            <div className={cn('absolute inset-0 bg-black/30', isLowSpecDevice ? 'backdrop-blur-0' : 'backdrop-blur-sm')} onClick={() => setMobileMenuOpen(false)} />
 
-            <motion.div
-              initial={{ y: -12 }}
-              animate={{ y: 0 }}
-              exit={{ y: -12 }}
-              className="absolute inset-x-0 top-12 max-h-[calc(100dvh-4rem)] overflow-y-auto overscroll-contain pb-6"
-            >
+            <div className="absolute inset-x-0 top-12 max-h-[calc(100dvh-4rem)] overflow-y-auto overscroll-contain pb-6 animate-[slideInMenu_190ms_ease-out]">
               <div className="app-section custom-scrollbar">
                 <div className="surface mb-4 p-3">
                   <div className="mb-2 flex items-center gap-3 rounded-xl border border-orange-100 bg-orange-50/60 p-3">
@@ -529,6 +519,18 @@ export const MainLayout = () => {
                   >
                     <Home size={16} />
                     Trang chủ
+                  </Link>
+
+                  <Link
+                    to="/news"
+                    className={cn(
+                      'mb-2 flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-extrabold',
+                      location.pathname.startsWith('/news') ? 'bg-orange-50 text-fpt-orange' : 'text-slate-600'
+                    )}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <Menu size={16} />
+                    Tin tức
                   </Link>
 
                   <MobileSection
@@ -554,13 +556,9 @@ export const MainLayout = () => {
                     >
                       {subjects.map((subject) => (
                         <div key={subject.slug} className="mb-2 rounded-xl border border-slate-100 bg-slate-50/80 p-2">
-                          <Link
-                            to={`/phanmon/${subject.slug}`}
-                            className="mb-1 px-2 text-[10px] font-black uppercase tracking-widest text-fpt-blue"
-                            onClick={() => setMobileMenuOpen(false)}
-                          >
+                          <p className="mb-1 px-2 text-[10px] font-black uppercase tracking-widest text-fpt-blue">
                             {subject.name}
-                          </Link>
+                          </p>
                           {subjectContent.map((content) => (
                             <MobileLink
                               key={`${subject.slug}-${content.slug}`}
@@ -613,10 +611,9 @@ export const MainLayout = () => {
                   </div>
                 </div>
               </div>
-            </motion.div>
-          </motion.div>
+            </div>
+          </div>
         )}
-      </AnimatePresence>
 
       <main className="flex-1">
         <Outlet />
@@ -639,6 +636,21 @@ export const MainLayout = () => {
                 Nền tảng kết nối tri thức và phát triển kỹ năng toàn diện cho học sinh, sinh viên FPT Education.
               </p>
               <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-fpt-orange">Deep learning with love</p>
+
+              <a
+                href="https://www.facebook.com/toxahoifschoolhoalac"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex max-w-md items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md hover:border-blue-200"
+              >
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 transition-colors group-hover:bg-blue-100">
+                  <svg viewBox="0 0 24 24" className="h-6 w-6 fill-current"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-slate-800">Tổ xã hội FSC Hoà Lạc</p>
+                  <p className="text-xs text-slate-500">Theo dõi trên Facebook</p>
+                </div>
+              </a>
             </div>
 
             <div>
@@ -681,28 +693,62 @@ export const MainLayout = () => {
         </div>
       </footer>
 
-      <AiChatWidget pendingOpen={pendingAiOpen} onPendingOpenHandled={() => setPendingAiOpen(false)} />
+      {!shouldMountAiWidget && (
+        <div className="fixed right-3 z-[70] sm:right-4 md:right-6" style={{ bottom: floatingBottom }}>
+          <button
+            type="button"
+            onClick={handleOpenAiChat}
+            className="tap-target group relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-fpt-orange via-orange-500 to-amber-500 p-0 text-white shadow-[0_16px_48px_-12px_rgba(242,112,36,0.7)] transition-all duration-300 hover:scale-110 hover:shadow-[0_24px_64px_-8px_rgba(242,112,36,0.9)] active:scale-95 sm:h-16 sm:w-16"
+            aria-label="Mở trợ lý AI"
+          >
+            {/* Breathing glow effect */}
+            <span className="pointer-events-none absolute -inset-3 rounded-full bg-gradient-to-r from-orange-400 via-fpt-orange to-amber-400 opacity-40 blur-xl animate-[breathe_3s_ease-in-out_infinite]" />
+            
+            {/* Subtle ring */}
+            <span className="pointer-events-none absolute -inset-1 rounded-full border border-white/20" />
+            
+            {/* Glass highlight */}
+            <span className="pointer-events-none absolute inset-0 rounded-full bg-gradient-to-b from-white/25 via-white/5 to-transparent" />
+
+            {/* Icon */}
+            <Sparkles
+              size={26}
+              className="relative z-10 drop-shadow-[0_2px_6px_rgba(0,0,0,0.2)] transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12 sm:h-7 sm:w-7"
+              strokeWidth={2}
+            />
+
+            {/* Tooltip */}
+            <span className="pointer-events-none absolute -left-[8rem] top-1/2 hidden -translate-y-1/2 whitespace-nowrap rounded-xl bg-white/95 px-4 py-2 text-[11px] font-bold text-fpt-orange shadow-lg backdrop-blur-sm transition-all duration-200 group-hover:-translate-x-1 lg:block">
+              Chat với AI
+              <span className="absolute right-0 top-1/2 h-2 w-2 -translate-y-1/2 translate-x-1/2 rotate-45 bg-white/95" />
+            </span>
+          </button>
+        </div>
+      )}
+
+      {shouldMountAiWidget && (
+        <Suspense fallback={null}>
+          <AiChatWidget pendingOpen={pendingAiOpen} onPendingOpenHandled={() => setPendingAiOpen(false)} />
+        </Suspense>
+      )}
 
       <div className="fixed left-3 z-[60] flex flex-col gap-4 sm:left-4 md:left-6" style={{ bottom: floatingBottom }}>
-        <AnimatePresence>
-          {showBackToTop && (
-            <motion.button
-              initial={{ opacity: 0, scale: 0.5, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.5, y: 20 }}
-              onClick={scrollToTop}
-              className={cn(
-                'group rounded-2xl border border-orange-100 bg-white/90 p-3 text-fpt-orange transition-all hover:bg-fpt-orange hover:text-white sm:p-4',
-                isScrollPerfMode
-                  ? 'shadow-[0_10px_28px_-16px_rgba(242,112,36,0.25)] backdrop-blur-0'
-                  : 'shadow-[0_20px_40px_-12px_rgba(242,112,36,0.3)] backdrop-blur-md'
-              )}
-            >
-              <ArrowUp size={22} className="transition-transform group-hover:-translate-y-1 sm:h-6 sm:w-6" />
-            </motion.button>
-          )}
-        </AnimatePresence>
+        {showBackToTop && (
+          <button
+            onClick={scrollToTop}
+            className={cn(
+              'group rounded-2xl border border-orange-100 bg-white/90 p-3 text-fpt-orange transition-all hover:bg-fpt-orange hover:text-white sm:p-4 animate-[fadeInMenu_160ms_ease-out]',
+              isScrollPerfMode
+                ? 'shadow-[0_10px_28px_-16px_rgba(242,112,36,0.25)] backdrop-blur-0'
+                : 'shadow-[0_20px_40px_-12px_rgba(242,112,36,0.3)] backdrop-blur-md'
+            )}
+          >
+            <ArrowUp size={22} className="transition-transform group-hover:-translate-y-1 sm:h-6 sm:w-6" />
+          </button>
+        )}
       </div>
+
+      <style>{`@keyframes fadeInMenu { from { opacity: 0; transform: translateY(8px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } } @keyframes slideInMenu { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }`}</style>
 
       {/* Toast toasts are rendered by NotificationsProvider via context; keep layout lean here. */}
     </div>
@@ -724,7 +770,7 @@ const NavItem = ({ to, icon: Icon, label, active }) => (
   </Link>
 )
 
-const DesktopMenu = ({ label, icon: Icon, menuKey, openMenu, onOpen, onClose, active, children, align = 'left' }) => {
+const DesktopMenu = ({ label, icon: Icon, menuKey, openMenu, onOpen, onClose, active, children, align = 'left', onPrimaryClick }) => {
   const handleDropdownWheel = (event) => {
     const container = event.currentTarget
     if (container.scrollHeight <= container.clientHeight) return
@@ -755,8 +801,10 @@ const DesktopMenu = ({ label, icon: Icon, menuKey, openMenu, onOpen, onClose, ac
       type="button"
       aria-expanded={openMenu === menuKey}
       aria-haspopup="menu"
+      onClick={onPrimaryClick}
       className={cn(
         'tap-target flex items-center gap-2 rounded-full border px-3.5 py-2 text-[11px] font-black uppercase tracking-[0.11em] transition-colors',
+        onPrimaryClick && 'cursor-pointer',
         (active || openMenu === menuKey)
           ? 'border-orange-200 bg-orange-100/80 text-fpt-orange'
           : 'border-orange-200 bg-transparent text-slate-600 hover:border-orange-200 hover:bg-orange-50/70 hover:text-fpt-orange'
@@ -767,27 +815,22 @@ const DesktopMenu = ({ label, icon: Icon, menuKey, openMenu, onOpen, onClose, ac
       <ChevronDown size={14} className={cn('transition-transform', openMenu === menuKey && 'rotate-180')} />
     </button>
 
-    <AnimatePresence>
-      {openMenu === menuKey && (
-        <motion.div
-          initial={{ opacity: 0, y: 8, scale: 0.98 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 6, scale: 0.98 }}
-          onWheel={handleDropdownWheel}
-          className={cn(
-            'custom-scrollbar absolute top-[calc(100%+12px)] z-50 max-h-[78vh] max-w-[calc(100vw-2rem)] overflow-x-auto overflow-y-auto overscroll-contain rounded-[1.4rem] border border-orange-100/90 bg-[#fffaf3] p-2 shadow-[0_32px_72px_-42px_rgba(15,23,42,0.7)] origin-top',
-            align === 'right' ? 'right-0' : align === 'center' ? 'left-1/2 -translate-x-1/2' : 'left-0'
-          )}
-        >
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-fpt-orange via-orange-300 to-fpt-blue" />
-          <div className={cn(
-            'absolute top-0 h-3 w-3 -translate-y-1/2 rotate-45 border-l border-t border-orange-100/90 bg-[#fffaf3]',
-            align === 'right' ? 'right-8' : align === 'center' ? 'left-1/2 -translate-x-1/2' : 'left-8'
-          )} />
-          {children}
-        </motion.div>
-      )}
-    </AnimatePresence>
+    {openMenu === menuKey && (
+      <div
+        onWheel={handleDropdownWheel}
+        className={cn(
+          'custom-scrollbar absolute top-[calc(100%+12px)] z-50 max-h-[78vh] max-w-[calc(100vw-2rem)] overflow-x-auto overflow-y-auto overscroll-contain rounded-[1.4rem] border border-orange-100/90 bg-[#fffaf3] p-2 shadow-[0_32px_72px_-42px_rgba(15,23,42,0.7)] origin-top animate-[fadeInMenu_180ms_ease-out]',
+          align === 'right' ? 'right-0' : align === 'center' ? 'left-1/2 -translate-x-1/2' : 'left-0'
+        )}
+      >
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-fpt-orange via-orange-300 to-fpt-blue" />
+        <div className={cn(
+          'absolute top-0 h-3 w-3 -translate-y-1/2 rotate-45 border-l border-t border-orange-100/90 bg-[#fffaf3]',
+          align === 'right' ? 'right-8' : align === 'center' ? 'left-1/2 -translate-x-1/2' : 'left-8'
+        )} />
+        {children}
+      </div>
+    )}
   </div>
 )
 }

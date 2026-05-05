@@ -1,0 +1,30 @@
+{
+  "hero": {
+    "line1": "Trải nghiệm",
+    "line2": "Để trưởng thành",
+    "description": "Tôn trọng cá nhân, đề cao sự tự lập và phát triển con người toàn diện.",
+    "hero_image": "",
+    "background_image_url": "/api/public/uploads/images/06bc91eb9da04b16831da6699e716754.jpg",
+    "background_images": [
+      "/api/public/uploads/images/06bc91eb9da04b16831da6699e716754.jpg",
+      "/api/public/uploads/images/77532aea2fc84d51b9b56e6794059ed2.jpg",
+      "/api/public/uploads/images/cc595f544bea44e69491e70c4fe49c79.jpg"
+    ],
+    "background_transition_interval_ms": 6500,
+    "background_transition_effect": "slide",
+    "cta_primary": "Khám phá ngay"
+  },
+  "news_section": {
+    "title": "Tin tức cập nhật",
+    "subtitle": "Bài viết cuộc thi mới nhất từ học sinh và giáo viên."
+  },
+  "events_section": {
+    "title": "Lịch sự kiện",
+    "subtitle": "Theo dõi các sự kiện quan trọng trong thời gian tới."
+  },
+  "videos_section": {
+    "title": "Video giới thiệu",
+    "subtitle": "Khám phá hoạt động và tinh thần học tập qua những thước phim ngắn.",
+    "items": []
+  }
+}

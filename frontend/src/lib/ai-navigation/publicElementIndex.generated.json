@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-05-03T15:26:45.647Z",
+  "generatedAt": "2026-05-05T12:44:16.344Z",
   "version": 2,
-  "total": 245,
+  "total": 230,
   "elements": [
     {
       "route": "/phanmon/van?tab=sang-tac",
@@ -73,74 +73,56 @@
     {
       "route": "/events/upcoming",
       "kind": "span",
-      "text": "Thông báo mới nhất",
+      "text": "Tổ xã hội FSC Hoà Lạc",
       "source": "src/pages/EventsUpcoming.jsx",
       "anchor": null,
       "componentPath": "src/pages/EventsUpcoming.jsx",
-      "line": 130
-    },
-    {
-      "route": "/events/upcoming",
-      "kind": "h1",
-      "text": "SỰ KIỆN",
-      "source": "src/pages/EventsUpcoming.jsx",
-      "anchor": null,
-      "componentPath": "src/pages/EventsUpcoming.jsx",
-      "line": 132
+      "line": 101
     },
     {
       "route": "/events/upcoming",
       "kind": "span",
-      "text": "SẮP DIỄN RA",
+      "text": "Lịch sự kiện",
       "source": "src/pages/EventsUpcoming.jsx",
       "anchor": null,
       "componentPath": "src/pages/EventsUpcoming.jsx",
-      "line": 138
+      "line": 104
+    },
+    {
+      "route": "/events/upcoming",
+      "kind": "span",
+      "text": "Sắp diễn ra",
+      "source": "src/pages/EventsUpcoming.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/EventsUpcoming.jsx",
+      "line": 105
     },
     {
       "route": "/events/upcoming",
       "kind": "p",
-      "text": "Cập nhật những hoạt động học thuật, ngoại khóa và giao lưu văn hóa sôi nổi nhất của Tổ Xã hội.",
+      "text": "Cập nhật những hoạt động học thuật, ngoại khóa và giao lưu văn hóa sôi nổi nhất.",
       "source": "src/pages/EventsUpcoming.jsx",
       "anchor": null,
       "componentPath": "src/pages/EventsUpcoming.jsx",
-      "line": 140
+      "line": 107
     },
     {
       "route": "/events/upcoming",
       "kind": "h2",
-      "text": "Lịch sự kiện theo tháng",
+      "text": "Lịch sự kiện",
       "source": "src/pages/EventsUpcoming.jsx",
       "anchor": null,
       "componentPath": "src/pages/EventsUpcoming.jsx",
-      "line": 155
-    },
-    {
-      "route": "/events/upcoming",
-      "kind": "button",
-      "text": "Tháng trước",
-      "source": "src/pages/EventsUpcoming.jsx",
-      "anchor": null,
-      "componentPath": "src/pages/EventsUpcoming.jsx",
-      "line": 157
-    },
-    {
-      "route": "/events/upcoming",
-      "kind": "button",
-      "text": "Tháng sau",
-      "source": "src/pages/EventsUpcoming.jsx",
-      "anchor": null,
-      "componentPath": "src/pages/EventsUpcoming.jsx",
-      "line": 167
+      "line": 117
     },
     {
       "route": "/events/upcoming",
       "kind": "p",
-      "text": "Không có sự kiện trong ngày này.",
+      "text": "Không có sự kiện trong ngày này",
       "source": "src/pages/EventsUpcoming.jsx",
       "anchor": null,
       "componentPath": "src/pages/EventsUpcoming.jsx",
-      "line": 273
+      "line": 213
     },
     {
       "route": "/events/upcoming",
@@ -149,7 +131,7 @@
       "source": "src/pages/EventsUpcoming.jsx",
       "anchor": null,
       "componentPath": "src/pages/EventsUpcoming.jsx",
-      "line": 320
+      "line": 259
     },
     {
       "route": "/events/upcoming",
@@ -158,7 +140,7 @@
       "source": "src/pages/EventsUpcoming.jsx",
       "anchor": null,
       "componentPath": "src/pages/EventsUpcoming.jsx",
-      "line": 342
+      "line": 281
     },
     {
       "route": "/events/upcoming",
@@ -167,7 +149,7 @@
       "source": "src/pages/EventsUpcoming.jsx",
       "anchor": null,
       "componentPath": "src/pages/EventsUpcoming.jsx",
-      "line": 363
+      "line": 302
     },
     {
       "route": "/events/upcoming",
@@ -176,7 +158,7 @@
       "source": "src/pages/EventsUpcoming.jsx",
       "anchor": null,
       "componentPath": "src/pages/EventsUpcoming.jsx",
-      "line": 373
+      "line": 312
     },
     {
       "route": "/events/upcoming",
@@ -185,7 +167,7 @@
       "source": "src/pages/EventsUpcoming.jsx",
       "anchor": null,
       "componentPath": "src/pages/EventsUpcoming.jsx",
-      "line": 374
+      "line": 313
     },
     {
       "route": "/events/upcoming",
@@ -194,7 +176,7 @@
       "source": "src/pages/EventsUpcoming.jsx",
       "anchor": null,
       "componentPath": "src/pages/EventsUpcoming.jsx",
-      "line": 375
+      "line": 314
     },
     {
       "route": "/events/upcoming",
@@ -203,264 +185,66 @@
       "source": "src/pages/EventsUpcoming.jsx",
       "anchor": null,
       "componentPath": "src/pages/EventsUpcoming.jsx",
-      "line": 378
+      "line": 317
+    },
+    {
+      "route": "/",
+      "kind": "img",
+      "text": "Hero background",
+      "source": "src/pages/Home.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Home.jsx",
+      "line": 220
     },
     {
       "route": "/",
       "kind": "span",
-      "text": "Nhịp đập",
+      "text": "Tổ xã hội FSC Hoà Lạc",
       "source": "src/pages/Home.jsx",
       "anchor": null,
       "componentPath": "src/pages/Home.jsx",
-      "line": 105
+      "line": 251
     },
     {
       "route": "/",
-      "kind": "span",
-      "text": "Sáng tạo",
+      "kind": "Link",
+      "text": "Giới thiệu",
       "source": "src/pages/Home.jsx",
       "anchor": null,
       "componentPath": "src/pages/Home.jsx",
-      "line": 106
-    },
-    {
-      "route": "/",
-      "kind": "p",
-      "text": "Nền tảng kết nối đam mê, khơi nguồn tri thức và lan tỏa tinh thần học tập chủ động cho cộng đồng học sinh FPT.",
-      "source": "src/pages/Home.jsx",
-      "anchor": null,
-      "componentPath": "src/pages/Home.jsx",
-      "line": 114
-    },
-    {
-      "route": "/",
-      "kind": "ShimmerButton",
-      "text": "Khám phá ngay",
-      "source": "src/pages/Home.jsx",
-      "anchor": null,
-      "componentPath": "src/pages/Home.jsx",
-      "line": 120
-    },
-    {
-      "route": "/",
-      "kind": "Button",
-      "text": "Câu chuyện truyền cảm hứng",
-      "source": "src/pages/Home.jsx",
-      "anchor": null,
-      "componentPath": "src/pages/Home.jsx",
-      "line": 125
-    },
-    {
-      "route": "/",
-      "kind": "div",
-      "text": "Editorial Insight",
-      "source": "src/pages/Home.jsx",
-      "anchor": null,
-      "componentPath": "src/pages/Home.jsx",
-      "line": 143
-    },
-    {
-      "route": "/",
-      "kind": "h3",
-      "text": "Sáng tạo là hành trình tự do nhất của học sinh FPT.",
-      "source": "src/pages/Home.jsx",
-      "anchor": null,
-      "componentPath": "src/pages/Home.jsx",
-      "line": 146
-    },
-    {
-      "route": "/",
-      "kind": "p",
-      "text": "Mỗi bài viết là một góc nhìn độc đáo, mỗi dự án là một bước tiến của tinh thần học chủ động.",
-      "source": "src/pages/Home.jsx",
-      "anchor": null,
-      "componentPath": "src/pages/Home.jsx",
-      "line": 147
-    },
-    {
-      "route": "/",
-      "kind": "span",
-      "text": "Creative ranking",
-      "source": "src/pages/Home.jsx",
-      "anchor": null,
-      "componentPath": "src/pages/Home.jsx",
-      "line": 153
-    },
-    {
-      "route": "/",
-      "kind": "p",
-      "text": "Ranking",
-      "source": "src/pages/Home.jsx",
-      "anchor": null,
-      "componentPath": "src/pages/Home.jsx",
-      "line": 165
-    },
-    {
-      "route": "/",
-      "kind": "p",
-      "text": "Sáng tác 2026",
-      "source": "src/pages/Home.jsx",
-      "anchor": null,
-      "componentPath": "src/pages/Home.jsx",
-      "line": 170
+      "line": 282
     },
     {
       "route": "/",
       "kind": "section",
-      "text": "home-latest-publications",
+      "text": "home-news-contest",
       "source": "src/pages/Home.jsx",
-      "anchor": "home-latest-publications",
+      "anchor": "home-news-contest",
       "componentPath": "src/pages/Home.jsx",
-      "line": 177
+      "line": 305
     },
     {
       "route": "/",
       "kind": "p",
-      "text": "Lựa chọn biên tập",
+      "text": "Cuộc thi",
       "source": "src/pages/Home.jsx",
       "anchor": null,
       "componentPath": "src/pages/Home.jsx",
-      "line": 180
-    },
-    {
-      "route": "/",
-      "kind": "h2",
-      "text": "Ấn phẩm",
-      "source": "src/pages/Home.jsx",
-      "anchor": null,
-      "componentPath": "src/pages/Home.jsx",
-      "line": 183
-    },
-    {
-      "route": "/",
-      "kind": "span",
-      "text": "Nổi Bật",
-      "source": "src/pages/Home.jsx",
-      "anchor": null,
-      "componentPath": "src/pages/Home.jsx",
-      "line": 184
-    },
-    {
-      "route": "/",
-      "kind": "p",
-      "text": "Tuyển chọn ấn phẩm nổi bật từ mọi phân môn — bài viết sáng tạo, sâu sắc và hữu ích cho hành trình học tập.",
-      "source": "src/pages/Home.jsx",
-      "anchor": null,
-      "componentPath": "src/pages/Home.jsx",
-      "line": 186
+      "line": 308
     },
     {
       "route": "/",
       "kind": "Link",
-      "text": "Xem tất cả",
+      "text": "Xem thêm",
       "source": "src/pages/Home.jsx",
       "anchor": null,
       "componentPath": "src/pages/Home.jsx",
-      "line": 191
+      "line": 316
     },
     {
       "route": "/",
       "kind": "p",
-      "text": "Chưa có bản tin nào được cập nhật.",
-      "source": "src/pages/Home.jsx",
-      "anchor": null,
-      "componentPath": "src/pages/Home.jsx",
-      "line": 202
-    },
-    {
-      "route": "/",
-      "kind": "h2",
-      "text": "Giá trị cốt lõi",
-      "source": "src/pages/Home.jsx",
-      "anchor": null,
-      "componentPath": "src/pages/Home.jsx",
-      "line": 262
-    },
-    {
-      "route": "/",
-      "kind": "p",
-      "text": "Tôn - Đổi - Đồng - Chí - Gương - Sáng (Tôn trọng - Đổi mới - Đồng đội - Chí công - Gương mẫu - Sáng suốt).",
-      "source": "src/pages/Home.jsx",
-      "anchor": null,
-      "componentPath": "src/pages/Home.jsx",
-      "line": 263
-    },
-    {
-      "route": "/",
-      "kind": "section",
-      "text": "home-creative-board",
-      "source": "src/pages/Home.jsx",
-      "anchor": "home-creative-board",
-      "componentPath": "src/pages/Home.jsx",
-      "line": 289
-    },
-    {
-      "route": "/",
-      "kind": "p",
-      "text": "Community board",
-      "source": "src/pages/Home.jsx",
-      "anchor": null,
-      "componentPath": "src/pages/Home.jsx",
-      "line": 296
-    },
-    {
-      "route": "/",
-      "kind": "h2",
-      "text": "Bảng tin",
-      "source": "src/pages/Home.jsx",
-      "anchor": null,
-      "componentPath": "src/pages/Home.jsx",
-      "line": 299
-    },
-    {
-      "route": "/",
-      "kind": "span",
-      "text": "Sáng tác",
-      "source": "src/pages/Home.jsx",
-      "anchor": null,
-      "componentPath": "src/pages/Home.jsx",
-      "line": 302
-    },
-    {
-      "route": "/",
-      "kind": "p",
-      "text": "Gửi tác phẩm, theo dõi bài nổi bật và kết nối với cộng đồng học sinh cùng tinh thần học thật, làm thật.",
-      "source": "src/pages/Home.jsx",
-      "anchor": null,
-      "componentPath": "src/pages/Home.jsx",
-      "line": 304
-    },
-    {
-      "route": "/",
-      "kind": "Link",
-      "text": "Khám phá ấn phẩm mới",
-      "source": "src/pages/Home.jsx",
-      "anchor": null,
-      "componentPath": "src/pages/Home.jsx",
-      "line": 311
-    },
-    {
-      "route": "/",
-      "kind": "Link",
-      "text": "Xem câu chuyện nổi bật",
-      "source": "src/pages/Home.jsx",
-      "anchor": null,
-      "componentPath": "src/pages/Home.jsx",
-      "line": 315
-    },
-    {
-      "route": "/",
-      "kind": "Link",
-      "text": "Lịch sự kiện sắp tới",
-      "source": "src/pages/Home.jsx",
-      "anchor": null,
-      "componentPath": "src/pages/Home.jsx",
-      "line": 319
-    },
-    {
-      "route": "/",
-      "kind": "Button",
-      "text": "Gửi bài ngay",
+      "text": "Chưa có bài viết cuộc thi mới.",
       "source": "src/pages/Home.jsx",
       "anchor": null,
       "componentPath": "src/pages/Home.jsx",
@@ -468,35 +252,8 @@
     },
     {
       "route": "/",
-      "kind": "section",
-      "text": "home-submit-entry",
-      "source": "src/pages/Home.jsx",
-      "anchor": "home-submit-entry",
-      "componentPath": "src/pages/Home.jsx",
-      "line": 335
-    },
-    {
-      "route": "/",
-      "kind": "p",
-      "text": "Lối vào nhanh",
-      "source": "src/pages/Home.jsx",
-      "anchor": null,
-      "componentPath": "src/pages/Home.jsx",
-      "line": 339
-    },
-    {
-      "route": "/",
-      "kind": "h3",
-      "text": "Nộp Bài Sáng Tác Nhái Bén",
-      "source": "src/pages/Home.jsx",
-      "anchor": null,
-      "componentPath": "src/pages/Home.jsx",
-      "line": 340
-    },
-    {
-      "route": "/",
-      "kind": "p",
-      "text": "Đi thẳng tới tab Sáng tác để nộp bài, có thể đính kèm file PDF (tối đa 15MB).",
+      "kind": "span",
+      "text": "Cuộc thi",
       "source": "src/pages/Home.jsx",
       "anchor": null,
       "componentPath": "src/pages/Home.jsx",
@@ -504,12 +261,84 @@
     },
     {
       "route": "/",
-      "kind": "Button",
-      "text": "Mở trang nộp bài",
+      "kind": "div",
+      "text": "Bài viết cuộc thi",
       "source": "src/pages/Home.jsx",
       "anchor": null,
       "componentPath": "src/pages/Home.jsx",
       "line": 346
+    },
+    {
+      "route": "/",
+      "kind": "section",
+      "text": "home-events-dynamic",
+      "source": "src/pages/Home.jsx",
+      "anchor": "home-events-dynamic",
+      "componentPath": "src/pages/Home.jsx",
+      "line": 357
+    },
+    {
+      "route": "/",
+      "kind": "p",
+      "text": "Sự kiện",
+      "source": "src/pages/Home.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Home.jsx",
+      "line": 359
+    },
+    {
+      "route": "/",
+      "kind": "p",
+      "text": "Chưa có sự kiện sắp diễn ra.",
+      "source": "src/pages/Home.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Home.jsx",
+      "line": 387
+    },
+    {
+      "route": "/",
+      "kind": "p",
+      "text": "Sự kiện nổi bật",
+      "source": "src/pages/Home.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Home.jsx",
+      "line": 401
+    },
+    {
+      "route": "/",
+      "kind": "p",
+      "text": "Sắp diễn ra gần nhất",
+      "source": "src/pages/Home.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Home.jsx",
+      "line": 425
+    },
+    {
+      "route": "/",
+      "kind": "section",
+      "text": "home-intro-videos",
+      "source": "src/pages/Home.jsx",
+      "anchor": "home-intro-videos",
+      "componentPath": "src/pages/Home.jsx",
+      "line": 451
+    },
+    {
+      "route": "/",
+      "kind": "p",
+      "text": "Media",
+      "source": "src/pages/Home.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Home.jsx",
+      "line": 453
+    },
+    {
+      "route": "/",
+      "kind": "p",
+      "text": "Chưa có video giới thiệu.",
+      "source": "src/pages/Home.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Home.jsx",
+      "line": 464
     },
     {
       "route": "/doingu/honors",
@@ -554,7 +383,7 @@
       "source": "src/pages/Login.jsx",
       "anchor": null,
       "componentPath": "src/pages/Login.jsx",
-      "line": 124
+      "line": 112
     },
     {
       "route": "/login",
@@ -563,7 +392,7 @@
       "source": "src/pages/Login.jsx",
       "anchor": null,
       "componentPath": "src/pages/Login.jsx",
-      "line": 129
+      "line": 117
     },
     {
       "route": "/login",
@@ -572,7 +401,7 @@
       "source": "src/pages/Login.jsx",
       "anchor": null,
       "componentPath": "src/pages/Login.jsx",
-      "line": 132
+      "line": 120
     },
     {
       "route": "/login",
@@ -581,7 +410,7 @@
       "source": "src/pages/Login.jsx",
       "anchor": null,
       "componentPath": "src/pages/Login.jsx",
-      "line": 133
+      "line": 121
     },
     {
       "route": "/login",
@@ -590,7 +419,16 @@
       "source": "src/pages/Login.jsx",
       "anchor": null,
       "componentPath": "src/pages/Login.jsx",
-      "line": 143
+      "line": 131
+    },
+    {
+      "route": "/login",
+      "kind": "span",
+      "text": "Đang đăng nhập...",
+      "source": "src/pages/Login.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Login.jsx",
+      "line": 157
     },
     {
       "route": "/login",
@@ -599,7 +437,7 @@
       "source": "src/pages/Login.jsx",
       "anchor": null,
       "componentPath": "src/pages/Login.jsx",
-      "line": 170
+      "line": 173
     },
     {
       "route": "/login",
@@ -608,7 +446,7 @@
       "source": "src/pages/Login.jsx",
       "anchor": null,
       "componentPath": "src/pages/Login.jsx",
-      "line": 180
+      "line": 187
     },
     {
       "route": "/login",
@@ -617,16 +455,34 @@
       "source": "src/pages/Login.jsx",
       "anchor": null,
       "componentPath": "src/pages/Login.jsx",
-      "line": 181
+      "line": 188
+    },
+    {
+      "route": "/login",
+      "kind": "Link",
+      "text": "Quên mật khẩu?",
+      "source": "src/pages/Login.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Login.jsx",
+      "line": 191
     },
     {
       "route": "/login",
       "kind": "p",
-      "text": "Cần xác minh email? Vui lòng kiểm tra email để lấy mã OTP.",
+      "text": "Cần xác minh email?",
       "source": "src/pages/Login.jsx",
       "anchor": null,
       "componentPath": "src/pages/Login.jsx",
-      "line": 183
+      "line": 193
+    },
+    {
+      "route": "/login",
+      "kind": "Link",
+      "text": "Nhập OTP",
+      "source": "src/pages/Login.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Login.jsx",
+      "line": 194
     },
     {
       "route": "/doingu/scale",
@@ -802,7 +658,7 @@
     {
       "route": "/doingu/staff",
       "kind": "StaffSection",
-      "text": "Đội ngũ giảng viên",
+      "text": "Đội ngũ giáo viên",
       "source": "src/pages/NhanVatStaff.jsx",
       "anchor": null,
       "componentPath": "src/pages/NhanVatStaff.jsx",
@@ -1346,7 +1202,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 524
+      "line": 566
     },
     {
       "route": "/phanmon/van",
@@ -1355,7 +1211,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 528
+      "line": 570
     },
     {
       "route": "/phanmon/van",
@@ -1364,7 +1220,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 529
+      "line": 571
     },
     {
       "route": "/phanmon/van",
@@ -1373,7 +1229,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 573
+      "line": 615
     },
     {
       "route": "/phanmon/van",
@@ -1382,7 +1238,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 577
+      "line": 619
     },
     {
       "route": "/phanmon/van",
@@ -1391,7 +1247,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 582
+      "line": 624
     },
     {
       "route": "/phanmon/van",
@@ -1400,7 +1256,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 584
+      "line": 626
     },
     {
       "route": "/phanmon/van",
@@ -1409,7 +1265,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 585
+      "line": 627
     },
     {
       "route": "/phanmon/van",
@@ -1418,7 +1274,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 586
+      "line": 628
     },
     {
       "route": "/phanmon/van",
@@ -1427,7 +1283,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 592
+      "line": 634
     },
     {
       "route": "/phanmon/van",
@@ -1436,7 +1292,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 593
+      "line": 635
     },
     {
       "route": "/phanmon/van",
@@ -1445,7 +1301,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 609
+      "line": 651
     },
     {
       "route": "/phanmon/van",
@@ -1454,7 +1310,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 640
+      "line": 682
     },
     {
       "route": "/phanmon/van",
@@ -1463,7 +1319,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 641
+      "line": 683
     },
     {
       "route": "/phanmon/van",
@@ -1472,7 +1328,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 656
+      "line": 698
     },
     {
       "route": "/phanmon/van",
@@ -1481,7 +1337,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 661
+      "line": 703
     },
     {
       "route": "/phanmon/van",
@@ -1490,7 +1346,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 662
+      "line": 704
     },
     {
       "route": "/phanmon/van",
@@ -1499,7 +1355,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 683
+      "line": 725
     },
     {
       "route": "/phanmon/van",
@@ -1508,7 +1364,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 690
+      "line": 732
     },
     {
       "route": "/phanmon/van",
@@ -1517,7 +1373,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 706
+      "line": 748
     },
     {
       "route": "/phanmon/van",
@@ -1526,7 +1382,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 713
+      "line": 755
     },
     {
       "route": "/phanmon/van",
@@ -1535,7 +1391,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 718
+      "line": 760
     },
     {
       "route": "/phanmon/van",
@@ -1544,7 +1400,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 744
+      "line": 786
     },
     {
       "route": "/phanmon/van",
@@ -1553,7 +1409,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 750
+      "line": 792
     },
     {
       "route": "/phanmon/van",
@@ -1562,7 +1418,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 759
+      "line": 801
     },
     {
       "route": "/phanmon/van",
@@ -1571,7 +1427,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 761
+      "line": 803
     },
     {
       "route": "/phanmon/van",
@@ -1580,7 +1436,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 771
+      "line": 813
     },
     {
       "route": "/phanmon/van",
@@ -1589,7 +1445,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 775
+      "line": 817
     },
     {
       "route": "/phanmon/van",
@@ -1598,7 +1454,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 777
+      "line": 819
     },
     {
       "route": "/phanmon/van",
@@ -1607,7 +1463,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 788
+      "line": 830
     },
     {
       "route": "/phanmon/van",
@@ -1616,7 +1472,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 805
+      "line": 847
     },
     {
       "route": "/phanmon/van",
@@ -1625,7 +1481,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 813
+      "line": 855
     },
     {
       "route": "/phanmon/van",
@@ -1634,7 +1490,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 813
+      "line": 855
     },
     {
       "route": "/phanmon/van",
@@ -1643,7 +1499,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 817
+      "line": 859
     },
     {
       "route": "/phanmon/van",
@@ -1652,7 +1508,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 817
+      "line": 859
     },
     {
       "route": "/phanmon/van",
@@ -1661,7 +1517,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 822
+      "line": 864
     },
     {
       "route": "/phanmon/van",
@@ -1670,7 +1526,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 824
+      "line": 866
     },
     {
       "route": "/phanmon/van",
@@ -1679,7 +1535,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 825
+      "line": 867
     },
     {
       "route": "/phanmon/van",
@@ -1688,7 +1544,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 826
+      "line": 868
     },
     {
       "route": "/phanmon/van",
@@ -1697,7 +1553,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 832
+      "line": 874
     },
     {
       "route": "/phanmon/van",
@@ -1706,7 +1562,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 832
+      "line": 874
     },
     {
       "route": "/phanmon/van",
@@ -1715,7 +1571,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 845
+      "line": 887
     },
     {
       "route": "/phanmon/van",
@@ -1724,7 +1580,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 852
+      "line": 894
     },
     {
       "route": "/phanmon/van",
@@ -1733,7 +1589,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 853
+      "line": 895
     },
     {
       "route": "/phanmon/van",
@@ -1742,7 +1598,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 870
+      "line": 912
     },
     {
       "route": "/phanmon/van",
@@ -1751,7 +1607,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 932
+      "line": 974
     },
     {
       "route": "/phanmon/van",
@@ -1760,7 +1616,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 935
+      "line": 977
     },
     {
       "route": "/phanmon/van",
@@ -1769,7 +1625,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 963
+      "line": 1005
     },
     {
       "route": "/phanmon/van",
@@ -1778,7 +1634,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 979
+      "line": 1021
     },
     {
       "route": "/phanmon/van",
@@ -1787,7 +1643,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 991
+      "line": 1033
     },
     {
       "route": "/phanmon/van",
@@ -1796,7 +1652,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 1011
+      "line": 1053
     },
     {
       "route": "/phanmon/van",
@@ -1805,7 +1661,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 1013
+      "line": 1055
     },
     {
       "route": "/phanmon/vovinam",
@@ -1962,39 +1818,30 @@
     },
     {
       "route": "/profile",
-      "kind": "div",
+      "kind": "p",
       "text": "Đang tải hồ sơ...",
       "source": "src/pages/Profile.jsx",
       "anchor": null,
       "componentPath": "src/pages/Profile.jsx",
-      "line": 34
+      "line": 44
     },
     {
       "route": "/profile",
-      "kind": "button",
-      "text": "Tổng quan",
+      "kind": "span",
+      "text": "Trang chủ",
       "source": "src/pages/Profile.jsx",
       "anchor": null,
       "componentPath": "src/pages/Profile.jsx",
-      "line": 48
+      "line": 66
     },
     {
       "route": "/profile",
-      "kind": "button",
-      "text": "Bài thi",
+      "kind": "span",
+      "text": "Hồ sơ cá nhân",
       "source": "src/pages/Profile.jsx",
       "anchor": null,
       "componentPath": "src/pages/Profile.jsx",
-      "line": 49
-    },
-    {
-      "route": "/profile",
-      "kind": "button",
-      "text": "Bảo mật",
-      "source": "src/pages/Profile.jsx",
-      "anchor": null,
-      "componentPath": "src/pages/Profile.jsx",
-      "line": 50
+      "line": 69
     },
     {
       "route": "/register",
@@ -2003,7 +1850,7 @@
       "source": "src/pages/Register.jsx",
       "anchor": null,
       "componentPath": "src/pages/Register.jsx",
-      "line": 128
+      "line": 141
     },
     {
       "route": "/register",
@@ -2012,7 +1859,7 @@
       "source": "src/pages/Register.jsx",
       "anchor": null,
       "componentPath": "src/pages/Register.jsx",
-      "line": 133
+      "line": 146
     },
     {
       "route": "/register",
@@ -2021,7 +1868,7 @@
       "source": "src/pages/Register.jsx",
       "anchor": null,
       "componentPath": "src/pages/Register.jsx",
-      "line": 136
+      "line": 149
     },
     {
       "route": "/register",
@@ -2030,7 +1877,16 @@
       "source": "src/pages/Register.jsx",
       "anchor": null,
       "componentPath": "src/pages/Register.jsx",
-      "line": 137
+      "line": 150
+    },
+    {
+      "route": "/register",
+      "kind": "span",
+      "text": "Đang đăng ký...",
+      "source": "src/pages/Register.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Register.jsx",
+      "line": 182
     },
     {
       "route": "/register",
@@ -2039,7 +1895,7 @@
       "source": "src/pages/Register.jsx",
       "anchor": null,
       "componentPath": "src/pages/Register.jsx",
-      "line": 155
+      "line": 194
     },
     {
       "route": "/register",
@@ -2048,7 +1904,7 @@
       "source": "src/pages/Register.jsx",
       "anchor": null,
       "componentPath": "src/pages/Register.jsx",
-      "line": 156
+      "line": 195
     },
     {
       "route": "/register",
@@ -2057,7 +1913,7 @@
       "source": "src/pages/Register.jsx",
       "anchor": null,
       "componentPath": "src/pages/Register.jsx",
-      "line": 156
+      "line": 195
     },
     {
       "route": "/register",
@@ -2066,7 +1922,7 @@
       "source": "src/pages/Register.jsx",
       "anchor": null,
       "componentPath": "src/pages/Register.jsx",
-      "line": 163
+      "line": 202
     },
     {
       "route": "/register",
@@ -2075,7 +1931,7 @@
       "source": "src/pages/Register.jsx",
       "anchor": null,
       "componentPath": "src/pages/Register.jsx",
-      "line": 172
+      "line": 215
     },
     {
       "route": "/register",
@@ -2084,16 +1940,25 @@
       "source": "src/pages/Register.jsx",
       "anchor": null,
       "componentPath": "src/pages/Register.jsx",
-      "line": 173
+      "line": 216
     },
     {
       "route": "/register",
       "kind": "p",
-      "text": "Đã đăng ký nhưng chưa xác minh? Vui lòng kiểm tra email để nhập mã OTP.",
+      "text": "Đã đăng ký nhưng chưa xác minh?",
       "source": "src/pages/Register.jsx",
       "anchor": null,
       "componentPath": "src/pages/Register.jsx",
-      "line": 175
+      "line": 218
+    },
+    {
+      "route": "/register",
+      "kind": "Link",
+      "text": "Nhập OTP",
+      "source": "src/pages/Register.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/Register.jsx",
+      "line": 219
     },
     {
       "route": "/stories/inspiring",
@@ -2102,7 +1967,7 @@
       "source": "src/pages/StoriesInspiring.jsx",
       "anchor": null,
       "componentPath": "src/pages/StoriesInspiring.jsx",
-      "line": 52
+      "line": 47
     },
     {
       "route": "/stories/inspiring",
@@ -2111,7 +1976,7 @@
       "source": "src/pages/StoriesInspiring.jsx",
       "anchor": null,
       "componentPath": "src/pages/StoriesInspiring.jsx",
-      "line": 54
+      "line": 49
     },
     {
       "route": "/stories/inspiring",
@@ -2120,7 +1985,7 @@
       "source": "src/pages/StoriesInspiring.jsx",
       "anchor": null,
       "componentPath": "src/pages/StoriesInspiring.jsx",
-      "line": 60
+      "line": 51
     },
     {
       "route": "/stories/inspiring",
@@ -2129,7 +1994,7 @@
       "source": "src/pages/StoriesInspiring.jsx",
       "anchor": null,
       "componentPath": "src/pages/StoriesInspiring.jsx",
-      "line": 62
+      "line": 53
     },
     {
       "route": "/stories/inspiring",
@@ -2138,7 +2003,7 @@
       "source": "src/pages/StoriesInspiring.jsx",
       "anchor": null,
       "componentPath": "src/pages/StoriesInspiring.jsx",
-      "line": 105
+      "line": 85
     },
     {
       "route": "/stories/inspiring",
@@ -2147,7 +2012,7 @@
       "source": "src/pages/StoriesInspiring.jsx",
       "anchor": null,
       "componentPath": "src/pages/StoriesInspiring.jsx",
-      "line": 114
+      "line": 94
     },
     {
       "route": "/stories/inspiring",
@@ -2156,7 +2021,7 @@
       "source": "src/pages/StoriesInspiring.jsx",
       "anchor": null,
       "componentPath": "src/pages/StoriesInspiring.jsx",
-      "line": 128
+      "line": 108
     },
     {
       "route": "/stories/inspiring",
@@ -2165,7 +2030,7 @@
       "source": "src/pages/StoriesInspiring.jsx",
       "anchor": null,
       "componentPath": "src/pages/StoriesInspiring.jsx",
-      "line": 138
+      "line": 118
     },
     {
       "route": "/stories/inspiring",
@@ -2174,7 +2039,7 @@
       "source": "src/pages/StoriesInspiring.jsx",
       "anchor": null,
       "componentPath": "src/pages/StoriesInspiring.jsx",
-      "line": 141
+      "line": 121
     }
   ]
 }

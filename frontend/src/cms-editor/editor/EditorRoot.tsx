@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useReducer, useRef, useState } from 'react'
+import { HelpCircle, DownloadCloud, UploadCloud, RotateCcw, RotateCw } from 'lucide-react'
 import { ensureDefaultBlocksRegistered } from '../blocks/defaultDefinitions'
 import { blockRegistry } from '../core/registry'
 import type { CMSDocument } from '../core/types'
@@ -36,6 +37,7 @@ export const HybridCMSEditorRoot: React.FC<HybridCMSEditorRootProps> = ({
   const [isAutosaving, setIsAutosaving] = useState(false)
   const loadedInitialDocRef = useRef<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const rootRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     if (!initialDocument) return
@@ -148,7 +150,7 @@ export const HybridCMSEditorRoot: React.FC<HybridCMSEditorRootProps> = ({
   const onImportClick = () => fileInputRef.current?.click()
 
   return (
-    <div className="space-y-4">
+    <div ref={rootRef} className="space-y-4">
       <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-1">
@@ -160,32 +162,55 @@ export const HybridCMSEditorRoot: React.FC<HybridCMSEditorRootProps> = ({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              className="px-3 py-1 rounded-lg bg-blue-50 text-xs font-black uppercase tracking-widest text-fpt-blue hover:bg-blue-100"
               onClick={() => setShowHelpDialog(true)}
+              className="p-2 rounded-lg bg-blue-50 text-fpt-blue hover:bg-blue-100"
+              title="Trợ giúp"
+              aria-label="Trợ giúp"
             >
-              Trợ giúp
+              <HelpCircle size={16} />
             </button>
-              <button
-                type="button"
-                className="px-3 py-1 rounded-lg bg-green-50 text-xs font-black uppercase tracking-widest text-emerald-600 hover:bg-green-100"
-                onClick={exportDocument}
-              >
-                Xuất
-              </button>
-              <button
-                type="button"
-                className="px-3 py-1 rounded-lg bg-amber-50 text-xs font-black uppercase tracking-widest text-amber-700 hover:bg-amber-100"
-                onClick={onImportClick}
-              >
-                Nhập
-              </button>
-            
+
+            <button
+              type="button"
+              onClick={exportDocument}
+              className="p-2 rounded-lg bg-green-50 text-emerald-600 hover:bg-green-100"
+              title="Xuất tài liệu"
+              aria-label="Xuất tài liệu"
+            >
+              <DownloadCloud size={16} />
+            </button>
+
+            <button
+              type="button"
+              onClick={onImportClick}
+              className="p-2 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100"
+              title="Nhập tài liệu"
+              aria-label="Nhập tài liệu"
+            >
+              <UploadCloud size={16} />
+            </button>
+
             <input ref={(el) => (fileInputRef.current = el)} type="file" accept="application/json" onChange={(e) => handleImportFile(e.target.files?.[0] ?? null)} className="hidden" />
-            {/* <span className={`rounded-lg px-2 py-1 text-[10px] font-black uppercase tracking-widest ${validation.valid ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
-              {validation.valid ? 'Hợp lệ' : `${validation.errors.length} lỗi`}
-            </span> */}
-            <button type="button" className="px-3 py-1 rounded-lg bg-gray-100 text-xs font-black" onClick={() => dispatch({ type: 'UNDO' })}>Hoàn tác</button>
-            <button type="button" className="px-3 py-1 rounded-lg bg-gray-100 text-xs font-black" onClick={() => dispatch({ type: 'REDO' })}>Làm lại</button>
+
+            <button
+              type="button"
+              className="p-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200"
+              onClick={() => dispatch({ type: 'UNDO' })}
+              title="Hoàn tác"
+              aria-label="Hoàn tác"
+            >
+              <RotateCcw size={16} />
+            </button>
+
+            <button
+              type="button"
+              className="p-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200"
+              onClick={() => dispatch({ type: 'REDO' })}
+              title="Làm lại"
+              aria-label="Làm lại"
+            >
+              <RotateCw size={16} />
+            </button>
           </div>
         </div>
       </div>
@@ -287,7 +312,7 @@ export const HybridCMSEditorRoot: React.FC<HybridCMSEditorRootProps> = ({
       </section>
       </div>
 
-      <EditorHelpDialog open={showHelpDialog} onClose={() => setShowHelpDialog(false)} />
+      <EditorHelpDialog open={showHelpDialog} onClose={() => setShowHelpDialog(false)} anchorRef={rootRef} />
     </div>
   )
 }

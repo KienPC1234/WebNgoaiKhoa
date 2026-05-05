@@ -9,6 +9,9 @@ from app.models.publication import (
     Submission,
     SubmissionVote,
     StaffReaction,
+    PublicationViewEvent,
+    PublicationFavorite,
+    PublicationVote,
 )
 import pymysql
 import os
@@ -83,6 +86,14 @@ def init_database():
             statements.append("ALTER TABLE publications ADD COLUMN featured_year VARCHAR(20) NULL")
         if "layout_metadata" not in pub_columns:
             statements.append("ALTER TABLE publications ADD COLUMN layout_metadata JSON NULL")
+        if "comments_enabled" not in pub_columns:
+            statements.append("ALTER TABLE publications ADD COLUMN comments_enabled TINYINT(1) NOT NULL DEFAULT 1")
+        if "view_count" not in pub_columns:
+            statements.append("ALTER TABLE publications ADD COLUMN view_count INT NOT NULL DEFAULT 0")
+        if "favorites_count" not in pub_columns:
+            statements.append("ALTER TABLE publications ADD COLUMN favorites_count INT NOT NULL DEFAULT 0")
+        if "votes_count" not in pub_columns:
+            statements.append("ALTER TABLE publications ADD COLUMN votes_count INT NOT NULL DEFAULT 0")
         if "layout_metadata" not in story_columns:
             statements.append("ALTER TABLE stories ADD COLUMN layout_metadata JSON NULL")
 
@@ -108,8 +119,9 @@ def init_database():
             print("Legacy publication schema upgraded.")
 
         with engine.begin() as conn:
-            conn.execute(text("UPDATE publications SET subject = category WHERE subject IS NULL OR subject = ''"))
-            conn.execute(text("UPDATE publications SET category = subject WHERE category IS NULL OR category = ''"))
+            if "category" in pub_columns:
+                conn.execute(text("UPDATE publications SET subject = category WHERE subject IS NULL OR subject = ''"))
+                conn.execute(text("UPDATE publications SET category = subject WHERE category IS NULL OR category = ''"))
             conn.execute(text("UPDATE publications SET content_type = 'an-pham' WHERE content_type IS NULL OR content_type = ''"))
             conn.execute(text("UPDATE users SET is_subscribed = 1 WHERE is_subscribed IS NULL"))
     except Exception as e:
@@ -310,7 +322,7 @@ def init_database():
                 ),
                 StaffProfile(
                     full_name="TS. Trần Thị B",
-                    title="Giảng viên Lịch sử",
+                    title="Giáo viên Lịch sử",
                     bio="Chuyên gia về lịch sử bang giao quốc tế và văn hóa Việt Nam.",
                     expertise="Lịch sử và văn hóa",
                     image_url="https://i.pravatar.cc/300?u=staff-b",
@@ -330,7 +342,7 @@ def init_database():
                 ),
                 StaffProfile(
                     full_name="ThS. Phạm Thị D",
-                    title="Giảng viên Địa lí",
+                    title="Giáo viên Địa lí",
                     bio="Nghiên cứu sâu về biến đổi khí hậu và quy hoạch vùng.",
                     expertise="Địa lí ứng dụng",
                     image_url="https://i.pravatar.cc/300?u=staff-d",

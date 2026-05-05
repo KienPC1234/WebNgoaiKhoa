@@ -33,11 +33,11 @@ const SortableRow = ({ item, editing, patchLocal, save, onDelete, onEdit, reorde
         <input className="w-full px-2 py-1 rounded border" value={(editing[item.id]?.title ?? item.title) || ''} onChange={(e) => patchLocal(item.id, 'title', e.target.value)} />
       </TableCell>
       <TableCell>
-        <select className="w-full px-2 py-1 rounded border" value={(editing[item.id]?.tier ?? item.tier) || ''} onChange={(e) => patchLocal(item.id, 'tier', e.target.value)}>
+          <select className="w-full px-2 py-1 rounded border" value={(editing[item.id]?.tier ?? item.tier) || ''} onChange={(e) => patchLocal(item.id, 'tier', e.target.value)}>
           <option value="">—</option>
           <option value="management">Tổ trưởng</option>
           <option value="senior">Trưởng bộ môn</option>
-          <option value="instructor">Giảng viên</option>
+          <option value="instructor">Giáo viên</option>
         </select>
       </TableCell>
       <TableCell>

@@ -64,6 +64,13 @@ def _ensure_runtime_schema_compatibility():
 
                 SubmissionVote.__table__.create(bind=engine, checkfirst=True)
 
+            # Keep comment reaction endpoints available even when comment_reactions table
+            # has not been created by a migration yet.
+            if "comment_reactions" not in table_names and "comments" in table_names and "users" in table_names:
+                from app.models.publication import CommentReaction
+
+                CommentReaction.__table__.create(bind=engine, checkfirst=True)
+
             # Ensure users table has image_url column (runtime compatibility for profile avatars)
             if "users" in table_names:
                 try:

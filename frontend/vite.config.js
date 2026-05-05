@@ -29,6 +29,9 @@ export default defineConfig(({ mode }) => {
             if (id.includes('/pdfjs-dist/')) return 'pdfjs'
             if (id.includes('/framer-motion/')) return 'motion'
             if (id.includes('/@ckeditor/')) return 'ckeditor'
+            if (id.includes('/recharts/')) return 'charts'
+            if (id.includes('/firebase/')) return 'firebase'
+            if (id.includes('/aos/')) return 'aos'
 
             return null
           },

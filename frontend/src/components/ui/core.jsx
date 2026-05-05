@@ -1,6 +1,22 @@
 import { cn } from "@/lib/utils"
+import { useState, useCallback } from "react"
 
-export const Button = ({ className, children, variant = "default", size = "default", ...props }) => {
+/* ── Ripple effect for tactile button feedback ────────────────── */
+const Ripple = ({ x, y, size }) => (
+  <span
+    className="pointer-events-none absolute rounded-full bg-white/30 animate-[ripple_0.6s_ease-out_forwards]"
+    style={{
+      left: x - size / 2,
+      top: y - size / 2,
+      width: size,
+      height: size,
+    }}
+  />
+)
+
+export const Button = ({ className, children, variant = "default", size = "default", onClick, ...props }) => {
+  const [ripples, setRipples] = useState([])
+
   const variants = {
     default: "bg-fpt-blue text-white hover:bg-fpt-blue/90 shadow-lg shadow-blue-100",
     orange: "bg-fpt-orange text-white hover:bg-fpt-orange/90 shadow-lg shadow-orange-100",
@@ -19,17 +35,40 @@ export const Button = ({ className, children, variant = "default", size = "defau
   const isLinkButton = Boolean(props.href || props.to)
   const buttonType = props.type || (isLinkButton ? undefined : "button")
 
+  const handleClick = useCallback(
+    (e) => {
+      // Create ripple at click position
+      const rect = e.currentTarget.getBoundingClientRect()
+      const x = e.clientX - rect.left
+      const y = e.clientY - rect.top
+      const size = Math.max(rect.width, rect.height) * 2
+      const id = Date.now()
+
+      setRipples((prev) => [...prev, { id, x, y, size }])
+      setTimeout(() => {
+        setRipples((prev) => prev.filter((r) => r.id !== id))
+      }, 700)
+
+      onClick?.(e)
+    },
+    [onClick]
+  )
+
   return (
     <button
       type={buttonType}
       className={cn(
-        "tap-target inline-flex items-center justify-center rounded-2xl transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 disabled:grayscale focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fpt-orange/35 focus-visible:ring-offset-2",
+        "tap-target inline-flex items-center justify-center rounded-2xl transition-all active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 disabled:grayscale focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fpt-orange/35 focus-visible:ring-offset-2 relative overflow-hidden select-none",
         variants[variant],
         sizes[size],
         className
       )}
+      onClick={handleClick}
       {...props}
     >
+      {ripples.map((r) => (
+        <Ripple key={r.id} x={r.x} y={r.y} size={r.size} />
+      ))}
       {children}
     </button>
   )

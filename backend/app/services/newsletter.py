@@ -279,8 +279,49 @@ def send_webpush(token: str, title: str, body: str, link: Optional[str] = None) 
         messaging.send(message)
         return True
     except Exception as exc:
+        exc_str = str(exc).lower()
+        # If the token is unregistered or invalid, clean it up to avoid repeated failures
+        if any(keyword in exc_str for keyword in ("not-registered", "invalid-argument", "registration-token-not-registered")):
+            try:
+                _remove_stale_token(token)
+            except Exception:
+                pass
         print(f"[FCM_HTTP_V1] send failed: {exc}")
         return False
+
+
+def _remove_stale_token(token: str) -> None:
+    """Remove an invalid/expired FCM token from both registry file and DB."""
+    # Remove from registry file
+    with _registry_lock:
+        data = _load_registry()
+        changed = False
+        for email, tokens in list(data.items()):
+            if token in tokens:
+                data[email] = [t for t in tokens if t != token]
+                if not data[email]:
+                    del data[email]
+                changed = True
+        if changed:
+            _save_registry(data)
+
+    # Remove from DB
+    try:
+        db = SessionLocal()
+        rows = db.query(PushSubscription).filter(PushSubscription.token == token).all()
+        for r in rows:
+            db.delete(r)
+        db.commit()
+    except Exception:
+        try:
+            db.rollback()
+        except Exception:
+            pass
+    finally:
+        try:
+            db.close()
+        except Exception:
+            pass
 
 
 def dispatch_newsletter_bulk(
@@ -358,8 +399,10 @@ def dispatch_newsletter_bulk(
                             loop = None
 
                         if loop and loop.is_running():
-                            # schedule on running loop
-                            asyncio.create_task(manager.broadcast(payload))
+                            # schedule on running loop from background thread safely
+                            asyncio.run_coroutine_threadsafe(
+                                manager.broadcast(payload), loop
+                            )
                         else:
                             # run a temporary loop to perform the broadcast
                             try:

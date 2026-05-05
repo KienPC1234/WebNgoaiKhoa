@@ -33,6 +33,7 @@ class Publication(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     image_url = Column(String(500), nullable=True)
     layout_metadata = Column(JSON, nullable=True)
+    short_description = Column(Text, nullable=True)
     @property
     def category(self):
         """Legacy compatibility: return `subject` value for older clients."""
@@ -43,6 +44,45 @@ class Publication(Base):
         """Assigning legacy `category` sets canonical `subject`."""
         self.subject = value
     comments_enabled = Column(Boolean, nullable=False, default=True)
+    view_count = Column(Integer, nullable=False, default=0)
+    favorites_count = Column(Integer, nullable=False, default=0)
+    votes_count = Column(Integer, nullable=False, default=0)
+
+    @staticmethod
+    def _normalize_tags(value):
+        if value is None:
+            return []
+        if isinstance(value, str):
+            raw_items = value.split(',')
+        elif isinstance(value, (list, tuple, set)):
+            raw_items = list(value)
+        else:
+            return []
+
+        seen = set()
+        cleaned = []
+        for item in raw_items:
+            token = str(item or '').strip()
+            if not token:
+                continue
+            key = token.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            cleaned.append(token)
+        return cleaned
+
+    @property
+    def tags(self):
+        metadata = self.layout_metadata if isinstance(self.layout_metadata, dict) else {}
+        return self._normalize_tags(metadata.get('tags'))
+
+    @tags.setter
+    def tags(self, value):
+        metadata = self.layout_metadata if isinstance(self.layout_metadata, dict) else {}
+        next_metadata = dict(metadata)
+        next_metadata['tags'] = self._normalize_tags(value)
+        self.layout_metadata = next_metadata
 
 
 class Event(Base):
@@ -135,7 +175,7 @@ class StaffProfile(Base):
         mapping = {
             'management': 'Tổ trưởng',
             'senior': 'Trưởng bộ môn',
-            'instructor': 'Giảng viên',
+            'instructor': 'Giáo viên',
             'assistant': 'Trợ giảng',
         }
         return mapping.get(self.tier, self.tier)
@@ -178,6 +218,19 @@ class Comment(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
+class CommentReaction(Base):
+    __tablename__ = "comment_reactions"
+    __table_args__ = (
+        UniqueConstraint("comment_id", "user_id", name="uq_comment_reaction_comment_user"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    comment_id = Column(Integer, ForeignKey("comments.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    reaction_type = Column(String(20), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
 class StaffReaction(Base):
     __tablename__ = "staff_reactions"
     __table_args__ = (
@@ -188,6 +241,39 @@ class StaffReaction(Base):
     staff_id = Column(Integer, ForeignKey("staff_profiles.id"), nullable=False, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     reaction_type = Column(String(50), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class PublicationViewEvent(Base):
+    __tablename__ = "publication_view_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    publication_id = Column(Integer, ForeignKey("publications.id"), nullable=False, index=True)
+    session_id = Column(String(128), nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class PublicationFavorite(Base):
+    __tablename__ = "publication_favorites"
+    __table_args__ = (
+        UniqueConstraint("publication_id", "user_id", name="uq_pub_favorite_pub_user"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    publication_id = Column(Integer, ForeignKey("publications.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class PublicationVote(Base):
+    __tablename__ = "publication_votes"
+    __table_args__ = (
+        UniqueConstraint("publication_id", "user_id", name="uq_pub_vote_pub_user"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    publication_id = Column(Integer, ForeignKey("publications.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
