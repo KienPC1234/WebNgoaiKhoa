@@ -6,6 +6,7 @@ import {
   Sparkles,
   BarChart,
   ChevronDown,
+  ChevronRight,
   ArrowUp,
   Bell,
   X,
@@ -83,6 +84,14 @@ const subjectTextClasses = {
   'vovinam': 'text-blue-700',
 }
 
+const subjectDescriptions = {
+  'van': 'Sáng tác, cảm thụ và kỹ năng diễn đạt học thuật.',
+  'ktpl': 'Kinh tế ứng dụng và hiểu biết pháp luật thực tiễn.',
+  'lich-su': 'Tư duy dòng thời gian, sự kiện và phân tích tư liệu.',
+  'dia-li': 'Dữ liệu không gian, bản đồ và góc nhìn toàn cầu.',
+  'vovinam': 'Thể chất, kỷ luật và tinh thần võ đạo học đường.',
+}
+
 const subjectContent = [
   { label: 'Ấn phẩm học tập', slug: 'an-pham', icon: BookOpen },
   { label: 'Tài liệu tham khảo', slug: 'tai-lieu', icon: Compass },
@@ -111,6 +120,7 @@ export const MainLayout = () => {
   const [pendingAiOpen, setPendingAiOpen] = useState(false)
   const [shouldMountAiWidget, setShouldMountAiWidget] = useState(false)
   const [authHoverOpen, setAuthHoverOpen] = useState(false)
+  const [subjectHoverSlug, setSubjectHoverSlug] = useState(subjects[0]?.slug || 'van')
   const authCloseTimerRef = useRef(null)
   const navRef = useRef(null)
   const floatingBottom = 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)'
@@ -205,6 +215,12 @@ export const MainLayout = () => {
     setMobileMenuOpen(false)
     setOpenMenu(null)
   }, [location.pathname])
+
+  useEffect(() => {
+    if (openMenu !== 'subjects') return
+    const matched = subjects.find((subject) => location.pathname.startsWith(`/phanmon/${subject.slug}`))
+    setSubjectHoverSlug(matched?.slug || subjects[0]?.slug || 'van')
+  }, [openMenu, location.pathname])
 
   useEffect(() => {
     if (!mobileMenuOpen) return undefined
@@ -305,12 +321,12 @@ export const MainLayout = () => {
   return (
     <div className={cn('app-shell relative overflow-x-clip', isLowSpecDevice && 'low-spec-device', isScrollPerfMode && 'performance-scrolling')}>
       <header className={cn(
-        'glass-nav top-0 z-[100] overflow-visible sticky',
+        'glass-nav top-0 z-[4000] overflow-visible sticky',
         isScrollPerfMode && 'bg-[#fffaf3]/95'
       )}>
-        <div className="app-section px-3 py-4 md:px-6 lg:px-8">
+        <div className="app-section cv-auto px-3 py-4 md:px-6 lg:px-8">
           <div ref={navRef} className={cn(
-            'relative z-[101] flex items-center justify-between gap-3 rounded-3xl border border-orange-100/90 bg-gradient-to-r from-[#fff3e2] via-[#fff7ee] to-[#fff3e2] px-5 py-3.5 md:px-6 lg:px-8',
+            'relative z-[4001] flex items-center justify-between gap-3 rounded-3xl border border-orange-100/90 bg-gradient-to-r from-[#fff3e2] via-[#fff7ee] to-[#fff3e2] px-5 py-3.5 md:px-6 lg:px-8',
             isScrollPerfMode
               ? 'shadow-[0_10px_30px_-24px_rgba(15,23,42,0.25)]'
               : 'shadow-[0_20px_52px_-38px_rgba(15,23,42,0.35)]'
@@ -358,35 +374,13 @@ export const MainLayout = () => {
                 active={activeSubject}
                 align="center"
               >
-                <div className="w-[min(760px,calc(100vw-2.5rem))] p-3">
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    {subjects.map((subject) => (
-                      <div key={subject.slug} className="rounded-2xl border border-slate-200/80 bg-gradient-to-b from-slate-50 to-white p-3 shadow-[0_14px_30px_-24px_rgba(15,23,42,0.5)]">
-                        <p
-                          className={cn(
-                            'mb-2 inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-widest',
-                            subjectTextClasses[subject.slug] || 'text-fpt-blue'
-                          )}
-                        >
-                          {subject.name}
-                          <GraduationCap size={14} className="text-slate-400" />
-                        </p>
-                        <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
-                          {subjectContent.map((content) => (
-                            <Link
-                              key={`${subject.slug}-${content.slug}`}
-                              to={`/phanmon/${subject.slug}/${content.slug}`}
-                              className="flex items-center gap-2 rounded-lg border border-transparent px-2 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-500 transition-all hover:border-orange-100 hover:bg-orange-50/70 hover:text-fpt-orange"
-                            >
-                              <content.icon size={14} />
-                              {content.label}
-                            </Link>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                <SubjectNestedMenu
+                  subjects={subjects}
+                  subjectContent={subjectContent}
+                  subjectTextClasses={subjectTextClasses}
+                  activeSlug={subjectHoverSlug}
+                  onHover={setSubjectHoverSlug}
+                />
               </DesktopMenu>
 
               <DesktopMenu
@@ -443,10 +437,9 @@ export const MainLayout = () => {
                     <Link to="/register" className="btn-primary whitespace-nowrap">
                       Đăng ký
                     </Link>
-
                     {authHoverOpen && (
                       <div
-                        className="absolute top-full mt-3 right-0 z-50 pointer-events-auto animate-[fadeInMenu_180ms_ease-out]"
+                        className="absolute top-full mt-3 right-0 z-[4002] pointer-events-auto animate-[fadeInMenu_180ms_ease-out]"
                         onMouseEnter={cancelCloseAuth}
                         onMouseLeave={() => scheduleCloseAuth()}
                       >
@@ -493,7 +486,7 @@ export const MainLayout = () => {
       {mobileMenuOpen && (
           <div
             key="mobile-menu-overlay"
-            className="fixed inset-0 z-[110] 2xl:hidden animate-[fadeInMenu_180ms_ease-out]"
+            className="fixed inset-0 z-[4002] 2xl:hidden animate-[fadeInMenu_180ms_ease-out]"
           >
             <div className={cn('absolute inset-0 bg-black/30', isLowSpecDevice ? 'backdrop-blur-0' : 'backdrop-blur-sm')} onClick={() => setMobileMenuOpen(false)} />
 
@@ -519,18 +512,6 @@ export const MainLayout = () => {
                   >
                     <Home size={16} />
                     Trang chủ
-                  </Link>
-
-                  <Link
-                    to="/news"
-                    className={cn(
-                      'mb-2 flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-extrabold',
-                      location.pathname.startsWith('/news') ? 'bg-orange-50 text-fpt-orange' : 'text-slate-600'
-                    )}
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    <Menu size={16} />
-                    Tin tức
                   </Link>
 
                   <MobileSection
@@ -573,10 +554,11 @@ export const MainLayout = () => {
 
                   <MobileSection
                     title="Tin tức"
-                    sectionKey="stories"
+                    sectionKey="more"
                     openSection={mobileSectionOpen}
                     onToggle={setMobileSectionOpen}
                   >
+                    <MobileLink to="/news" label="Tất cả tin tức" />
                     {overflowMenu.map((item) => (
                       <MobileLink key={item.to} to={item.to} label={item.title} />
                     ))}
@@ -694,7 +676,7 @@ export const MainLayout = () => {
       </footer>
 
       {!shouldMountAiWidget && (
-        <div className="fixed right-3 z-[70] sm:right-4 md:right-6" style={{ bottom: floatingBottom }}>
+        <div className="fixed right-3 z-[5000] sm:right-4 md:right-6" style={{ bottom: floatingBottom }}>
           <button
             type="button"
             onClick={handleOpenAiChat}
@@ -770,7 +752,32 @@ const NavItem = ({ to, icon: Icon, label, active }) => (
   </Link>
 )
 
+const MENU_CLOSE_DELAY_MS = 300
+
 const DesktopMenu = ({ label, icon: Icon, menuKey, openMenu, onOpen, onClose, active, children, align = 'left', onPrimaryClick }) => {
+  const closeTimerRef = useRef(null)
+
+  const cancelScheduledClose = () => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current)
+      closeTimerRef.current = null
+    }
+  }
+
+  const scheduleClose = () => {
+    cancelScheduledClose()
+    closeTimerRef.current = setTimeout(() => {
+      onClose()
+      closeTimerRef.current = null
+    }, MENU_CLOSE_DELAY_MS)
+  }
+
+  useEffect(() => {
+    return () => {
+      cancelScheduledClose()
+    }
+  }, [])
+
   const handleDropdownWheel = (event) => {
     const container = event.currentTarget
     if (container.scrollHeight <= container.clientHeight) return
@@ -788,12 +795,18 @@ const DesktopMenu = ({ label, icon: Icon, menuKey, openMenu, onOpen, onClose, ac
   return (
   <div
     className="relative shrink-0"
-    onMouseEnter={() => onOpen(menuKey)}
-    onMouseLeave={onClose}
-    onFocusCapture={() => onOpen(menuKey)}
+    onMouseEnter={() => {
+      cancelScheduledClose()
+      onOpen(menuKey)
+    }}
+    onMouseLeave={scheduleClose}
+    onFocusCapture={() => {
+      cancelScheduledClose()
+      onOpen(menuKey)
+    }}
     onBlurCapture={(event) => {
       if (!event.currentTarget.contains(event.relatedTarget)) {
-        onClose()
+        scheduleClose()
       }
     }}
   >
@@ -817,9 +830,11 @@ const DesktopMenu = ({ label, icon: Icon, menuKey, openMenu, onOpen, onClose, ac
 
     {openMenu === menuKey && (
       <div
+        onMouseEnter={cancelScheduledClose}
+        onMouseLeave={scheduleClose}
         onWheel={handleDropdownWheel}
         className={cn(
-          'custom-scrollbar absolute top-[calc(100%+12px)] z-50 max-h-[78vh] max-w-[calc(100vw-2rem)] overflow-x-auto overflow-y-auto overscroll-contain rounded-[1.4rem] border border-orange-100/90 bg-[#fffaf3] p-2 shadow-[0_32px_72px_-42px_rgba(15,23,42,0.7)] origin-top animate-[fadeInMenu_180ms_ease-out]',
+          'custom-scrollbar absolute top-[calc(100%+12px)] z-[4002] max-h-[78vh] max-w-[calc(100vw-2rem)] overflow-x-auto overflow-y-auto overscroll-contain rounded-[1.4rem] border border-orange-100/90 bg-[#fffaf3] p-2 shadow-[0_32px_72px_-42px_rgba(15,23,42,0.7)] origin-top animate-[fadeInMenu_180ms_ease-out]',
           align === 'right' ? 'right-0' : align === 'center' ? 'left-1/2 -translate-x-1/2' : 'left-0'
         )}
       >
@@ -833,6 +848,73 @@ const DesktopMenu = ({ label, icon: Icon, menuKey, openMenu, onOpen, onClose, ac
     )}
   </div>
 )
+}
+
+const SubjectNestedMenu = ({ subjects, subjectContent, subjectTextClasses, activeSlug, onHover }) => {
+  const activeSubject = subjects.find((subject) => subject.slug === activeSlug) || subjects[0]
+
+  return (
+    <div className="w-[min(700px,calc(100vw-2.5rem))] p-3">
+      <DropdownHeading
+        title="Chuyên môn"
+        subtitle="Chọn môn ở cột trái, nội dung chuyên biệt sẽ hiện ở cột phải"
+      />
+
+      <div className="mt-3 grid grid-cols-[220px_minmax(0,1fr)] gap-3">
+        <div className="rounded-2xl border border-slate-200 bg-white/80 p-2">
+          <div className="space-y-1">
+            {subjects.map((subject) => {
+              const isActive = subject.slug === activeSubject?.slug
+              return (
+                <Link
+                  key={subject.slug}
+                  to={`/phanmon/${subject.slug}`}
+                  onMouseEnter={() => onHover(subject.slug)}
+                  onFocus={() => onHover(subject.slug)}
+                  className={cn(
+                    'flex w-full items-center justify-between rounded-xl border px-3 py-2.5 text-left text-[11px] font-black uppercase tracking-wider transition-all',
+                    isActive
+                      ? 'border-orange-200 bg-orange-50 text-fpt-orange'
+                      : 'border-transparent text-slate-600 hover:border-slate-200 hover:bg-slate-50'
+                  )}
+                >
+                  <span>{subject.name}</span>
+                  <ChevronRight size={14} className={cn('transition-transform', isActive && 'translate-x-0.5')} />
+                </Link>
+              )
+            })}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-gradient-to-b from-white to-slate-50 p-3">
+          <div className="mb-3 border-b border-slate-200 pb-2">
+            <p className={cn(
+              'text-[11px] font-black uppercase tracking-[0.16em]',
+              subjectTextClasses[activeSubject?.slug] || 'text-fpt-blue'
+            )}>
+              {activeSubject?.name}
+            </p>
+            <p className="mt-1 text-[11px] font-semibold leading-relaxed text-slate-500">
+              {subjectDescriptions[activeSubject?.slug] || 'Kho nội dung theo môn học.'}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            {subjectContent.map((content) => (
+              <Link
+                key={`${activeSubject?.slug}-${content.slug}`}
+                to={`/phanmon/${activeSubject?.slug}/${content.slug}`}
+                className="group flex items-center gap-2 rounded-xl border border-slate-200/70 bg-white px-2.5 py-2 text-[10px] font-black uppercase tracking-wider text-slate-600 transition-all hover:-translate-y-0.5 hover:border-orange-200 hover:bg-orange-50 hover:text-fpt-orange"
+              >
+                <content.icon size={14} className="text-slate-400 transition-colors group-hover:text-fpt-orange" />
+                <span>{content.label}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 const SubMenuCard = ({ item }) => (

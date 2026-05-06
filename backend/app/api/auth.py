@@ -21,7 +21,7 @@ from app.models.user import User
 from app.models.role import Role
 from app.services import newsletter as newsletter_service
 from app.services.email_templates import get_otp_html
-from app.schemas.schemas import PushConfigOut, PushTokenIn, PushTokenOut
+from app.schemas.schemas import PushConfigOut, PushSubscriptionIn, PushTokenOut
 
 router = APIRouter()
 
@@ -826,7 +826,7 @@ async def unsubscribe(payload: UnsubscribeIn, db: Session = Depends(get_db)):
         db.add(user)
         db.commit()
 
-    newsletter_service.clear_push_tokens(payload.email)
+    newsletter_service.clear_user_push_subscriptions(payload.email)
 
     return {
         "message": "Đã hủy đăng ký nhận email",
@@ -845,21 +845,26 @@ async def get_push_config():
 
 
 @router.post("/push/register", response_model=PushTokenOut)
-async def register_push_token(payload: PushTokenIn, current_user: User = Depends(get_current_user)):
+async def register_push_token(payload: PushSubscriptionIn, current_user: User = Depends(get_current_user)):
     if not current_user.is_subscribed:
         raise HTTPException(status_code=400, detail="User already unsubscribed")
 
-    tokens = newsletter_service.register_push_token(current_user.email, payload.token)
+    newsletter_service.register_push_subscription(
+        user_email=current_user.email,
+        endpoint=payload.endpoint,
+        p256dh=payload.p256dh,
+        auth=payload.auth,
+    )
     return {
-        "message": "Push token registered",
-        "tokens": tokens,
+        "message": "Push subscription registered",
+        "tokens": 0,
     }
 
 
 @router.post("/push/unregister", response_model=PushTokenOut)
-async def unregister_push_token(payload: PushTokenIn, current_user: User = Depends(get_current_user)):
-    tokens = newsletter_service.unregister_push_token(current_user.email, payload.token)
+async def unregister_push_token(payload: PushSubscriptionIn, current_user: User = Depends(get_current_user)):
+    newsletter_service.unregister_push_subscription(payload.endpoint)
     return {
-        "message": "Push token unregistered",
-        "tokens": tokens,
+        "message": "Push subscription unregistered",
+        "tokens": 0,
     }

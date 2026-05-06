@@ -37,7 +37,7 @@ from app.schemas.schemas import (
     StoryOut,
     UserOut, UserUpdate, 
     PublicationOut, PublicationCreate, PublicationDraft, StoryDraft, EventDraft,
-    SubmissionOut, DashboardStats, SubmissionStatusUpdate,
+    SubmissionOut, DashboardStats, SubmissionStatusUpdate, SubmissionBulkStatusUpdate, SubmissionBulkDelete,
     AdminOverview,
     AdminActivityItem,
     AIKnowledgeAssetOut,
@@ -91,12 +91,20 @@ VIDEO_MAX_UPLOAD_SIZE = int(os.getenv("VIDEO_MAX_UPLOAD_BYTES", str(50 * 1024 * 
 ALLOWED_SUBJECTS = {item.value for item in ai_module.Category} if hasattr(ai_module, "Category") else {"van", "ktpl", "lich-su", "dia-li", "vovinam", "ngoaikhoa"}
 
 
-def _sync_ai_knowledge_if_possible(db: Session):
+def _sync_knowledge_base_bg():
+    from app.db.session import SessionLocal
+    db = SessionLocal()
     try:
         ai_module._sync_knowledge_base(db)
     except Exception:
-        # Avoid blocking admin CRUD if vector sync fails temporarily.
-        pass
+        logger.exception("AI Knowledge base background sync failed")
+    finally:
+        db.close()
+
+
+def _sync_ai_knowledge_if_possible(db: Session = None):
+    import threading
+    threading.Thread(target=_sync_knowledge_base_bg, daemon=True).start()
 
 
 def _is_missing_staff_reactions_error(exc: Exception) -> bool:
@@ -2208,6 +2216,11 @@ async def update_submission_status(
         raise HTTPException(status_code=400, detail="Invalid status")
 
     submission.status = next_status
+    if next_status == "rejected" and payload and payload.rejection_reason:
+        submission.rejection_reason = payload.rejection_reason
+    elif next_status == "approved":
+        submission.rejection_reason = None
+        
     db.commit()
     _sync_ai_knowledge_if_possible(db)
 
@@ -2216,14 +2229,83 @@ async def update_submission_status(
         "type": "submission_update",
         "title": "Cập nhật hệ thống",
         "message": f"Bài thi '{submission.title}' đã được cập nhật trạng thái: {next_status.upper()}.",
-        "id": submission.id
+        "id": submission.id,
+        "status": next_status
     })
 
     return {
         "message": f"Submission status updated to {next_status}",
         "id": submission.id,
         "status": submission.status,
+        "rejection_reason": submission.rejection_reason
     }
+
+@router.post("/submissions/bulk-status")
+async def bulk_update_submission_status(
+    payload: SubmissionBulkStatusUpdate,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_submission_judge),
+):
+    if not payload.ids:
+        return {"updated": 0}
+        
+    submissions = db.query(Submission).filter(Submission.id.in_(payload.ids)).all()
+    for sub in submissions:
+        sub.status = payload.status
+        if payload.status == "approved":
+            sub.rejection_reason = None
+            
+    db.commit()
+    _sync_ai_knowledge_if_possible(db)
+    
+    await manager.broadcast({
+        "type": "submission_bulk_update",
+        "ids": payload.ids,
+        "status": payload.status
+    })
+    
+    return {"updated": len(submissions)}
+
+@router.delete("/submissions/{sub_id}")
+async def delete_submission(
+    sub_id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_submission_judge),
+):
+    submission = db.query(Submission).filter(Submission.id == sub_id).first()
+    if not submission:
+        raise HTTPException(status_code=404, detail="Submission not found")
+        
+    db.delete(submission)
+    db.commit()
+    _sync_ai_knowledge_if_possible(db)
+    
+    await manager.broadcast({
+        "type": "submission_delete",
+        "id": sub_id
+    })
+    
+    return {"message": "Submission deleted"}
+
+@router.delete("/submissions/bulk-delete")
+async def bulk_delete_submissions(
+    payload: SubmissionBulkDelete,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_submission_judge),
+):
+    if not payload.ids:
+        return {"deleted": 0}
+        
+    db.query(Submission).filter(Submission.id.in_(payload.ids)).delete(synchronize_session=False)
+    db.commit()
+    _sync_ai_knowledge_if_possible(db)
+    
+    await manager.broadcast({
+        "type": "submission_bulk_delete",
+        "ids": payload.ids
+    })
+    
+    return {"deleted": len(payload.ids)}
 
 
 @router.get("/auth/overview")
@@ -2491,6 +2573,66 @@ async def send_newsletter(
         "send_webpush": payload.send_webpush,
         "newsletter_enabled": newsletter_service.is_newsletter_enabled(),
         "webpush_configured": newsletter_service.is_webpush_channel_enabled(),
+    }
+
+
+@router.post("/debug/webpush")
+async def debug_webpush(
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    """Send a test webpush to the calling admin's own subscriptions for debugging."""
+    from app.models.notification import PushSubscription
+
+    subs = db.query(PushSubscription).filter(PushSubscription.user_id == admin.id).all()
+    if not subs:
+        return {
+            "ok": False,
+            "error": "no_subscriptions",
+            "detail": "Admin has no push subscriptions. Open the site, grant notification permission, then try again.",
+        }
+
+    results = []
+    for sub in subs:
+        ok = newsletter_service.send_webpush(
+            subscription=sub,
+            title="[DEBUG] Thử nghiệm thông báo",
+            body=f"Đây là tin nhắn debug từ hệ thống. Nếu bạn thấy thông báo này, webpush đang hoạt động đúng!",
+            url="/",
+        )
+        results.append({
+            "endpoint": sub.endpoint[:80] + "...",
+            "sent": ok,
+        })
+
+    return {
+        "ok": True,
+        "webpush_enabled": newsletter_service.is_webpush_channel_enabled(),
+        "subscriptions_found": len(subs),
+        "results": results,
+    }
+
+
+@router.get("/debug/webpush/status")
+async def debug_webpush_status(
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    """Check webpush configuration and admin's subscription status."""
+    from app.models.notification import PushSubscription
+
+    subs = db.query(PushSubscription).filter(PushSubscription.user_id == admin.id).all()
+    total_subs = db.query(func.count(PushSubscription.id)).scalar()
+
+    return {
+        "webpush_enabled": newsletter_service.is_webpush_channel_enabled(),
+        "newsletter_enabled": newsletter_service.is_newsletter_enabled(),
+        "vapid_configured": bool(newsletter_service.VAPID_PRIVATE_KEY),
+        "admin_subscriptions": len(subs),
+        "total_subscriptions": total_subs,
+        "admin_subscriptions_detail": [
+            {"endpoint": s.endpoint[:80] + "...", "created_at": str(s.created_at)} for s in subs
+        ],
     }
 
 

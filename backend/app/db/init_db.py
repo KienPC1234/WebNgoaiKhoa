@@ -109,6 +109,8 @@ def init_database():
             statements.append("ALTER TABLE users ADD COLUMN is_subscribed BOOLEAN NOT NULL DEFAULT 1")
         if "attachment_url" not in submission_columns:
             statements.append("ALTER TABLE submissions ADD COLUMN attachment_url VARCHAR(500) NULL")
+        if "rejection_reason" not in submission_columns:
+            statements.append("ALTER TABLE submissions ADD COLUMN rejection_reason TEXT NULL")
         if "linked_post_id" not in event_columns:
             statements.append("ALTER TABLE events ADD COLUMN linked_post_id INT NULL")
 

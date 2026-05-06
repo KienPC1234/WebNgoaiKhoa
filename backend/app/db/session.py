@@ -57,6 +57,12 @@ def _ensure_runtime_schema_compatibility():
                 if "timezone" not in event_columns:
                     statements.append("ALTER TABLE events ADD COLUMN timezone VARCHAR(100) NULL")
 
+            # Ensure submissions table has rejection_reason column for legacy schemas.
+            if "submissions" in table_names:
+                submission_columns = {c["name"] for c in inspector.get_columns("submissions")}
+                if "rejection_reason" not in submission_columns:
+                    statements.append("ALTER TABLE submissions ADD COLUMN rejection_reason TEXT NULL")
+
             # Keep vote endpoints available even when submission_votes table has not
             # been created by a migration yet.
             if "submission_votes" not in table_names and "submissions" in table_names and "users" in table_names:

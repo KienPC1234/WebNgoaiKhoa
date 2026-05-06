@@ -884,7 +884,7 @@ export const AiChatWidget = ({ pendingOpen = false, onPendingOpenHandled }) => {
   }
 
   if (!isOpen) return (
-    <div className="fixed right-3 z-[140] sm:right-4 md:right-6" style={{ bottom: floatingBottom }}>
+    <div className="fixed right-3 z-[5100] sm:right-4 md:right-6" style={{ bottom: floatingBottom }}>
       <button
         onClick={() => setIsOpen(true)}
         className="tap-target group relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-fpt-orange via-orange-500 to-amber-500 p-0 text-white shadow-[0_16px_48px_-12px_rgba(242,112,36,0.7)] transition-all duration-300 hover:scale-110 hover:shadow-[0_24px_64px_-8px_rgba(242,112,36,0.9)] active:scale-95 sm:h-16 sm:w-16"
@@ -917,7 +917,7 @@ export const AiChatWidget = ({ pendingOpen = false, onPendingOpenHandled }) => {
 
   return (
     <div className={cn(
-      'fixed z-[120] flex flex-col transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]',
+      'fixed z-[5001] flex flex-col transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]',
       isFullscreen ? 'inset-0' : (isMobile ? 'left-0 right-0 px-3' : 'right-3 sm:right-4 md:right-6'),
       isMinimized
         ? 'h-16 w-[min(82vw,320px)]'

@@ -52,7 +52,7 @@ import re
 import json
 import mimetypes
 import logging
-from app.schemas.schemas import PushTokenIn
+from app.schemas.schemas import PushSubscriptionIn
 from app.models.notification import PushSubscription, Notification
 import httpx
 import unicodedata
@@ -406,14 +406,6 @@ def _normalize_submission_payload(title: str, content: str, student_name: Option
     normalized_content = (content or "").strip()
     normalized_student_name = (student_name or "").strip() or None
 
-    if existing_vote:
-        raise HTTPException(
-            status_code=409,
-            detail={
-                "message": "Bạn đã bình chọn cho ấn phẩm này rồi",
-                "votes": pub.votes_count,
-            },
-        )
     if not normalized_title:
         raise HTTPException(status_code=400, detail="Vui lòng nhập tên tác phẩm")
     if len(normalized_title) < TITLE_MIN_LENGTH:
@@ -1324,7 +1316,7 @@ async def get_uploaded_video(filename: str, request: Request):
 async def create_contestant_submission(
     sub: SubmissionIn,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_contestant),
+    current_user: User = Depends(get_current_user),
 ):
     verify_recaptcha_or_raise(sub.recaptcha_token, action="submission_create")
     normalized_title, normalized_content, normalized_student_name = _normalize_submission_payload(
@@ -1367,17 +1359,20 @@ async def create_contestant_submission(
 
 
 @router.post("/push/subscribe")
-async def public_push_subscribe(payload: PushTokenIn, db: Session = Depends(get_db)):
-    token = (payload.token or "").strip()
-    if not token:
-        raise HTTPException(status_code=400, detail="Missing token")
+async def public_push_subscribe(payload: PushSubscriptionIn, db: Session = Depends(get_db)):
+    endpoint = (payload.endpoint or "").strip()
+    if not endpoint:
+        raise HTTPException(status_code=400, detail="Missing endpoint")
 
     # idempotent insert
-    existing = db.query(PushSubscription).filter(PushSubscription.token == token).first()
+    existing = db.query(PushSubscription).filter(PushSubscription.endpoint == endpoint).first()
     if existing:
+        existing.p256dh = payload.p256dh
+        existing.auth = payload.auth
+        db.commit()
         return {"message": "already_registered", "registered": True}
 
-    sub = PushSubscription(user_id=None, token=token)
+    sub = PushSubscription(user_id=None, endpoint=endpoint, p256dh=payload.p256dh, auth=payload.auth)
     db.add(sub)
     db.commit()
     return {"message": "registered", "registered": True}
@@ -1385,9 +1380,8 @@ async def public_push_subscribe(payload: PushTokenIn, db: Session = Depends(get_
 
 @router.get('/push/vapid')
 async def get_vapid():
-    # Return VAPID public key for client; optional env variable FCM_VAPID_PUBLIC_KEY
     import os
-    key = os.getenv('FCM_VAPID_PUBLIC_KEY') or os.getenv('VITE_FIREBASE_VAPID_KEY')
+    key = os.getenv('VAPID_PUBLIC_KEY', '')
     return {"vapid_key": key}
 
 
@@ -1406,7 +1400,7 @@ async def get_public_site_texts():
 @router.get("/submissions/me", response_model=List[SubmissionOut])
 async def get_my_submissions(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_contestant),
+    current_user: User = Depends(get_current_user),
 ):
     return (
         db.query(Submission)
@@ -1420,7 +1414,7 @@ async def vote_submission(
     sub_id: int,
     payload: VoteIn,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_contestant),
+    current_user: User = Depends(get_current_user),
 ):
     verify_recaptcha_or_raise(payload.recaptcha_token, action="submission_vote")
 
@@ -1480,7 +1474,7 @@ async def vote_submission(
 async def unvote_submission(
     sub_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_contestant),
+    current_user: User = Depends(get_current_user),
 ):
     submission = db.query(Submission).filter(Submission.id == sub_id, Submission.status == "approved").first()
     if not submission:
@@ -1927,7 +1921,13 @@ async def add_publication_favorite(pub_id: int, db: Session = Depends(get_db), u
         .first()
     )
     if existing:
-        return {"favorited": True, "favorites_count": int(pub.favorites_count or 0)}
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "Bạn đã thích ấn phẩm này rồi",
+                "favorites": pub.favorites_count,
+            },
+        )
 
     try:
         fav = PublicationFavorite(publication_id=pub_id, user_id=user.id)
@@ -1973,7 +1973,13 @@ async def add_publication_vote(pub_id: int, db: Session = Depends(get_db), user:
         .first()
     )
     if existing:
-        return {"voted": True, "votes_count": int(pub.votes_count or 0)}
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "Bạn đã bình chọn cho ấn phẩm này rồi",
+                "votes": pub.votes_count,
+            },
+        )
 
     try:
         vote = PublicationVote(publication_id=pub_id, user_id=user.id)

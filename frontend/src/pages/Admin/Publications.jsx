@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Card, Button } from '@/components/UI'
-import { Plus, Trash2, Edit, Search, Calendar, BookHeart, Award, ExternalLink, SlidersHorizontal } from 'lucide-react'
+import { Plus, Trash2, Edit, Search, Calendar, BookHeart, Award, ExternalLink, SlidersHorizontal, Eye, ThumbsUp, Heart } from 'lucide-react'
 import { cmsService } from '@/lib/cmsService'
 import { confirmAction, showApiError, toastSuccess } from '@/lib/notify'
 

@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CalendarDays, ChevronRight, Clock3, PlayCircle, Sparkles } from 'lucide-react'
 import { Button, Card } from '@/components/ui/core'
 import { Link } from 'react-router-dom'
+import { apiClient } from '@/lib/apiClient'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 
@@ -92,7 +93,7 @@ const getEventHref = (event) => {
   return '/events/upcoming'
 }
 
-const EventCountdown = ({ eventDate, nowTs, compact = false }) => {
+const EventCountdown = memo(({ eventDate, nowTs, compact = false }) => {
   const countdown = getCountdown(eventDate, nowTs)
   if (!countdown) return null
 
@@ -111,7 +112,7 @@ const EventCountdown = ({ eventDate, nowTs, compact = false }) => {
       ) : null}
     </div>
   )
-}
+})
 
 export const Home = () => {
   const [siteTexts, setSiteTexts] = useState(null)
@@ -136,31 +137,17 @@ export const Home = () => {
       setLoadingEvents(true)
       try {
         const [textsResp, contestResp, eventsResp] = await Promise.all([
-          fetch(`${API_URL}/public/site-texts`, { signal: controller.signal, headers: { Accept: 'application/json' } }),
-          fetch(`${API_URL}/public/publications?content_type=cuoc-thi&limit=8`, { signal: controller.signal, headers: { Accept: 'application/json' } }),
-          fetch(`${API_URL}/public/events/upcoming`, { signal: controller.signal, headers: { Accept: 'application/json' } }),
+          apiClient.get('/public/site-texts', { signal: controller.signal }),
+          apiClient.get('/public/publications?content_type=cuoc-thi&limit=8', { signal: controller.signal }),
+          apiClient.get('/public/events/upcoming', { signal: controller.signal }),
         ])
 
-        if (textsResp.ok) {
-          const data = await textsResp.json()
-          setSiteTexts(data)
-        }
-
-        if (contestResp.ok) {
-          const contests = await contestResp.json()
-          setNewsItems(Array.isArray(contests) ? contests.slice(0, 8) : [])
-        }
-        setLoadingNews(false)
-
-        if (eventsResp.ok) {
-          const events = await eventsResp.json()
-          setEventItems(Array.isArray(events) ? events : [])
-        }
-        setLoadingEvents(false)
+        setSiteTexts(textsResp.data || {})
+        setNewsItems(Array.isArray(contestResp.data) ? contestResp.data.slice(0, 8) : [])
+        setEventItems(Array.isArray(eventsResp.data) ? eventsResp.data : [])
       } catch (err) {
-        if (err?.name !== 'AbortError') {
-          console.error('Failed to load homepage data', err)
-        }
+        if (!apiClient.isCancel(err)) console.error('Error fetching site info:', err)
+      } finally {
         setLoadingNews(false)
         setLoadingEvents(false)
       }
@@ -182,9 +169,9 @@ export const Home = () => {
     return []
   }, [hero.background_images, hero.background_image_url])
 
-  const transitionTimeoutRef = React.useRef(null)
+  const transitionTimeoutRef = useRef(null)
 
-  const goToHeroIndex = React.useCallback((newIndex) => {
+  const goToHeroIndex = useCallback((newIndex) => {
     setHeroIndex((prev) => {
       setPrevHeroIndex(prev)
       return newIndex
@@ -248,8 +235,7 @@ export const Home = () => {
               )}
               {/* Entering image — slides in from right or fades in */}
               <img
-                key={`cur-${currentHeroImage}`}
-                key={currentHeroImage}
+                key={`hero-${currentHeroImage}`}
                 src={currentHeroImage}
                 alt="Hero background"
                 className={`absolute inset-0 h-full w-full object-cover ${
@@ -364,7 +350,7 @@ export const Home = () => {
                 <Card className="overflow-hidden rounded-2xl border border-slate-100 p-0 shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg">
                   <div className="relative h-44 bg-slate-100">
                     {item.image_url ? (
-                      <img src={item.image_url} alt={item.title} className="h-full w-full object-cover" loading="lazy" />
+                      <img src={item.image_url} alt={item.title} className="h-full w-full object-cover" loading="lazy" decoding="async" />
                     ) : (
                       <div className="absolute inset-0 bg-gradient-to-br from-orange-100 to-blue-100" />
                     )}
@@ -425,7 +411,7 @@ export const Home = () => {
               <div className="grid gap-0 md:grid-cols-2">
                 <div className="relative min-h-[260px] bg-slate-100">
                   {eventItems[0].image_url ? (
-                    <img src={eventItems[0].image_url} alt={eventItems[0].title} className="h-full w-full object-cover" loading="lazy" />
+                    <img src={eventItems[0].image_url} alt={eventItems[0].title} className="h-full w-full object-cover" loading="lazy" decoding="async" />
                   ) : (
                     <div className="absolute inset-0 bg-gradient-to-br from-fpt-orange/20 to-fpt-blue/20" />
                   )}
@@ -449,7 +435,7 @@ export const Home = () => {
                 <div className="grid gap-0 md:grid-cols-2">
                   <div className="relative min-h-[220px] bg-slate-100">
                     {eventItems[0].image_url ? (
-                      <img src={eventItems[0].image_url} alt={eventItems[0].title} className="h-full w-full object-cover" loading="lazy" />
+                      <img src={eventItems[0].image_url} alt={eventItems[0].title} className="h-full w-full object-cover" loading="lazy" decoding="async" />
                     ) : (
                       <div className="absolute inset-0 bg-gradient-to-br from-fpt-blue/15 to-fpt-orange/15" />
                     )}

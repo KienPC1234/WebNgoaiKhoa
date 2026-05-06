@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { memo, useEffect, useState } from 'react'
 import { Card } from '@/components/ui/core'
 import { apiClient } from '@/lib/apiClient'
 import { confirmAction, toastSuccess, showApiError } from '@/lib/notify'
@@ -167,7 +167,7 @@ const getAvatarTone = (seed) => {
   return tones[Math.abs(hash) % tones.length]
 }
 
-const CommentAvatar = ({ name, imageUrl, size = 'md' }) => {
+const CommentAvatar = memo(({ name, imageUrl, size = 'md' }) => {
   const sizeClass = size === 'sm' ? 'h-9 w-9 text-xs' : 'h-10 w-10 text-sm'
   const initials = getInitials(name)
   const tone = getAvatarTone(name)
@@ -179,6 +179,7 @@ const CommentAvatar = ({ name, imageUrl, size = 'md' }) => {
         alt={name || 'avatar'}
         className={`${sizeClass} rounded-full border border-white/80 object-cover shadow-sm`}
         loading="lazy"
+        decoding="async"
       />
     )
   }
@@ -188,9 +189,9 @@ const CommentAvatar = ({ name, imageUrl, size = 'md' }) => {
       {initials}
     </div>
   )
-}
+})
 
-export const CommentsSection = ({ publicationId, commentsEnabled }) => {
+export const CommentsSection = memo(({ publicationId, commentsEnabled }) => {
   const [comments, setComments] = useState([])
   const [loading, setLoading] = useState(false)
   const [showComposer, setShowComposer] = useState(false)
@@ -521,6 +522,6 @@ export const CommentsSection = ({ publicationId, commentsEnabled }) => {
       )}
     </div>
   )
-}
+})
 
 export default CommentsSection

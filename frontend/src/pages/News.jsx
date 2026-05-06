@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { CalendarDays, ChevronRight, Newspaper } from 'lucide-react'
 import { Card } from '@/components/ui/core'
 import { getPublicationCardDescription } from '@/lib/publicationSummary'
+import { apiClient } from '@/lib/apiClient'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 
@@ -36,10 +37,8 @@ export const News = () => {
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
         const data = await resp.json()
         setItems(Array.isArray(data) ? data : [])
-      } catch (err) {
-        if (err?.name !== 'AbortError') {
-          console.error('Failed to load /news', err)
-        }
+      } catch (error) {
+        if (!apiClient.isCancel(error)) console.error('Error fetching news:', error)
       } finally {
         setLoading(false)
       }

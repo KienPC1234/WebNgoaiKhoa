@@ -5,8 +5,8 @@ const FALLBACK = {
   admin: ['admin', 'admin_panel', 'user_manage', 'auth_audit', 'ai_knowledge', 'content_manage', 'submission_review'],
   website_manager: ['admin_panel', 'content_manage'],
   submission_judge: ['admin_panel', 'submission_review'],
-  teacher: ['public_user'],
-  student: ['public_user'],
+  teacher: ['public_user', 'contestant'],
+  student: ['public_user', 'contestant'],
 }
 
 let cache = {

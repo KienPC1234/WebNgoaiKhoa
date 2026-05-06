@@ -190,6 +190,7 @@ class Submission(Base):
     student_name = Column(String(255))
     student_email = Column(String(255))
     status = Column(String(50), default="pending") # pending, approved, rejected
+    rejection_reason = Column(Text, nullable=True)
     votes = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

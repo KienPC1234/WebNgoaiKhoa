@@ -16,8 +16,7 @@ langchain-ollama
 pytest
 pypdf
 python-docx
-firebase-admin
-google-auth
-google-auth-oauthlib
+pywebpush
+cryptography
 Pillow
 python-dateutil

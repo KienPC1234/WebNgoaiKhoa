@@ -82,7 +82,7 @@ const normalizeRouteCandidate = (path = '') => {
   try {
     const parsed = raw.startsWith('http://') || raw.startsWith('https://')
       ? new URL(raw)
-      : new URL(raw, 'https://ngoaikhoa.fptoj.com')
+      : new URL(raw, 'https://toxahoihola.com')
     return {
       full: `${parsed.pathname}${parsed.search || ''}`,
       pathname: parsed.pathname,

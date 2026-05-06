@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Card } from '@/components/ui/core'
 import { Calendar, MapPin, ArrowRight, Bell, Sparkles, ChevronLeft, ChevronRight as ChevronRightIcon, Clock3 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { apiClient } from '@/lib/apiClient'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
 const toPlainText = (value) => (value || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
@@ -67,7 +68,7 @@ export const EventsUpcoming = () => {
                     setSelectedDate(new Date())
                 }
             } catch (error) {
-                if (error?.name !== 'AbortError') console.error('Error fetching upcoming events:', error)
+                if (!apiClient.isCancel(error)) console.error('Error fetching events:', error)
             } finally {
                 setLoading(false)
             }

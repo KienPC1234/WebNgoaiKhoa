@@ -33,25 +33,20 @@ def test_unsubscribe_rejects_invalid_token(client):
     assert response.status_code == 400
 
 
-def test_push_register_and_unregister(client, student_headers, monkeypatch, tmp_path):
-    registry_path = tmp_path / "push_registry.json"
-    monkeypatch.setattr(newsletter_service, "PUSH_REGISTRY_FILE", Path(registry_path))
-
+def test_push_register_and_unregister(client, student_headers, monkeypatch):
     register_res = client.post(
         "/api/auth/push/register",
         headers=student_headers,
-        json={"token": "fcm-token-1"},
+        json={"endpoint": "https://fcm.googleapis.com/send/test-abc", "p256dh": "test-p256dh", "auth": "test-auth"},
     )
     assert register_res.status_code == 200
-    assert register_res.json()["tokens"] == 1
 
     unregister_res = client.post(
         "/api/auth/push/unregister",
         headers=student_headers,
-        json={"token": "fcm-token-1"},
+        json={"endpoint": "https://fcm.googleapis.com/send/test-abc", "p256dh": "test-p256dh", "auth": "test-auth"},
     )
     assert unregister_res.status_code == 200
-    assert unregister_res.json()["tokens"] == 0
 
 
 def test_push_register_blocked_for_unsubscribed_user(client, student_headers):
@@ -67,7 +62,7 @@ def test_push_register_blocked_for_unsubscribed_user(client, student_headers):
     push_res = client.post(
         "/api/auth/push/register",
         headers=student_headers,
-        json={"token": "fcm-token-2"},
+        json={"endpoint": "https://fcm.googleapis.com/send/test-xyz", "p256dh": "test-p256dh", "auth": "test-auth"},
     )
     assert push_res.status_code == 400
 

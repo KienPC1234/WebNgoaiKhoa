@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Bell, X } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { Bell } from 'lucide-react'
 import useNotifications from '@/hooks/useNotifications'
 import NotificationsPanel from '@/components/NotificationsPanel'
 
@@ -8,16 +7,6 @@ export default function NotificationButton() {
   const { notifications, unreadCount, markAsRead, markAllRead, subscribeToPush, unsubscribeFromPush, isSubscribed } = useNotifications()
   const [open, setOpen] = useState(false)
   const btnRef = useRef(null)
-
-  // prefetch list when button is mounted to avoid repeated fetches on open
-  useEffect(() => {
-    try {
-      if (typeof notifications === 'undefined') return
-      // notifications are managed by provider; no-op here
-    } catch (e) {
-      // ignore
-    }
-  }, [])
 
   useEffect(() => {
     const handleOutside = (e) => {

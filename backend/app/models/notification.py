@@ -20,6 +20,8 @@ class PushSubscription(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
-    token = Column(String(1024), unique=True, nullable=False, index=True)
+    endpoint = Column(String(2048), unique=True, nullable=False, index=True)
+    p256dh = Column(String(512), nullable=False)
+    auth = Column(String(128), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     last_seen = Column(DateTime(timezone=True), nullable=True)

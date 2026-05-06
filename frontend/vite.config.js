@@ -2,6 +2,10 @@ import path from "path"
 import tailwindcss from "@tailwindcss/vite"
 import react from "@vitejs/plugin-react"
 import { defineConfig, loadEnv } from "vite"
+import { fileURLToPath } from "url"
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
@@ -30,7 +34,6 @@ export default defineConfig(({ mode }) => {
             if (id.includes('/framer-motion/')) return 'motion'
             if (id.includes('/@ckeditor/')) return 'ckeditor'
             if (id.includes('/recharts/')) return 'charts'
-            if (id.includes('/firebase/')) return 'firebase'
             if (id.includes('/aos/')) return 'aos'
 
             return null
@@ -39,6 +42,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     resolve: {
+      dedupe: ['react', 'react-dom'],
       alias: {
         "@": path.resolve(__dirname, "./src"),
         // Force all imports of react / react-dom to resolve to the
@@ -48,6 +52,9 @@ export default defineConfig(({ mode }) => {
         react: path.resolve(__dirname, 'node_modules/react'),
         'react-dom': path.resolve(__dirname, 'node_modules/react-dom'),
       },
+    },
+    optimizeDeps: {
+      include: ['react', 'react-dom'],
     },
     server: {
       allowedHosts: allowedHosts,

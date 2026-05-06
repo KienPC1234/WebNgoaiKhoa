@@ -1,7 +1,7 @@
-import React, { createContext, useCallback, useEffect, useRef, useState } from 'react'
+import React from 'react'
 import { getNotifications, markNotificationAsRead, markAllNotificationsRead } from '@/lib/notificationsService'
 
-const NotificationsContext = createContext(null)
+export const NotificationsContext = React.createContext(null)
 
 let pushNotificationsModulePromise = null
 
@@ -16,19 +16,19 @@ const loadPushNotificationsModule = async () => {
 }
 
 export function NotificationsProvider({ children }) {
-  const [notifications, setNotifications] = useState([])
-  const [toasts, setToasts] = useState([]) // ephemeral toast notifications shown in MainLayout
-  const [unreadCount, setUnreadCount] = useState(0)
-  const [isSubscribed, setIsSubscribed] = useState(false)
+  const [notifications, setNotifications] = React.useState([])
+  const [toasts, setToasts] = React.useState([]) // ephemeral toast notifications shown in MainLayout
+  const [unreadCount, setUnreadCount] = React.useState(0)
+  const [isSubscribed, setIsSubscribed] = React.useState(false)
 
-  const fetchInProgress = useRef(false)
+  const fetchInProgress = React.useRef(false)
 
-  const refreshUnread = useCallback((items) => {
+  const refreshUnread = React.useCallback((items) => {
     const count = (items || []).filter((i) => !i.is_read).length
     setUnreadCount(count)
   }, [])
 
-  const fetchList = useCallback(async () => {
+  const fetchList = React.useCallback(async () => {
     if (fetchInProgress.current) return
     fetchInProgress.current = true
     try {
@@ -43,18 +43,54 @@ export function NotificationsProvider({ children }) {
     }
   }, [refreshUnread])
 
-  useEffect(() => {
+  React.useEffect(() => {
     loadPushNotificationsModule()
-      .then((module) => {
-        const checkSubscribed = module?.isWebPushSubscribed
-        setIsSubscribed(Boolean(checkSubscribed && checkSubscribed()))
+      .then(async (module) => {
+        // Quick sync check first for instant UI state
+        const syncCheck = module?.isWebPushSubscribedSync
+        const cachedSubscribed = Boolean(syncCheck && syncCheck())
+        setIsSubscribed(cachedSubscribed)
+
+        // Async verify: check actual PushManager subscription
+        const asyncCheck = module?.isWebPushSubscribed
+        if (asyncCheck) {
+          try {
+            const realSubscribed = await asyncCheck()
+            if (realSubscribed !== cachedSubscribed) {
+              setIsSubscribed(realSubscribed)
+            }
+          } catch { /* ignore */ }
+        }
+
+        // Auto-init: user has granted permission but no subscription
+        // (cleared browser data, new device, stale cache)
+        const hasPermission = 'Notification' in window && Notification.permission === 'granted'
+        const hasToken = Boolean(localStorage.getItem('token'))
+
+        if (hasPermission && hasToken) {
+          try {
+            const reg = await navigator.serviceWorker.getRegistration('/sw.js')
+            const sub = reg ? await reg.pushManager.getSubscription() : null
+
+            if (!sub) {
+              console.log('[PUSH] Auto-init: permission granted but no subscription, creating...')
+              const endpoint = await module.initWebPush({ requestPermission: false })
+              setIsSubscribed(Boolean(endpoint))
+            } else {
+              // Ensure state is correct
+              setIsSubscribed(true)
+            }
+          } catch {
+            // silent fail
+          }
+        }
       })
       .catch(() => {
         setIsSubscribed(false)
       })
   }, [])
 
-  useEffect(() => {
+  React.useEffect(() => {
     // Only fetch notifications and open WS when we have an auth token.
     // This avoids 401s and noisy websocket errors on public pages.
     let ws
@@ -167,7 +203,7 @@ export function NotificationsProvider({ children }) {
     }
   }, [fetchList])
 
-  const markAsRead = useCallback(async (id) => {
+  const markAsRead = React.useCallback(async (id) => {
     try {
       await markNotificationAsRead(id)
     } catch (e) {
@@ -177,7 +213,7 @@ export function NotificationsProvider({ children }) {
     setUnreadCount((prev) => Math.max(0, prev - 1))
   }, [])
 
-  const markAllRead = useCallback(async () => {
+  const markAllRead = React.useCallback(async () => {
     try {
       await markAllNotificationsRead()
     } catch (e) {
@@ -187,7 +223,7 @@ export function NotificationsProvider({ children }) {
     setUnreadCount(0)
   }, [])
 
-  const subscribeToPush = useCallback(async () => {
+  const subscribeToPush = React.useCallback(async () => {
     try {
       const module = await loadPushNotificationsModule()
       const token = await module.initWebPush({ requestPermission: true })
@@ -199,7 +235,7 @@ export function NotificationsProvider({ children }) {
     }
   }, [])
 
-  const unsubscribeFromPush = useCallback(async () => {
+  const unsubscribeFromPush = React.useCallback(async () => {
     try {
       const module = await loadPushNotificationsModule()
       await module.unregisterWebPushToken()
@@ -208,7 +244,7 @@ export function NotificationsProvider({ children }) {
     }
   }, [])
 
-  const removeToast = useCallback((id) => {
+  const removeToast = React.useCallback((id) => {
     setToasts((prev) => prev.filter((t) => t.id !== id))
   }, [])
 

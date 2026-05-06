@@ -49,9 +49,7 @@ export const GioiThieuDoiNgu = () => {
         const res = await apiClient.get('/public/doingu/staff', { signal: controller.signal })
         if (!canceled) setStaff(res.data || [])
       } catch (error) {
-        if (error?.name === 'CanceledError' || error?.message === 'canceled') {
-          // request aborted
-        } else {
+        if (!apiClient.isCancel(error)) {
           console.error('Error fetching staff profiles:', error)
         }
       } finally {

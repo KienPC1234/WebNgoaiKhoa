@@ -72,6 +72,7 @@ class SubmissionBase(BaseModel):
     attachment_url: Optional[str] = None
     student_name: Optional[str] = None
     student_email: Optional[str] = None
+    rejection_reason: Optional[str] = None
 
 class SubmissionCreate(SubmissionBase):
     pass
@@ -87,6 +88,14 @@ class SubmissionOut(SubmissionBase):
 
 class SubmissionStatusUpdate(BaseModel):
     status: Literal["pending", "approved", "rejected"]
+    rejection_reason: Optional[str] = None
+
+class SubmissionBulkStatusUpdate(BaseModel):
+    ids: List[int]
+    status: Literal["pending", "approved", "rejected"]
+
+class SubmissionBulkDelete(BaseModel):
+    ids: List[int]
 
 
 class SubmissionCommentCreate(BaseModel):
@@ -359,12 +368,18 @@ class NewsletterDispatchOut(BaseModel):
 
 
 class PushTokenIn(BaseModel):
-    token: str
+    token: str = ""  # Legacy field, ignored
+
+
+class PushSubscriptionIn(BaseModel):
+    endpoint: str
+    p256dh: str
+    auth: str
 
 
 class PushTokenOut(BaseModel):
     message: str
-    tokens: int
+    tokens: int = 0
 
 
 class PushConfigOut(BaseModel):

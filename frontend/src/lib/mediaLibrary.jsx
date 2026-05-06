@@ -1,15 +1,15 @@
-import React, { createContext, useCallback, useContext, useState, useRef, lazy, Suspense } from 'react'
+import React from 'react'
 
-const MediaLibraryModal = lazy(() => import('@/components/Admin/MediaLibrary/MediaLibraryModal'))
+const MediaLibraryModal = React.lazy(() => import('@/components/Admin/MediaLibrary/MediaLibraryModal'))
 
-const MediaLibraryContext = createContext({ openMediaLibrary: async () => null })
+const MediaLibraryContext = React.createContext({ openMediaLibrary: async () => null })
 
 export const MediaLibraryProvider = ({ children }) => {
-  const [open, setOpen] = useState(false)
-  const [opts, setOpts] = useState({ accept: 'image/*', multi: false })
-  const resolveRef = useRef(null)
+  const [open, setOpen] = React.useState(false)
+  const [opts, setOpts] = React.useState({ accept: 'image/*', multi: false })
+  const resolveRef = React.useRef(null)
 
-  const openMediaLibrary = useCallback((options = {}) => {
+  const openMediaLibrary = React.useCallback((options = {}) => {
     setOpts({ accept: 'image/*', multi: false, ...options })
     setOpen(true)
 
@@ -18,7 +18,7 @@ export const MediaLibraryProvider = ({ children }) => {
     })
   }, [])
 
-  const handleClose = useCallback(() => {
+  const handleClose = React.useCallback(() => {
     if (resolveRef.current) {
       resolveRef.current(null)
       resolveRef.current = null
@@ -26,7 +26,7 @@ export const MediaLibraryProvider = ({ children }) => {
     setOpen(false)
   }, [])
 
-  const handleSelect = useCallback((asset) => {
+  const handleSelect = React.useCallback((asset) => {
     if (resolveRef.current) {
       resolveRef.current(asset)
       resolveRef.current = null
@@ -38,14 +38,14 @@ export const MediaLibraryProvider = ({ children }) => {
     <MediaLibraryContext.Provider value={{ openMediaLibrary }}>
       {children}
       {open ? (
-        <Suspense fallback={null}>
+        <React.Suspense fallback={null}>
           <MediaLibraryModal open={open} onClose={handleClose} onSelect={handleSelect} accept={opts.accept} multi={opts.multi} />
-        </Suspense>
+        </React.Suspense>
       ) : null}
     </MediaLibraryContext.Provider>
   )
 }
 
-export const useMediaLibrary = () => useContext(MediaLibraryContext)
+export const useMediaLibrary = () => React.useContext(MediaLibraryContext)
 
 export default MediaLibraryProvider

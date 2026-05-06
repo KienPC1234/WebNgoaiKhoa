@@ -17,12 +17,13 @@ apiClient.interceptors.request.use((config) => {
   return config
 })
 
+apiClient.isCancel = axios.isCancel
+
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     // Ignore canceled requests (AbortController / axios cancel) — don't show a toast for these
-    const isCanceled = error?.code === 'ERR_CANCELED' || error?.name === 'CanceledError' || error?.message === 'canceled'
-    if (isCanceled) {
+    if (axios.isCancel(error)) {
       return Promise.reject(error)
     }
 

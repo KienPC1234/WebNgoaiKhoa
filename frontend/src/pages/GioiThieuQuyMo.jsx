@@ -15,7 +15,7 @@ export const GioiThieuQuyMo = () => {
         const res = await apiClient.get('/public/doingu/scale', { signal: controller.signal })
         setScale(res.data)
       } catch (error) {
-        if (error?.name !== 'AbortError') console.error('Error fetching scale:', error)
+        if (!apiClient.isCancel(error)) console.error('Error fetching scale:', error)
       } finally {
         setLoading(false)
       }

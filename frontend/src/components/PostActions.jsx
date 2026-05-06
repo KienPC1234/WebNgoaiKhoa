@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { memo, useEffect, useState, useRef } from 'react'
 import { Eye, Heart, ThumbsUp } from 'lucide-react'
 import { apiClient } from '@/lib/apiClient'
 import { showApiError } from '@/lib/notify'
@@ -19,7 +19,7 @@ const ensureSession = () => {
 }
 
 // Animated count that briefly scales up when value changes
-const AnimatedCount = ({ value, active }) => {
+const AnimatedCount = memo(({ value, active }) => {
   const [animate, setAnimate] = useState(false)
   const prevRef = useRef(value)
 
@@ -41,9 +41,9 @@ const AnimatedCount = ({ value, active }) => {
       {value}
     </span>
   )
-}
+})
 
-const PostActions = ({ publicationId }) => {
+const PostActions = memo(({ publicationId }) => {
   const [viewCount, setViewCount] = useState(0)
   const [favoritesCount, setFavoritesCount] = useState(0)
   const [votesCount, setVotesCount] = useState(0)
@@ -99,7 +99,15 @@ const PostActions = ({ publicationId }) => {
         setFavoritesCount(resp.data.favorites_count ?? (favoritesCount + 1))
       }
     } catch (err) {
-      if (err?.response?.status !== 401) showApiError(err, 'Không thể thực hiện thao tác yêu thích.')
+      if (err?.response?.status === 409) {
+        const detail = err.response.data?.detail
+        setFavorited(true)
+        if (detail && typeof detail.favorites === 'number') {
+          setFavoritesCount(detail.favorites)
+        }
+      } else if (err?.response?.status !== 401) {
+        showApiError(err, 'Không thể thực hiện thao tác yêu thích.')
+      }
     } finally {
       setLoading(false)
     }
@@ -122,7 +130,15 @@ const PostActions = ({ publicationId }) => {
         setVotesCount(resp.data.votes_count ?? (votesCount + 1))
       }
     } catch (err) {
-      if (err?.response?.status !== 401) showApiError(err, 'Không thể thực hiện thao tác bình chọn.')
+      if (err?.response?.status === 409) {
+        const detail = err.response.data?.detail
+        setVoted(true)
+        if (detail && typeof detail.votes === 'number') {
+          setVotesCount(detail.votes)
+        }
+      } else if (err?.response?.status !== 401) {
+        showApiError(err, 'Không thể thực hiện thao tác bình chọn.')
+      }
     } finally {
       setLoading(false)
     }
@@ -217,6 +233,6 @@ const PostActions = ({ publicationId }) => {
       `}</style>
     </div>
   )
-}
+})
 
 export default PostActions

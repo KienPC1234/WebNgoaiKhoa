@@ -1,5 +1,5 @@
-import React, { useContext } from 'react'
-import NotificationsContext from '@/contexts/NotificationsContext'
+import { useContext } from 'react'
+import { NotificationsContext } from '@/contexts/NotificationsContext'
 
 // Lightweight hook that consumes the shared NotificationsContext.
 // This prevents multiple components from independently fetching or opening WebSockets.
@@ -16,6 +16,8 @@ export default function useNotifications() {
       markAllRead: async () => {},
       subscribeToPush: async () => {},
       unsubscribeFromPush: async () => {},
+      toasts: [],
+      removeToast: () => {},
     }
   }
   return ctx

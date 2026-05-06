@@ -136,7 +136,33 @@ AI_RATE_LIMIT_NAV_SEARCH_WINDOW_SECONDS = max(1, int(os.getenv("AI_RATE_LIMIT_NA
 AI_RATE_LIMIT_KNOWLEDGE_SEARCH_COUNT = max(1, int(os.getenv("AI_RATE_LIMIT_KNOWLEDGE_SEARCH_COUNT", "8")))
 AI_RATE_LIMIT_KNOWLEDGE_SEARCH_WINDOW_SECONDS = max(1, int(os.getenv("AI_RATE_LIMIT_KNOWLEDGE_SEARCH_WINDOW_SECONDS", "60")))
 
+AI_SHORTDESC_MODEL = os.getenv("OLLAMA_SHORTDESC_MODEL", DEFAULT_MODEL)
+AI_SHORTDESC_CONNECT_TIMEOUT_SECONDS = max(1.0, float(os.getenv("AI_SHORTDESC_CONNECT_TIMEOUT_SECONDS", "3")))
+AI_SHORTDESC_READ_TIMEOUT_SECONDS = max(1.0, float(os.getenv("AI_SHORTDESC_READ_TIMEOUT_SECONDS", "35")))
+AI_SHORTDESC_WRITE_TIMEOUT_SECONDS = max(1.0, float(os.getenv("AI_SHORTDESC_WRITE_TIMEOUT_SECONDS", "8")))
+AI_SHORTDESC_POOL_TIMEOUT_SECONDS = max(1.0, float(os.getenv("AI_SHORTDESC_POOL_TIMEOUT_SECONDS", "8")))
+AI_SHORTDESC_FAILURE_COOLDOWN_SECONDS = max(0.0, float(os.getenv("AI_SHORTDESC_FAILURE_COOLDOWN_SECONDS", "45")))
+AI_SHORTDESC_KEEP_ALIVE = os.getenv("AI_SHORTDESC_KEEP_ALIVE", "20m").strip()
+AI_SHORTDESC_FALLBACK_MODELS = [
+    item.strip()
+    for item in os.getenv("AI_SHORTDESC_FALLBACK_MODELS", "qwen3.5:4b,granite4.1:8b").split(",")
+    if item.strip()
+]
+
+_shortdesc_unavailable_until_monotonic: float = 0.0
+_shortdesc_last_error: str = ""
+
 RATE_LIMIT_STATE: Dict[str, Deque[float]] = {}
+
+
+def _mark_shortdesc_unavailable(reason: str) -> None:
+    global _shortdesc_unavailable_until_monotonic, _shortdesc_last_error
+    _shortdesc_last_error = reason
+    _shortdesc_unavailable_until_monotonic = time.monotonic() + AI_SHORTDESC_FAILURE_COOLDOWN_SECONDS
+
+
+def _is_shortdesc_temporarily_unavailable() -> bool:
+    return time.monotonic() < _shortdesc_unavailable_until_monotonic
 
 # Cached static public element index (loaded from frontend build output)
 _PUBLIC_ELEMENT_INDEX: Optional[Dict[str, Any]] = None
@@ -2472,7 +2498,7 @@ async def chat_basic(request: Request, request_payload: ChatRequest, db: Session
 async def publication_short_description(request: Request, payload: PublicationShortDescriptionRequest):
     _enforce_rate_limit(request, "chat_basic")
 
-    model_to_use = DEFAULT_MODEL
+    model_to_use = AI_SHORTDESC_MODEL
     layout = payload.layout_metadata or {}
 
     try:
@@ -2480,12 +2506,12 @@ async def publication_short_description(request: Request, payload: PublicationSh
     except Exception:
         serialized_layout = "{}"
 
-    if len(serialized_layout) > 9000:
-        serialized_layout = serialized_layout[:9000] + "..."
+    if len(serialized_layout) > 2500:
+        serialized_layout = serialized_layout[:2500] + "..."
 
     serialized_content = _remove_short_description_noise(payload.content or "")
-    if len(serialized_content) > 6000:
-        serialized_content = serialized_content[:6000] + "..."
+    if len(serialized_content) > 1800:
+        serialized_content = serialized_content[:1800] + "..."
 
     system_prompt = (
         "Bạn là trợ lý biên tập nội dung tiếng Việt. "
@@ -2503,63 +2529,90 @@ async def publication_short_description(request: Request, payload: PublicationSh
         "Trich xuat thong tin chinh xac va tra ve duy nhat 1 cau mo ta ngan."
     )
 
-    upstream_payload: Dict[str, Any] = {
-        "model": model_to_use,
-        "stream": False,
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
-        "options": {
-            "temperature": 0.1,
-            "top_p": 0.85,
-        },
-    }
-
     fallback_description = _build_publication_short_description_fallback(payload)
     client = _get_http_client()
 
-    try:
-        response = await client.post(
-            f"{OLLAMA_BASE_URL}/api/chat",
-            json=upstream_payload,
-            timeout=httpx.Timeout(connect=4.0, read=20.0, write=10.0, pool=10.0),
-        )
-        if response.status_code != 200:
-            return {
-                "description": fallback_description,
-                "source": "fallback",
-                "model": model_to_use,
-            }
+    model_candidates: List[str] = []
+    for model_name in [model_to_use, *AI_SHORTDESC_FALLBACK_MODELS]:
+        normalized_name = _normalize_text(model_name)
+        if normalized_name and normalized_name not in model_candidates:
+            model_candidates.append(normalized_name)
 
-        data = response.json() if response.content else {}
-        model_answer = ""
-        if isinstance(data, dict):
-            message_obj = data.get("message")
-            if isinstance(message_obj, dict):
-                model_answer = str(message_obj.get("content") or message_obj.get("text") or "")
-            if not model_answer:
-                model_answer = str(data.get("response") or data.get("answer") or data.get("text") or "")
-
-        normalized = _normalize_short_description_result(model_answer, max_chars=220)
-        if not normalized:
-            normalized = fallback_description
-            source = "fallback"
-        else:
-            source = "model"
-
-        return {
-            "description": normalized,
-            "source": source,
-            "model": model_to_use,
+    error_reasons: List[str] = []
+    for candidate_model in model_candidates:
+        upstream_payload: Dict[str, Any] = {
+            "model": candidate_model,
+            "think": False,
+            "keep_alive": AI_SHORTDESC_KEEP_ALIVE,
+            "stream": False,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            "options": {
+                "temperature": 0.0,
+                "top_p": 0.85,
+                "num_predict": 120,
+            },
         }
-    except Exception as exc:
-        logger.exception("AI service error (publication/short-description) when calling %s: %s", OLLAMA_BASE_URL, str(exc))
+
+        try:
+            response = await client.post(
+                f"{OLLAMA_BASE_URL}/api/chat",
+                json=upstream_payload,
+                timeout=httpx.Timeout(
+                    connect=AI_SHORTDESC_CONNECT_TIMEOUT_SECONDS,
+                    read=AI_SHORTDESC_READ_TIMEOUT_SECONDS,
+                    write=AI_SHORTDESC_WRITE_TIMEOUT_SECONDS,
+                    pool=AI_SHORTDESC_POOL_TIMEOUT_SECONDS,
+                ),
+            )
+            if response.status_code != 200:
+                reason = f"{candidate_model}:status_{response.status_code}"
+                error_reasons.append(reason)
+                logger.warning("AI short-description upstream non-200 on model=%s status=%s", candidate_model, response.status_code)
+                continue
+
+            data = response.json() if response.content else {}
+            model_answer = ""
+            if isinstance(data, dict):
+                message_obj = data.get("message")
+                if isinstance(message_obj, dict):
+                    model_answer = str(message_obj.get("content") or message_obj.get("text") or "")
+                if not model_answer:
+                    model_answer = str(data.get("response") or data.get("answer") or data.get("text") or "")
+
+            normalized = _normalize_short_description_result(model_answer, max_chars=220)
+            if normalized:
+                return {
+                    "description": normalized,
+                    "source": "model",
+                    "model": candidate_model,
+                }
+
+            error_reasons.append(f"{candidate_model}:empty_content")
+            logger.warning("AI short-description empty content on model=%s", candidate_model)
+        except httpx.ReadTimeout:
+            error_reasons.append(f"{candidate_model}:read_timeout")
+            logger.warning("AI short-description timeout on model=%s from %s", candidate_model, OLLAMA_BASE_URL)
+        except httpx.HTTPError as exc:
+            error_reasons.append(f"{candidate_model}:{type(exc).__name__}")
+            logger.warning("AI short-description HTTP error on model=%s (%s)", candidate_model, type(exc).__name__)
+        except Exception as exc:
+            error_reasons.append(f"{candidate_model}:{type(exc).__name__}")
+            logger.exception("AI short-description unexpected error on model=%s: %s", candidate_model, str(exc))
+
+    if fallback_description:
         return {
             "description": fallback_description,
-            "source": "fallback",
+            "source": "fallback_after_ai_attempts",
             "model": model_to_use,
         }
+
+    raise HTTPException(
+        status_code=503,
+        detail=f"AI short-description unavailable after model attempts: {', '.join(error_reasons[:4]) or 'unknown_error'}",
+    )
 
 
 @router.get("/history", response_model=List[ChatHistoryItem])
