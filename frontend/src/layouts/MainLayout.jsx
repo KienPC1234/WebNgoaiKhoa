@@ -19,6 +19,7 @@ import {
   PanelRightClose,
   LogOut,
   MessageCircle,
+  Trophy,
 } from 'lucide-react'
 import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import NotificationButton from '@/components/NotificationButton'
@@ -383,6 +384,8 @@ export const MainLayout = () => {
                 />
               </DesktopMenu>
 
+              <NavItem to="/cuoc-thi" label="Cuộc thi" icon={Trophy} active={isActive('/cuoc-thi')} />
+
               <DesktopMenu
                 label="Tin tức"
                 icon={Menu}
@@ -552,6 +555,18 @@ export const MainLayout = () => {
                     </div>
                   </MobileSection>
 
+                  <Link
+                    to="/cuoc-thi"
+                    className={cn(
+                      'mb-2 flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-extrabold',
+                      isActive('/cuoc-thi') ? 'bg-orange-50 text-fpt-orange' : 'text-slate-600'
+                    )}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <Trophy size={16} />
+                    Cuộc thi
+                  </Link>
+
                   <MobileSection
                     title="Tin tức"
                     sectionKey="more"
@@ -661,8 +676,8 @@ export const MainLayout = () => {
               <h4 className="mb-3 text-xs font-black uppercase tracking-widest text-fpt-blue">Hệ thống</h4>
               <ul className="space-y-2 text-sm font-semibold text-slate-500">
                 <li><Link to={token ? '/profile' : { pathname: '/login', state: { from: location.pathname } }} className="hover:text-fpt-orange">{token ? 'Hồ sơ' : 'Đăng nhập'}</Link></li>
-                <li><a href="#" className="hover:text-fpt-orange">Điều khoản sử dụng</a></li>
-                <li><a href="#" className="hover:text-fpt-orange">Chính sách bảo mật</a></li>
+                <li><Link to="/dieu-khoan" className="hover:text-fpt-orange">Điều khoản sử dụng</Link></li>
+                <li><Link to="/bao-mat" className="hover:text-fpt-orange">Chính sách bảo mật</Link></li>
               </ul>
             </div>
           </div>

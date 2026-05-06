@@ -50,6 +50,13 @@ const StaffEditorModal = ({ open, item, onClose, onSave, onDelete, onUploadImage
     if (!f) return
     if (!onUploadImage) return
 
+    // Limit to 40MB by default, align with AdminNhanVatCMS.jsx
+    const MAX_SIZE = Number(import.meta.env.VITE_IMAGE_MAX_UPLOAD_BYTES) || 40 * 1024 * 1024
+    if (f.size > MAX_SIZE) {
+      toastError(`Ảnh vượt quá dung lượng tối đa ${Math.round(MAX_SIZE / 1024 / 1024)}MB`)
+      return
+    }
+
     // show local preview while uploading
     const previewUrl = URL.createObjectURL(f)
     console.log('[StaffEditorModal] handleFile start', f.name, f.size)
@@ -58,15 +65,17 @@ const StaffEditorModal = ({ open, item, onClose, onSave, onDelete, onUploadImage
     try {
       const url = await onUploadImage(f)
       console.log('[StaffEditorModal] handleFile uploaded url', url)
-      if (url) setForm((s) => ({ ...s, image_url: url }))
+      if (url) {
+        setForm((s) => ({ ...s, image_url: url }))
+        // clear preview only on success to avoid flickering if it fails fast
+        setLocalPreview(null)
+      }
     } catch (err) {
-      // swallow; onUploadImage should show errors
       console.error('Image upload failed', err)
+      // notify is handled by hook/service
     } finally {
       setUploading(false)
-      try { URL.revokeObjectURL(previewUrl) } catch (e) {}
-      // keep localPreview cleared once upload completes
-      setLocalPreview(null)
+      try { URL.revokeObjectURL(previewUrl) } catch (err) {}
     }
   }
 

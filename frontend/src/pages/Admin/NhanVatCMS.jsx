@@ -197,72 +197,9 @@ export const AdminNhanVatCMS = () => {
   const patchStaff = (id, key, value) => {
     setStaffList((prev) => prev.map((x) => (x.id === id ? { ...x, [key]: value } : x)))
   }
-  const [newStaffUploading, setNewStaffUploading] = useState(false)
-  const [uploadingStaffId, setUploadingStaffId] = useState(null)
-  const [newStaffLocalPreview, setNewStaffLocalPreview] = useState(null)
-  const [staffLocalPreviews, setStaffLocalPreviews] = useState({})
 
   const MAX_IMAGE_BYTES = Number(import.meta.env.VITE_IMAGE_MAX_UPLOAD_BYTES) || 40 * 1024 * 1024 // default 40MB, override with VITE_IMAGE_MAX_UPLOAD_BYTES
 
-  const uploadImageFile = async (file) => {
-    try {
-      const res = await cmsService.uploadImage(file, 'doingu')
-      return res?.url
-    } catch (err) {
-      showApiError(err, 'Tải ảnh thất bại')
-      return null
-    }
-  }
-
-  const handleNewStaffFileChange = async (e) => {
-    const file = e.target.files && e.target.files[0]
-    if (!file) return
-    if (file.size > MAX_IMAGE_BYTES) {
-      toastError(`Ảnh vượt quá dung lượng tối đa ${Math.round(MAX_IMAGE_BYTES / 1024 / 1024)}MB`)
-      return
-    }
-    const previewUrl = URL.createObjectURL(file)
-    setNewStaffLocalPreview(previewUrl)
-    setNewStaffUploading(true)
-    try {
-      const url = await uploadImageFile(file)
-      if (url) {
-        setNewStaff((s) => ({ ...s, image_url: url }))
-        toastSuccess('Đã tải ảnh lên')
-      }
-    } finally {
-      setNewStaffUploading(false)
-      try { URL.revokeObjectURL(previewUrl) } catch (err) {}
-      setNewStaffLocalPreview(null)
-    }
-  }
-
-  const handleStaffFileChange = async (id, e) => {
-    const file = e.target.files && e.target.files[0]
-    if (!file) return
-    if (file.size > MAX_IMAGE_BYTES) {
-      toastError(`Ảnh vượt quá dung lượng tối đa ${Math.round(MAX_IMAGE_BYTES / 1024 / 1024)}MB`)
-      return
-    }
-    const previewUrl = URL.createObjectURL(file)
-    setStaffLocalPreviews((prev) => ({ ...prev, [id]: previewUrl }))
-    setUploadingStaffId(id)
-    try {
-      const url = await uploadImageFile(file)
-      if (url) {
-        patchStaff(id, 'image_url', url)
-        toastSuccess('Đã tải ảnh lên')
-      }
-    } finally {
-      setUploadingStaffId(null)
-      try { URL.revokeObjectURL(previewUrl) } catch (err) {}
-      setStaffLocalPreviews((prev) => {
-        const copy = { ...prev }
-        delete copy[id]
-        return copy
-      })
-    }
-  }
 
   if (loading) {
     return <div className="py-20 text-center text-gray-500 font-black uppercase tracking-widest">Đang tải CMS đội ngũ...</div>

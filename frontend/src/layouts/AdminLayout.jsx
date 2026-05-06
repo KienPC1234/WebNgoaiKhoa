@@ -17,6 +17,7 @@ import {
   Menu,
   X,
   MessageSquare,
+  Trophy,
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/components/UI'
@@ -49,6 +50,7 @@ export const AdminLayout = () => {
     { title: 'Bảng điều khiển', path: '/admin/dashboard', icon: LayoutDashboard },
     ...(canManageWebsite ? [
       { title: 'Sự kiện', path: '/admin/events', icon: CalendarDays },
+      { title: 'Cuộc thi', path: '/admin/contests', icon: Trophy },
     ] : []),
     ...(isSuperAdmin ? [
       { title: 'Người dùng', path: '/admin/users', icon: User },
@@ -85,6 +87,7 @@ export const AdminLayout = () => {
     if (location.pathname.startsWith('/admin/homepage') || location.pathname.startsWith('/admin/site-texts')) return 'Trang chủ'
     if (location.pathname.startsWith('/admin/doingu')) return 'Đội ngũ'
     if (location.pathname.startsWith('/admin/submissions')) return 'Duyệt bài'
+    if (location.pathname.startsWith('/admin/contests')) return 'Cuộc thi'
     if (location.pathname.startsWith('/admin/auth-overview')) return 'Phân quyền hệ thống'
     if (location.pathname.startsWith('/admin/comments')) return 'Bình luận'
 

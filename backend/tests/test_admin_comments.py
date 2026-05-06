@@ -1,4 +1,4 @@
-from app.models.publication import Publication
+from app.models.publication import Publication, Comment, CommentReaction
 
 
 def test_admin_list_comments(client, admin_headers, db_session):
@@ -249,3 +249,50 @@ def test_delete_parent_also_deletes_children(client, admin_headers, student_head
     all_ids = [c["id"] for c in listing.json()]
     assert parent_id not in all_ids
     assert child_id not in all_ids
+
+
+def test_admin_delete_parent_with_multiple_children_and_reactions(client, admin_headers, student_headers, db_session):
+    pub = db_session.query(Publication).first()
+    pub_id = pub.id
+
+    # Create parent comment
+    parent_resp = client.post(
+        f"/api/public/publications/{pub_id}/comments",
+        json={"content": "Parent with multiple children"},
+        headers=student_headers,
+    )
+    assert parent_resp.status_code == 200
+    parent_id = parent_resp.json()["id"]
+
+    child_ids = []
+    for idx in range(3):
+        child_resp = client.post(
+            f"/api/public/publications/{pub_id}/comments",
+            json={"content": f"Child {idx + 1}", "parent_id": parent_id},
+            headers=student_headers,
+        )
+        assert child_resp.status_code == 200
+        child_ids.append(child_resp.json()["id"])
+
+    # Add a reaction on a child to cover FK-dependent rows.
+    react_resp = client.post(
+        f"/api/public/publications/{pub_id}/comments/{child_ids[0]}/react",
+        json={"reaction_type": "like"},
+        headers=admin_headers,
+    )
+    assert react_resp.status_code == 200
+
+    # Admin deleting the parent should not 500.
+    delete_resp = client.delete(f"/api/admin/comments/{parent_id}", headers=admin_headers)
+    assert delete_resp.status_code == 200
+    assert delete_resp.json()["deleted"] is True
+
+    # Parent and children are removed.
+    remaining_ids = [c["id"] for c in client.get("/api/admin/comments", headers=admin_headers).json()]
+    assert parent_id not in remaining_ids
+    for child_id in child_ids:
+        assert child_id not in remaining_ids
+
+    # Dependent comment reactions are removed.
+    assert db_session.query(Comment).filter(Comment.id.in_([parent_id] + child_ids)).count() == 0
+    assert db_session.query(CommentReaction).filter(CommentReaction.comment_id.in_(child_ids)).count() == 0

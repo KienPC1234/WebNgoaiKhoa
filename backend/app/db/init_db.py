@@ -166,14 +166,9 @@ def init_database():
             db.commit()
             print("Admin user created.")
         else:
-            # If existing admin hash is not using pbkdf2_sha256, replace it with the demo password hash
             existing_hash = (admin.hashed_password or "")
             if not existing_hash.startswith("$pbkdf2-sha256$"):
-                print("Admin exists but password hash uses an unsupported scheme. Resetting to demo password...")
-                admin.hashed_password = get_password_hash("admin123")
-                db.add(admin)
-                db.commit()
-                print("Admin password reset to demo credentials.")
+                print("WARNING: Admin password hash uses an unsupported scheme. Please reset password manually via admin panel or API.")
             else:
                 print("Admin user already exists with compatible password hash.")
             admin.email_verified = True

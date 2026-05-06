@@ -29,7 +29,7 @@ from app.db.session import get_db
 from app.models.publication import Event, Publication, Story, Submission, SocialScale, StaffProfile
 from app.models.user import User
 from jose import JWTError, jwt
-from app.api.auth import role_has_permission
+from app.api.auth import role_has_permission, SECRET_KEY, ALGORITHM
 
 load_dotenv()
 
@@ -1866,7 +1866,7 @@ def get_site_context(request: Request, db: Session = Depends(get_db)):
             if auth_header and auth_header.lower().startswith('bearer '):
                 token = auth_header.split(' ', 1)[1].strip()
                 try:
-                    payload_jwt = jwt.decode(token, os.getenv('SECRET_KEY', 'your-secret-key-for-development'), algorithms=[os.getenv('ALGORITHM', 'HS256')])
+                    payload_jwt = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
                     email = payload_jwt.get('sub')
                     if email:
                         current_user = db.query(User).filter(User.email == email).first()
@@ -1952,7 +1952,7 @@ def get_user_context(request: Request, db: Session = Depends(get_db)):
         if auth_header and auth_header.lower().startswith('bearer '):
             token = auth_header.split(' ', 1)[1].strip()
             try:
-                payload_jwt = jwt.decode(token, os.getenv('SECRET_KEY', 'your-secret-key-for-development'), algorithms=[os.getenv('ALGORITHM', 'HS256')])
+                payload_jwt = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
                 email = payload_jwt.get('sub')
                 if email:
                     current_user = db.query(User).filter(User.email == email).first()
@@ -2323,7 +2323,7 @@ async def chat_with_ai(request: Request, payload: ChatRequest, db: Session = Dep
             token = auth_header.split(' ', 1)[1].strip()
             # decode token to obtain subject (email)
             try:
-                payload_jwt = jwt.decode(token, os.getenv('SECRET_KEY', 'your-secret-key-for-development'), algorithms=[os.getenv('ALGORITHM', 'HS256')])
+                payload_jwt = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
                 email = payload_jwt.get('sub')
                 if email:
                     current_user = db.query(User).filter(User.email == email).first()

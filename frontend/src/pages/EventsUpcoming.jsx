@@ -53,6 +53,7 @@ export const EventsUpcoming = () => {
 
     useEffect(() => {
         const controller = new AbortController()
+        const isAbortError = (error) => error?.name === 'AbortError' || controller.signal.aborted
         const fetchEvents = async () => {
             setLoading(true)
             try {
@@ -68,9 +69,10 @@ export const EventsUpcoming = () => {
                     setSelectedDate(new Date())
                 }
             } catch (error) {
-                if (!apiClient.isCancel(error)) console.error('Error fetching events:', error)
+                if (isAbortError(error) || apiClient.isCancel(error)) return
+                console.error('Error fetching events:', error)
             } finally {
-                setLoading(false)
+                if (!controller.signal.aborted) setLoading(false)
             }
         }
         fetchEvents()

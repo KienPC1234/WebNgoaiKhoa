@@ -1,6 +1,7 @@
 from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.sql import func
 from app.db.session import Base
+from datetime import datetime, timezone
 import enum
 
 class Category(str, enum.Enum):
@@ -180,10 +181,155 @@ class StaffProfile(Base):
         }
         return mapping.get(self.tier, self.tier)
 
+class ContestType(str, enum.Enum):
+    VAN_CHUONG = "van-chuong"
+    HOI_HOA = "hoi-hoa"
+    NGHIEP_VU = "nghiep-vu"
+    THUYET_TRINH = "thuyet-trinh"
+    THI_TU_TAP = "thi-tu-tap"
+    THI_CA_NHAN = "thi-ca-nhan"
+    CUSTOM = "custom"
+
+
+class ContestStatus(str, enum.Enum):
+    DRAFT = "draft"
+    UPCOMING = "upcoming"
+    ACTIVE = "active"
+    CLOSED = "closed"
+    ARCHIVED = "archived"
+
+
+class VotingMethod(str, enum.Enum):
+    NONE = "none"
+    PUBLIC_VOTE = "public-vote"
+    JUDGES_ONLY = "judges-only"
+    MIXED = "mixed"
+
+
+class Contest(Base):
+    __tablename__ = "contests"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(255), nullable=False)
+    slug = Column(String(255), nullable=False, unique=True, index=True)
+    description = Column(Text, nullable=True)
+    rules = Column(Text, nullable=True)
+    subject = Column(String(50), nullable=False, default=Category.VAN.value)
+    contest_type = Column(String(50), nullable=False, default=ContestType.CUSTOM.value)
+    custom_type_name = Column(String(255), nullable=True)
+    status = Column(String(50), nullable=False, default=ContestStatus.DRAFT.value)
+    image_url = Column(String(500), nullable=True)
+    banner_url = Column(String(500), nullable=True)
+    start_date = Column(DateTime(timezone=True), nullable=True)
+    end_date = Column(DateTime(timezone=True), nullable=True)
+    voting_method = Column(String(50), nullable=False, default=VotingMethod.PUBLIC_VOTE.value)
+    max_submissions_per_user = Column(Integer, nullable=False, default=1)
+    allow_file_upload = Column(Boolean, nullable=False, default=True)
+    allowed_file_types = Column(String(500), nullable=True)
+    max_file_size_mb = Column(Integer, nullable=False, default=15)
+    require_approval = Column(Boolean, nullable=False, default=True)
+    show_author = Column(Boolean, nullable=False, default=True)
+    show_vote_count = Column(Boolean, nullable=False, default=True)
+    show_comments = Column(Boolean, nullable=False, default=True)
+    min_title_length = Column(Integer, nullable=False, default=6)
+    max_title_length = Column(Integer, nullable=False, default=200)
+    min_content_length = Column(Integer, nullable=False, default=30)
+    max_content_length = Column(Integer, nullable=False, default=60000)
+    custom_fields = Column(JSON, nullable=True)
+    judging_criteria = Column(JSON, nullable=True)
+    prizes = Column(JSON, nullable=True)
+    contact_info = Column(Text, nullable=True)
+    submission_count = Column(Integer, nullable=False, default=0)
+    view_count = Column(Integer, nullable=False, default=0)
+    is_featured = Column(Boolean, nullable=False, default=False)
+    display_order = Column(Integer, nullable=False, default=0)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    @staticmethod
+    def _normalize_tags(value):
+        if value is None:
+            return []
+        if isinstance(value, str):
+            raw_items = value.split(',')
+        elif isinstance(value, (list, tuple, set)):
+            raw_items = list(value)
+        else:
+            return []
+        seen = set()
+        cleaned = []
+        for item in raw_items:
+            token = str(item or '').strip()
+            if not token:
+                continue
+            key = token.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            cleaned.append(token)
+        return cleaned
+
+    @property
+    def tags(self):
+        metadata = self.custom_fields if isinstance(self.custom_fields, dict) else {}
+        return self._normalize_tags(metadata.get('tags'))
+
+    @tags.setter
+    def tags(self, value):
+        metadata = self.custom_fields if isinstance(self.custom_fields, dict) else {}
+        next_metadata = dict(metadata)
+        next_metadata['tags'] = self._normalize_tags(value)
+        self.custom_fields = next_metadata
+
+    @property
+    def type_label(self):
+        mapping = {
+            'van-chuong': 'Văn chương',
+            'hoi-hoa': 'Hội họa',
+            'nghiep-vu': 'Nghiệp vụ',
+            'thuyet-trinh': 'Thuyết trình',
+            'thi-tu-tap': 'Thi tập thể',
+            'thi-ca-nhan': 'Thi cá nhân',
+        }
+        if self.contest_type == 'custom':
+            return self.custom_type_name or 'Tùy chỉnh'
+        return mapping.get(self.contest_type, self.contest_type)
+
+    @property
+    def status_label(self):
+        mapping = {
+            'draft': 'Nháp',
+            'upcoming': 'Sắp diễn ra',
+            'active': 'Đang diễn ra',
+            'closed': 'Đã đóng',
+            'archived': 'Lưu trữ',
+        }
+        return mapping.get(self.status, self.status)
+
+    @property
+    def is_accepting_submissions(self):
+        if self.status != 'active':
+            return False
+        now = datetime.now(timezone.utc)
+        if self.start_date:
+            # Ensure comparison is timezone-aware
+            start = self.start_date if self.start_date.tzinfo else self.start_date.replace(tzinfo=timezone.utc)
+            if now < start:
+                return False
+        if self.end_date:
+            # Ensure comparison is timezone-aware
+            end = self.end_date if self.end_date.tzinfo else self.end_date.replace(tzinfo=timezone.utc)
+            if now > end:
+                return False
+        return True
+
+
 class Submission(Base):
     __tablename__ = "submissions"
 
     id = Column(Integer, primary_key=True, index=True)
+    contest_id = Column(Integer, ForeignKey("contests.id"), nullable=True, index=True)
     title = Column(String(255), nullable=False)
     content = Column(Text, nullable=False)
     attachment_url = Column(String(500), nullable=True)

@@ -11,13 +11,13 @@ import {
 } from 'recharts'
 
 const data = [
-  { name: 'T2', views: 400, submissions: 24 },
-  { name: 'T3', views: 300, submissions: 13 },
-  { name: 'T4', views: 200, submissions: 98 },
-  { name: 'T5', views: 278, submissions: 39 },
-  { name: 'T6', views: 189, submissions: 48 },
-  { name: 'T7', views: 239, submissions: 38 },
-  { name: 'CN', views: 349, submissions: 43 },
+  { name: 'T2', publications: 400, submissions: 24 },
+  { name: 'T3', publications: 300, submissions: 13 },
+  { name: 'T4', publications: 200, submissions: 98 },
+  { name: 'T5', publications: 278, submissions: 39 },
+  { name: 'T6', publications: 189, submissions: 48 },
+  { name: 'T7', publications: 239, submissions: 38 },
+  { name: 'CN', publications: 349, submissions: 43 },
 ];
 
 export const AdminDashboard = () => {
@@ -145,15 +145,15 @@ export const AdminDashboard = () => {
   )
 
   const chartData = (overview && Array.isArray(overview.weekly_metrics) && overview.weekly_metrics.length)
-    ? overview.weekly_metrics.map((m) => ({ name: m.name, views: m.views || 0, submissions: m.submissions || 0 }))
+    ? overview.weekly_metrics.map((m) => ({ name: m.name, publications: m.publications || 0, submissions: m.submissions || 0 }))
     : data
 
   // Derived dashboard trend values (use overview.weekly_metrics when available)
   const metrics = (overview && Array.isArray(overview.weekly_metrics)) ? overview.weekly_metrics : null
   const todayMetric = metrics && metrics.length ? metrics[metrics.length - 1] : null
-  const publicationsToday = todayMetric ? (todayMetric.views || 0) : 0
+  const publicationsToday = todayMetric ? (todayMetric.publications || 0) : 0
   const submissionsToday = todayMetric ? (todayMetric.submissions || 0) : 0
-  const publicationsThisWeek = metrics ? metrics.reduce((acc, m) => acc + (m.views || 0), 0) : 0
+  const publicationsThisWeek = metrics ? metrics.reduce((acc, m) => acc + (m.publications || 0), 0) : 0
   const submissionsThisWeek = metrics ? metrics.reduce((acc, m) => acc + (m.submissions || 0), 0) : 0
 
   // Completion rate = (total - pending) / total
@@ -241,7 +241,7 @@ export const AdminDashboard = () => {
                   contentStyle={{borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 6px 16px -8px rgb(15 23 42 / 0.3)', padding: '10px'}}
                   itemStyle={{fontSize: '12px', fontWeight: '600'}}
                 />
-                <Area type="monotone" dataKey="views" stroke="#475569" strokeWidth={2.2} fillOpacity={1} fill="url(#colorViews)" />
+                <Area type="monotone" dataKey="publications" stroke="#475569" strokeWidth={2.2} fillOpacity={1} fill="url(#colorViews)" />
                 <Area type="monotone" dataKey="submissions" stroke="#0f172a" strokeWidth={2.2} fillOpacity={1} fill="url(#colorSubs)" />
               </AreaChart>
             </ResponsiveContainer>

@@ -75,12 +75,13 @@ class SubmissionBase(BaseModel):
     rejection_reason: Optional[str] = None
 
 class SubmissionCreate(SubmissionBase):
-    pass
+    contest_id: Optional[int] = None
 
 class SubmissionOut(SubmissionBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    contest_id: Optional[int] = None
     status: str
     votes: int
     created_at: datetime
@@ -159,6 +160,19 @@ class EventBase(BaseModel):
 
 class EventCreate(EventBase):
     pass
+
+
+class EventUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    event_date: Optional[datetime] = None
+    rrule: Optional[str] = None
+    timezone: Optional[str] = None
+    location: Optional[str] = None
+    image_url: Optional[str] = None
+    status: Optional[str] = None
+    linked_post_id: Optional[int] = None
+    is_active: Optional[bool] = None
 
 
 class EventOut(EventBase):
@@ -276,6 +290,121 @@ class EventDraft(BaseModel):
     image_url: Optional[str] = None
     status: Optional[str] = None
     linked_post_id: Optional[int] = None
+
+
+# --- Contest Schemas ---
+class ContestBase(BaseModel):
+    title: str
+    slug: Optional[str] = None
+    description: Optional[str] = None
+    rules: Optional[str] = None
+    subject: Optional[str] = None
+    contest_type: Optional[str] = "custom"
+    custom_type_name: Optional[str] = None
+    status: Optional[str] = "draft"
+    image_url: Optional[str] = None
+    banner_url: Optional[str] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    voting_method: Optional[str] = "public-vote"
+    max_submissions_per_user: Optional[int] = 1
+    allow_file_upload: Optional[bool] = True
+    allowed_file_types: Optional[str] = None
+    max_file_size_mb: Optional[int] = 15
+    require_approval: Optional[bool] = True
+    show_author: Optional[bool] = True
+    show_vote_count: Optional[bool] = True
+    show_comments: Optional[bool] = True
+    min_title_length: Optional[int] = 6
+    max_title_length: Optional[int] = 200
+    min_content_length: Optional[int] = 30
+    max_content_length: Optional[int] = 60000
+    custom_fields: Optional[Dict[str, Any]] = None
+    judging_criteria: Optional[List[Dict[str, Any]]] = None
+    prizes: Optional[List[Dict[str, Any]]] = None
+    contact_info: Optional[str] = None
+    is_featured: Optional[bool] = False
+    display_order: Optional[int] = 0
+    tags: Optional[List[str]] = None
+
+
+class ContestCreate(ContestBase):
+    pass
+
+
+class ContestUpdate(BaseModel):
+    title: Optional[str] = None
+    slug: Optional[str] = None
+    description: Optional[str] = None
+    rules: Optional[str] = None
+    subject: Optional[str] = None
+    contest_type: Optional[str] = None
+    custom_type_name: Optional[str] = None
+    status: Optional[str] = None
+    image_url: Optional[str] = None
+    banner_url: Optional[str] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    voting_method: Optional[str] = None
+    max_submissions_per_user: Optional[int] = None
+    allow_file_upload: Optional[bool] = None
+    allowed_file_types: Optional[str] = None
+    max_file_size_mb: Optional[int] = None
+    require_approval: Optional[bool] = None
+    show_author: Optional[bool] = None
+    show_vote_count: Optional[bool] = None
+    show_comments: Optional[bool] = None
+    min_title_length: Optional[int] = None
+    max_title_length: Optional[int] = None
+    min_content_length: Optional[int] = None
+    max_content_length: Optional[int] = None
+    custom_fields: Optional[Dict[str, Any]] = None
+    judging_criteria: Optional[List[Dict[str, Any]]] = None
+    prizes: Optional[List[Dict[str, Any]]] = None
+    contact_info: Optional[str] = None
+    is_featured: Optional[bool] = None
+    display_order: Optional[int] = None
+    tags: Optional[List[str]] = None
+
+
+class ContestOut(ContestBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    submission_count: int = 0
+    view_count: int = 0
+    created_by: Optional[int] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    type_label: Optional[str] = None
+    status_label: Optional[str] = None
+    is_accepting_submissions: Optional[bool] = None
+
+
+class ContestListOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    title: str
+    slug: str
+    description: Optional[str] = None
+    subject: str
+    contest_type: str
+    custom_type_name: Optional[str] = None
+    status: str
+    image_url: Optional[str] = None
+    banner_url: Optional[str] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    voting_method: str
+    submission_count: int = 0
+    view_count: int = 0
+    is_featured: bool = False
+    display_order: int = 0
+    created_at: datetime
+    type_label: Optional[str] = None
+    status_label: Optional[str] = None
+    is_accepting_submissions: Optional[bool] = None
 
 
 # --- Staff Profile Schemas ---

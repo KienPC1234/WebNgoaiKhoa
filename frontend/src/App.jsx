@@ -65,6 +65,11 @@ const AdminAuthOverview = lazyNamed(() => import('@/pages/Admin/AuthOverview'), 
 const AdminSiteTexts = lazyNamed(() => import('@/pages/Admin/SiteTexts'), 'AdminSiteTexts')
 const AdminComments = lazyNamed(() => import('@/pages/Admin/Comments'), 'AdminComments')
 const AdminPostDesigner = lazyNamed(() => import('@/pages/Admin/PostDesigner'), 'AdminPostDesigner')
+const AdminContests = lazyNamed(() => import('@/pages/Admin/Contests'), 'AdminContests')
+const ContestListPage = lazyNamed(() => import('@/pages/ContestListPage'), 'ContestListPage')
+const ContestDetailPage = lazyNamed(() => import('@/pages/ContestDetailPage'), 'ContestDetailPage')
+const DieuKhoanSuDung = lazyNamed(() => import('@/pages/DieuKhoanSuDung'), 'DieuKhoanSuDung')
+const ChinhSachBaoMat = lazyNamed(() => import('@/pages/ChinhSachBaoMat'), 'ChinhSachBaoMat')
 
 let aosLoaderPromise
 
@@ -139,6 +144,9 @@ const AnimatedRoutes = () => {
           <Route path="posts/:postId" element={<PageWrapper><PublicPostDetail /></PageWrapper>} />
           <Route path="doingu/honors" element={<PageWrapper><HonorsYearly /></PageWrapper>} />
 
+          <Route path="cuoc-thi" element={<PageWrapper><ContestListPage /></PageWrapper>} />
+          <Route path="cuoc-thi/:slug" element={<PageWrapper><ContestDetailPage /></PageWrapper>} />
+
           <Route path="phanmon/van" element={<PageWrapper><PhanMonVan /></PageWrapper>} />
           <Route path="phanmon/ktpl" element={<PageWrapper><PhanMonKTPL /></PageWrapper>} />
           <Route path="phanmon/lich-su" element={<PageWrapper><PhanMonLichSu /></PageWrapper>} />
@@ -157,6 +165,9 @@ const AnimatedRoutes = () => {
           <Route path="phanmon/*" element={<Navigate to="/phanmon/van/an-pham" replace />} />
 
           <Route path="profile/public/:userId" element={<PageWrapper><ProfilePublic /></PageWrapper>} />
+
+          <Route path="dieu-khoan" element={<PageWrapper><DieuKhoanSuDung /></PageWrapper>} />
+          <Route path="bao-mat" element={<PageWrapper><ChinhSachBaoMat /></PageWrapper>} />
 
           <Route path="profile" element={<UserProtectedRoute><PageWrapper><Profile /></PageWrapper></UserProtectedRoute>} />
 
@@ -184,6 +195,7 @@ const AnimatedRoutes = () => {
             <Route path="vinh-danh" element={<RoleProtectedRoute allowedRoles={getRolesWithPermission('content_manage')}><PageWrapper><AdminVinhDanh /></PageWrapper></RoleProtectedRoute>} />
             <Route path="vinh-danh/:subject" element={<RoleProtectedRoute allowedRoles={getRolesWithPermission('content_manage')}><PageWrapper><AdminVinhDanh /></PageWrapper></RoleProtectedRoute>} />
             <Route path="events" element={<RoleProtectedRoute allowedRoles={getRolesWithPermission('content_manage')}><PageWrapper><AdminEvents /></PageWrapper></RoleProtectedRoute>} />
+          <Route path="contests" element={<RoleProtectedRoute allowedRoles={getRolesWithPermission('content_manage')}><PageWrapper><AdminContests /></PageWrapper></RoleProtectedRoute>} />
             <Route path="publications/new" element={<RoleProtectedRoute allowedRoles={getRolesWithPermission('content_manage')}><PageWrapper><AdminPostDesigner /></PageWrapper></RoleProtectedRoute>} />
             <Route path="publications/:publicationId/edit" element={<RoleProtectedRoute allowedRoles={getRolesWithPermission('content_manage')}><PageWrapper><AdminPostDesigner /></PageWrapper></RoleProtectedRoute>} />
           <Route path="cms/stories" element={<Navigate to="/admin/publications" replace />} />

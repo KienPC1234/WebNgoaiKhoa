@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, File, Form, UploadFile, R
 from fastapi.responses import FileResponse
 from sqlalchemy.exc import IntegrityError, OperationalError, ProgrammingError
 from sqlalchemy.orm import Session
+from datetime import datetime, timezone, timedelta
 from app.db.session import get_db
 from app.models.publication import (
     Publication,
@@ -20,6 +21,7 @@ from app.models.publication import (
     PublicationFavorite,
     PublicationVote,
     CommentReaction,
+    Contest,
 )
 from app.models.media import MediaAsset
 from sqlalchemy import func
@@ -42,6 +44,8 @@ from app.schemas.schemas import (
     PublicationCommentOut,
     CommentReactionIn,
     PublicProfileOut,
+    ContestOut,
+    ContestListOut,
 )
 from typing import Dict, List, Optional
 from pydantic import BaseModel
@@ -72,6 +76,7 @@ VIDEO_UPLOAD_DIR = Path(os.getenv("VIDEO_UPLOAD_DIR", "/data/WebNgoaiKhoa/backen
 VIDEO_MAX_UPLOAD_SIZE = int(os.getenv("VIDEO_MAX_UPLOAD_BYTES", str(50 * 1024 * 1024)))
 TITLE_MIN_LENGTH = 6
 CONTENT_MIN_LENGTH = 30
+CONTENT_MAX_LENGTH = 60000
 COMMENT_MIN_LENGTH = 2
 COMMENT_MAX_LENGTH = 5000
 VALID_COMMENT_REACTION_TYPES = {"like", "dislike"}
@@ -417,6 +422,8 @@ def _normalize_submission_payload(title: str, content: str, student_name: Option
         raise HTTPException(status_code=400, detail="Vui lòng nhập nội dung tác phẩm")
     if len(normalized_content) < CONTENT_MIN_LENGTH:
         raise HTTPException(status_code=400, detail=f"Nội dung cần tối thiểu {CONTENT_MIN_LENGTH} ký tự")
+    if len(normalized_content) > CONTENT_MAX_LENGTH:
+        raise HTTPException(status_code=400, detail=f"Nội dung vượt quá {CONTENT_MAX_LENGTH} ký tự")
 
     return normalized_title, normalized_content, normalized_student_name
 
@@ -942,6 +949,258 @@ async def get_staff_reactions_bulk(ids: str = Query(..., description="Comma-sepa
     return result
 
 
+# --- Public Contest Endpoints ---
+
+@router.get("/contests", response_model=List[ContestListOut])
+async def list_public_contests(
+    subject: Optional[str] = None,
+    contest_type: Optional[str] = None,
+    status: Optional[str] = None,
+    featured: Optional[bool] = None,
+    limit: int = Query(default=20, le=100),
+    offset: int = 0,
+    db: Session = Depends(get_db),
+):
+    query = db.query(Contest).filter(Contest.status.in_(['active', 'upcoming', 'closed']))
+    if subject:
+        query = query.filter(Contest.subject == subject)
+    if contest_type:
+        query = query.filter(Contest.contest_type == contest_type)
+    if status:
+        query = query.filter(Contest.status == status)
+    if featured is not None:
+        query = query.filter(Contest.is_featured == featured)
+    return query.order_by(Contest.is_featured.desc(), Contest.display_order.asc(), Contest.created_at.desc()).offset(offset).limit(limit).all()
+
+
+@router.get("/contests/{contest_slug}", response_model=ContestOut)
+async def get_public_contest(
+    contest_slug: str,
+    db: Session = Depends(get_db),
+):
+    contest = db.query(Contest).filter(Contest.slug == contest_slug).first()
+    if not contest:
+        raise HTTPException(status_code=404, detail="Contest not found")
+    if contest.status == 'draft':
+        raise HTTPException(status_code=404, detail="Contest not found")
+
+    contest.view_count += 1
+    db.commit()
+    return contest
+
+
+@router.get("/contests/{contest_slug}/submissions", response_model=List[SubmissionOut])
+async def get_public_contest_submissions(
+    contest_slug: str,
+    sort: str = Query(default="newest", regex="^(newest|oldest|votes)$"),
+    limit: int = Query(default=50, le=200),
+    offset: int = 0,
+    db: Session = Depends(get_db),
+):
+    contest = db.query(Contest).filter(Contest.slug == contest_slug).first()
+    if not contest or contest.status == 'draft':
+        raise HTTPException(status_code=404, detail="Contest not found")
+
+    query = db.query(Submission).filter(
+        Submission.contest_id == contest.id,
+        Submission.status == 'approved',
+    )
+
+    if sort == 'votes':
+        query = query.order_by(Submission.votes.desc())
+    elif sort == 'oldest':
+        query = query.order_by(Submission.created_at.asc())
+    else:
+        query = query.order_by(Submission.created_at.desc())
+
+    return query.offset(offset).limit(limit).all()
+
+
+class ContestSubmissionCreate(BaseModel):
+    title: str
+    content: str
+    student_name: Optional[str] = None
+    student_email: Optional[str] = None
+    recaptcha_token: Optional[str] = None
+
+
+@router.post("/contests/{contest_slug}/submissions", response_model=SubmissionOut)
+async def create_contest_submission(
+    contest_slug: str,
+    payload: ContestSubmissionCreate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_contestant),
+):
+    contest = db.query(Contest).filter(Contest.slug == contest_slug).first()
+    if not contest or contest.status == 'draft':
+        raise HTTPException(status_code=404, detail="Contest not found")
+
+    if not contest.is_accepting_submissions:
+        raise HTTPException(status_code=400, detail="Contest is not accepting submissions")
+
+    existing_count = db.query(Submission).filter(
+        Submission.contest_id == contest.id,
+        Submission.student_email == user.email,
+    ).count()
+    if existing_count >= contest.max_submissions_per_user:
+        raise HTTPException(status_code=400, detail=f"Maximum {contest.max_submissions_per_user} submissions per user")
+
+    if len(payload.title) < contest.min_title_length:
+        raise HTTPException(status_code=400, detail=f"Title must be at least {contest.min_title_length} characters")
+    if len(payload.title) > contest.max_title_length:
+        raise HTTPException(status_code=400, detail=f"Title must be at most {contest.max_title_length} characters")
+    if len(payload.content) < contest.min_content_length:
+        raise HTTPException(status_code=400, detail=f"Content must be at least {contest.min_content_length} characters")
+    if len(payload.content) > contest.max_content_length:
+        raise HTTPException(status_code=400, detail=f"Content must be at most {contest.max_content_length} characters")
+
+    verify_recaptcha_or_raise(payload.recaptcha_token, action="submission_create")
+
+    submission = Submission(
+        contest_id=contest.id,
+        title=payload.title,
+        content=payload.content,
+        student_name=payload.student_name or user.full_name,
+        student_email=payload.student_email or user.email,
+        status='pending' if contest.require_approval else 'approved',
+    )
+    db.add(submission)
+    contest.submission_count += 1
+    db.commit()
+    db.refresh(submission)
+    return submission
+
+
+@router.post("/contests/{contest_slug}/submissions/upload", response_model=SubmissionOut)
+async def upload_contest_submission(
+    contest_slug: str,
+    title: str = Form(...),
+    content: str = Form(...),
+    student_name: Optional[str] = Form(None),
+    student_email: Optional[str] = Form(None),
+    recaptcha_token: Optional[str] = Form(None),
+    file: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_contestant),
+):
+    contest = db.query(Contest).filter(Contest.slug == contest_slug).first()
+    if not contest or contest.status == 'draft':
+        raise HTTPException(status_code=404, detail="Contest not found")
+
+    if not contest.is_accepting_submissions:
+        raise HTTPException(status_code=400, detail="Contest is not accepting submissions")
+
+    if not contest.allow_file_upload and file:
+        raise HTTPException(status_code=400, detail="File upload is not allowed for this contest")
+
+    existing_count = db.query(Submission).filter(
+        Submission.contest_id == contest.id,
+        Submission.student_email == (student_email or user.email),
+    ).count()
+    if existing_count >= contest.max_submissions_per_user:
+        raise HTTPException(status_code=400, detail=f"Maximum {contest.max_submissions_per_user} submissions per user")
+
+    if len(title) < contest.min_title_length:
+        raise HTTPException(status_code=400, detail=f"Title must be at least {contest.min_title_length} characters")
+    if len(content) < contest.min_content_length:
+        raise HTTPException(status_code=400, detail=f"Content must be at least {contest.min_content_length} characters")
+
+    verify_recaptcha_or_raise(recaptcha_token, action="submission_create")
+
+    attachment_url = None
+    if file:
+        max_bytes = contest.max_file_size_mb * 1024 * 1024
+        UPLOAD_DIR = Path(os.getenv("SUBMISSION_UPLOAD_DIR", "/data/WebNgoaiKhoa/backend/uploads/submissions"))
+        UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+        file_ext = Path(file.filename).suffix if file.filename else ".pdf"
+        allowed_types = contest.allowed_file_types.split(",") if contest.allowed_file_types else [".pdf", ".doc", ".docx"]
+        if file_ext.lower() not in [t.strip().lower() for t in allowed_types]:
+            raise HTTPException(status_code=400, detail=f"File type {file_ext} not allowed. Allowed: {contest.allowed_file_types}")
+        filename = f"{uuid.uuid4()}{file_ext}"
+        file_path = UPLOAD_DIR / filename
+        contents = await file.read()
+        if len(contents) > max_bytes:
+            raise HTTPException(status_code=400, detail=f"File too large. Max {contest.max_file_size_mb}MB")
+        with open(file_path, "wb") as f:
+            f.write(contents)
+        attachment_url = f"/api/public/submissions/files/{filename}"
+
+    submission = Submission(
+        contest_id=contest.id,
+        title=title,
+        content=content,
+        attachment_url=attachment_url,
+        student_name=student_name or user.full_name,
+        student_email=student_email or user.email,
+        status='pending' if contest.require_approval else 'approved',
+    )
+    db.add(submission)
+    contest.submission_count += 1
+    db.commit()
+    db.refresh(submission)
+    return submission
+
+
+@router.get("/contests/{contest_slug}/submissions/mine", response_model=List[SubmissionOut])
+async def get_my_contest_submissions(
+    contest_slug: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_contestant),
+):
+    contest = db.query(Contest).filter(Contest.slug == contest_slug).first()
+    if not contest:
+        raise HTTPException(status_code=404, detail="Contest not found")
+
+    return db.query(Submission).filter(
+        Submission.contest_id == contest.id,
+        Submission.student_email == user.email,
+    ).order_by(Submission.created_at.desc()).all()
+
+
+@router.post("/contests/{contest_slug}/submissions/{sub_id}/vote")
+async def vote_contest_submission(
+    contest_slug: str,
+    sub_id: int,
+    recaptcha_token: Optional[str] = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_contestant),
+):
+    contest = db.query(Contest).filter(Contest.slug == contest_slug).first()
+    if not contest:
+        raise HTTPException(status_code=404, detail="Contest not found")
+
+    if contest.voting_method == 'none':
+        raise HTTPException(status_code=400, detail="Voting is not enabled for this contest")
+    if contest.voting_method == 'judges-only':
+        raise HTTPException(status_code=403, detail="Only judges can vote")
+
+    submission = db.query(Submission).filter(
+        Submission.id == sub_id,
+        Submission.contest_id == contest.id,
+    ).first()
+    if not submission:
+        raise HTTPException(status_code=404, detail="Submission not found")
+
+    verify_recaptcha_or_raise(recaptcha_token, action="submission_vote")
+
+    existing = db.query(SubmissionVote).filter(
+        SubmissionVote.submission_id == sub_id,
+        SubmissionVote.user_id == user.id,
+    ).first()
+
+    if existing:
+        db.delete(existing)
+        submission.votes = max(0, submission.votes - 1)
+        db.commit()
+        return {"voted": False, "votes": submission.votes}
+
+    vote = SubmissionVote(submission_id=sub_id, user_id=user.id)
+    db.add(vote)
+    submission.votes += 1
+    db.commit()
+    return {"voted": True, "votes": submission.votes}
+
+
 @router.post("/doingu/staff/{staff_id}/react")
 async def post_staff_reaction(
     staff_id: int,
@@ -1053,19 +1312,6 @@ async def get_public_user_profile(user_id: int, db: Session = Depends(get_db)):
     return {"user": user, "submissions": submissions}
 
 
-@router.post('/users/{user_id}/follow')
-async def follow_user(user_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    # Lightweight follow endpoint (frontend-friendly stub).
-    # For now this does not persist followers; it validates target exists and returns success.
-    if current_user.id == user_id:
-        raise HTTPException(status_code=400, detail="Cannot follow yourself")
-
-    target = db.query(User).filter(User.id == user_id, User.is_active == True).first()
-    if not target:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    return {"message": "ok", "following": True}
-
 @router.get("/submissions", response_model=List[SubmissionOut])
 async def get_public_submissions(db: Session = Depends(get_db)):
     # Only show approved submissions to the public
@@ -1099,6 +1345,18 @@ async def create_public_submission(
         sub.content,
         sub.student_name,
     )
+
+    recent_dup = (
+        db.query(Submission)
+        .filter(
+            Submission.student_email == current_user.email,
+            Submission.title == normalized_title,
+            Submission.created_at >= datetime.now(timezone.utc) - timedelta(minutes=5),
+        )
+        .first()
+    )
+    if recent_dup:
+        raise HTTPException(status_code=409, detail="Bạn đã gửi bài này gần đây. Vui lòng đợi vài phút trước khi gửi lại.")
 
     new_sub = Submission(
         title=normalized_title,
@@ -1151,6 +1409,18 @@ async def create_submission_with_pdf(
         content,
         student_name,
     )
+
+    recent_dup = (
+        db.query(Submission)
+        .filter(
+            Submission.student_email == current_user.email,
+            Submission.title == normalized_title,
+            Submission.created_at >= datetime.now(timezone.utc) - timedelta(minutes=5),
+        )
+        .first()
+    )
+    if recent_dup:
+        raise HTTPException(status_code=409, detail="Bạn đã gửi bài này gần đây. Vui lòng đợi vài phút trước khi gửi lại.")
 
     attachment_url = None
     if file and file.filename:
@@ -1316,7 +1586,7 @@ async def get_uploaded_video(filename: str, request: Request):
 async def create_contestant_submission(
     sub: SubmissionIn,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_contestant),
 ):
     verify_recaptcha_or_raise(sub.recaptcha_token, action="submission_create")
     normalized_title, normalized_content, normalized_student_name = _normalize_submission_payload(
@@ -1324,6 +1594,18 @@ async def create_contestant_submission(
         sub.content,
         sub.student_name,
     )
+
+    recent_dup = (
+        db.query(Submission)
+        .filter(
+            Submission.student_email == current_user.email,
+            Submission.title == normalized_title,
+            Submission.created_at >= datetime.now(timezone.utc) - timedelta(minutes=5),
+        )
+        .first()
+    )
+    if recent_dup:
+        raise HTTPException(status_code=409, detail="Bạn đã gửi bài này gần đây. Vui lòng đợi vài phút trước khi gửi lại.")
 
     new_sub = Submission(
         title=normalized_title,

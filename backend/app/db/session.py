@@ -115,6 +115,20 @@ def _ensure_runtime_schema_compatibility():
                     # Non-fatal: keep API available even if table creation fails at runtime
                     pass
 
+            # Ensure contests table exists for contest management
+            if "contests" not in table_names:
+                try:
+                    from app.models.publication import Contest
+                    Contest.__table__.create(bind=engine, checkfirst=True)
+                except Exception:
+                    pass
+
+            # Ensure submissions table has contest_id column
+            if "submissions" in table_names:
+                submission_columns = {c["name"] for c in inspector.get_columns("submissions")}
+                if "contest_id" not in submission_columns:
+                    statements.append("ALTER TABLE submissions ADD COLUMN contest_id INT NULL")
+
             if statements:
                 with engine.begin() as conn:
                     for stmt in statements:

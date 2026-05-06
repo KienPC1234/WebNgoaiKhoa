@@ -12,7 +12,7 @@ import base64
 from app.db.session import get_db
 from app.models.user import User
 from app.models.role import Role
-from app.models.publication import ContentType, Event, Publication, SocialScale, StaffProfile, Story, Submission, EventAttachment, StaffReaction, Comment
+from app.models.publication import ContentType, Event, Publication, SocialScale, StaffProfile, Story, Submission, EventAttachment, StaffReaction, Comment, CommentReaction, CommentMention, Contest
 from app.models.media import MediaAsset
 from app.api.auth import (
     build_unsubscribe_token,
@@ -25,6 +25,7 @@ from app.db.notifications import manager
 from app.services import newsletter as newsletter_service
 from app.schemas.schemas import (
     EventCreate,
+    EventUpdate,
     EventOut,
     EventAttachmentCreate,
     EventAttachmentOut,
@@ -47,6 +48,10 @@ from app.schemas.schemas import (
     RoleOut,
     NewsletterDispatchIn,
     NewsletterDispatchOut,
+    ContestCreate,
+    ContestUpdate,
+    ContestOut,
+    ContestListOut,
 )
 from typing import List, Optional
 import logging
@@ -613,6 +618,7 @@ def _build_newsletter_recipients(db: Session, actor_id: int) -> List[dict]:
 
 @router.post("/uploads/images")
 async def upload_image(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     admin: User = Depends(get_current_website_manager),
@@ -664,7 +670,7 @@ async def upload_image(
     # - others (including no context): compress to 10MB if larger
     compress_threshold = None
     if context in ('doingu', 'cover'):
-        compress_threshold = 2.5 * 1024 * 1024  # 5 MB
+        compress_threshold = 5 * 1024 * 1024  # 5 MB
     elif context == 'cms-editor':
         compress_threshold = 15 * 1024 * 1024  # 15 MB
     else:
@@ -672,9 +678,8 @@ async def upload_image(
 
     if compress_threshold and len(payload) > compress_threshold:
         compressed = _compress_image_bytes(payload, ext, compress_threshold)
-        if compressed is None:
-            raise HTTPException(status_code=400, detail="Tệp ảnh vượt quá dung lượng cho phép")
-        payload = compressed
+        if compressed:
+            payload = compressed
 
     # Final safety check against configured max — ensure we allow at least the
     # compression threshold for the given context so compression can occur.
@@ -691,7 +696,7 @@ async def upload_image(
 
     # For staff flow, pre-generate responsive WEBP variants so first public load is instant.
     if context == 'doingu':
-        _prewarm_staff_image_variants(target, ext)
+        background_tasks.add_task(_prewarm_staff_image_variants, target, ext)
 
     # Create DB-backed media asset entry
     try:
@@ -1701,20 +1706,6 @@ def _generate_occurrences_for_event(event: Event, window_start: datetime, window
 
 
 
-@router.get("/_debug/parse_dates")
-async def _debug_parse_dates(start: Optional[str] = Query(None), end: Optional[str] = Query(None)):
-    """Temporary debug endpoint to show how start/end are parsed by `_parse_iso`."""
-    parsed_start = _parse_iso(start)
-    parsed_end = _parse_iso(end)
-    return {
-        "raw": {"start": start, "end": end},
-        "parsed": {
-            "start": parsed_start.isoformat() if parsed_start else None,
-            "end": parsed_end.isoformat() if parsed_end else None,
-        },
-    }
-
-
 @router.post("/events", response_model=EventOut)
 async def create_event(
     payload: EventCreate,
@@ -1751,7 +1742,7 @@ async def create_event(
 
 
 @router.put("/events/{event_id}", response_model=EventOut)
-async def update_event(event_id: int, payload: EventCreate, db: Session = Depends(get_db), admin: User = Depends(get_current_website_manager)):
+async def update_event(event_id: int, payload: EventUpdate, db: Session = Depends(get_db), admin: User = Depends(get_current_website_manager)):
     event = db.query(Event).filter(Event.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
@@ -2266,6 +2257,17 @@ async def bulk_update_submission_status(
     
     return {"updated": len(submissions)}
 
+def _delete_submission_attachment(submission: Submission) -> None:
+    if submission.attachment_url:
+        try:
+            filename = Path(submission.attachment_url).name
+            UPLOAD_DIR = Path(os.getenv("SUBMISSION_UPLOAD_DIR", "/data/WebNgoaiKhoa/backend/uploads/submissions"))
+            target = UPLOAD_DIR / filename
+            if target.exists() and target.is_file():
+                target.unlink()
+        except Exception:
+            pass
+
 @router.delete("/submissions/{sub_id}")
 async def delete_submission(
     sub_id: int,
@@ -2275,7 +2277,8 @@ async def delete_submission(
     submission = db.query(Submission).filter(Submission.id == sub_id).first()
     if not submission:
         raise HTTPException(status_code=404, detail="Submission not found")
-        
+
+    _delete_submission_attachment(submission)
     db.delete(submission)
     db.commit()
     _sync_ai_knowledge_if_possible(db)
@@ -2295,7 +2298,10 @@ async def bulk_delete_submissions(
 ):
     if not payload.ids:
         return {"deleted": 0}
-        
+
+    submissions = db.query(Submission).filter(Submission.id.in_(payload.ids)).all()
+    for sub in submissions:
+        _delete_submission_attachment(sub)
     db.query(Submission).filter(Submission.id.in_(payload.ids)).delete(synchronize_session=False)
     db.commit()
     _sync_ai_knowledge_if_possible(db)
@@ -2473,7 +2479,7 @@ async def get_admin_overview(db: Session = Depends(get_db), admin: User = Depend
             weekly_metrics.append({
                 "name": name_map.get(day.weekday(), day.strftime('%a')),
                 "date": day.isoformat(),
-                "views": publications_count,
+                "publications": publications_count,
                 "submissions": submissions_count,
             })
     except Exception:
@@ -2725,17 +2731,247 @@ async def admin_delete_comment(
     db: Session = Depends(get_db),
     admin: User = Depends(get_current_admin),
 ):
-    """Delete a comment and all its children (replies)."""
+    """Delete a comment and all descendant replies safely."""
     comment = db.query(Comment).filter(Comment.id == comment_id).first()
     if not comment:
         raise HTTPException(status_code=404, detail="Comment not found")
 
-    # Delete child comments first (one level of nesting)
-    children = db.query(Comment).filter(Comment.parent_id == comment_id).all()
-    for child in children:
-        db.delete(child)
+    # Collect descendants by level so we can delete deepest replies first.
+    levels = []
+    frontier = [comment_id]
+    all_comment_ids = [comment_id]
+    while frontier:
+        child_ids = [row[0] for row in db.query(Comment.id).filter(Comment.parent_id.in_(frontier)).all()]
+        if not child_ids:
+            break
+        levels.append(child_ids)
+        all_comment_ids.extend(child_ids)
+        frontier = child_ids
 
-    db.delete(comment)
+    # Remove dependent rows first to avoid FK violations on legacy schemas.
+    db.query(CommentReaction).filter(CommentReaction.comment_id.in_(all_comment_ids)).delete(synchronize_session=False)
+    db.query(CommentMention).filter(CommentMention.comment_id.in_(all_comment_ids)).delete(synchronize_session=False)
+
+    # Delete comment rows from leaves to root.
+    for level_ids in reversed(levels):
+        db.query(Comment).filter(Comment.id.in_(level_ids)).delete(synchronize_session=False)
+
+    db.query(Comment).filter(Comment.id == comment_id).delete(synchronize_session=False)
+
     db.commit()
 
     return {"deleted": True, "id": comment_id}
+
+
+# --- Contest Management ---
+
+def _generate_slug(title: str) -> str:
+    """Generate a URL-friendly slug from a Vietnamese title."""
+    import unicodedata
+    normalized = unicodedata.normalize('NFD', title)
+    slug = ''
+    for ch in normalized:
+        cat = unicodedata.category(ch)
+        if cat == 'Mn':
+            continue
+        slug += ch
+    slug = slug.lower().strip()
+    slug = re.sub(r'[^a-z0-9\s-]', '', slug)
+    slug = re.sub(r'[\s_]+', '-', slug)
+    slug = re.sub(r'-+', '-', slug).strip('-')
+    return slug or 'contest'
+
+
+@router.get("/contests", response_model=List[ContestListOut])
+async def list_contests(
+    status: Optional[str] = None,
+    subject: Optional[str] = None,
+    contest_type: Optional[str] = None,
+    search: Optional[str] = None,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    query = db.query(Contest)
+    if status:
+        query = query.filter(Contest.status == status)
+    if subject:
+        query = query.filter(Contest.subject == subject)
+    if contest_type:
+        query = query.filter(Contest.contest_type == contest_type)
+    if search:
+        query = query.filter(Contest.title.ilike(f"%{search}%"))
+    return query.order_by(Contest.display_order.asc(), Contest.created_at.desc()).all()
+
+
+@router.get("/contests/stats/overview")
+async def get_contests_stats(
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    total = db.query(Contest).count()
+    active = db.query(Contest).filter(Contest.status == 'active').count()
+    upcoming = db.query(Contest).filter(Contest.status == 'upcoming').count()
+    closed = db.query(Contest).filter(Contest.status == 'closed').count()
+    total_submissions = db.query(func.sum(Contest.submission_count)).scalar() or 0
+    return {
+        "total_contests": total,
+        "active": active,
+        "upcoming": upcoming,
+        "closed": closed,
+        "total_submissions": total_submissions,
+    }
+
+
+@router.get("/contests/{contest_id}", response_model=ContestOut)
+async def get_contest(
+    contest_id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    contest = db.query(Contest).filter(Contest.id == contest_id).first()
+    if not contest:
+        raise HTTPException(status_code=404, detail="Contest not found")
+    return contest
+
+
+@router.post("/contests", response_model=ContestOut)
+async def create_contest(
+    payload: ContestCreate,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    slug = payload.slug or _generate_slug(payload.title)
+    existing = db.query(Contest).filter(Contest.slug == slug).first()
+    if existing:
+        slug = f"{slug}-{int(datetime.now(timezone.utc).timestamp())}"
+
+    contest_data = payload.model_dump(exclude_unset=True, exclude={'tags'})
+    contest = Contest(**contest_data, slug=slug, created_by=admin.id)
+
+    if payload.tags:
+        contest.tags = payload.tags
+
+    db.add(contest)
+    db.commit()
+    db.refresh(contest)
+    return contest
+
+
+@router.put("/contests/{contest_id}", response_model=ContestOut)
+async def update_contest(
+    contest_id: int,
+    payload: ContestUpdate,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    contest = db.query(Contest).filter(Contest.id == contest_id).first()
+    if not contest:
+        raise HTTPException(status_code=404, detail="Contest not found")
+
+    update_data = payload.model_dump(exclude_unset=True, exclude={'tags'})
+
+    if 'slug' in update_data and update_data['slug']:
+        new_slug = update_data['slug']
+        dup = db.query(Contest).filter(Contest.slug == new_slug, Contest.id != contest_id).first()
+        if dup:
+            raise HTTPException(status_code=409, detail="Slug already exists")
+
+    for field, value in update_data.items():
+        setattr(contest, field, value)
+
+    if payload.tags is not None:
+        contest.tags = payload.tags
+
+    db.commit()
+    db.refresh(contest)
+    return contest
+
+
+@router.delete("/contests/{contest_id}")
+async def delete_contest(
+    contest_id: int,
+    force: bool = False,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    contest = db.query(Contest).filter(Contest.id == contest_id).first()
+    if not contest:
+        raise HTTPException(status_code=404, detail="Contest not found")
+
+    submission_count = db.query(Submission).filter(Submission.contest_id == contest_id).count()
+    if submission_count > 0 and not force:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Contest has {submission_count} submissions. Use force=true to delete."
+        )
+
+    if force and submission_count > 0:
+        db.query(Submission).filter(Submission.contest_id == contest_id).update({"contest_id": None})
+
+    db.delete(contest)
+    db.commit()
+    return {"deleted": True, "id": contest_id}
+
+
+@router.post("/contests/{contest_id}/duplicate", response_model=ContestOut)
+async def duplicate_contest(
+    contest_id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    original = db.query(Contest).filter(Contest.id == contest_id).first()
+    if not original:
+        raise HTTPException(status_code=404, detail="Contest not found")
+
+    new_slug = f"{original.slug}-copy-{int(datetime.now(timezone.utc).timestamp())}"
+    new_contest = Contest(
+        title=f"{original.title} (Bản sao)",
+        slug=new_slug,
+        description=original.description,
+        rules=original.rules,
+        subject=original.subject,
+        contest_type=original.contest_type,
+        custom_type_name=original.custom_type_name,
+        status='draft',
+        image_url=original.image_url,
+        banner_url=original.banner_url,
+        voting_method=original.voting_method,
+        max_submissions_per_user=original.max_submissions_per_user,
+        allow_file_upload=original.allow_file_upload,
+        allowed_file_types=original.allowed_file_types,
+        max_file_size_mb=original.max_file_size_mb,
+        require_approval=original.require_approval,
+        show_author=original.show_author,
+        show_vote_count=original.show_vote_count,
+        show_comments=original.show_comments,
+        min_title_length=original.min_title_length,
+        max_title_length=original.max_title_length,
+        min_content_length=original.min_content_length,
+        max_content_length=original.max_content_length,
+        custom_fields=original.custom_fields,
+        judging_criteria=original.judging_criteria,
+        prizes=original.prizes,
+        contact_info=original.contact_info,
+        created_by=admin.id,
+    )
+    db.add(new_contest)
+    db.commit()
+    db.refresh(new_contest)
+    return new_contest
+
+
+@router.get("/contests/{contest_id}/submissions", response_model=List[SubmissionOut])
+async def get_contest_submissions(
+    contest_id: int,
+    status: Optional[str] = None,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_submission_judge),
+):
+    contest = db.query(Contest).filter(Contest.id == contest_id).first()
+    if not contest:
+        raise HTTPException(status_code=404, detail="Contest not found")
+
+    query = db.query(Submission).filter(Submission.contest_id == contest_id)
+    if status:
+        query = query.filter(Submission.status == status)
+    return query.order_by(Submission.created_at.desc()).all()

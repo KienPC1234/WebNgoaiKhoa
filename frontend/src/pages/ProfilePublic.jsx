@@ -13,7 +13,6 @@ export default function ProfilePublic() {
   const [user, setUser] = useState(null)
   const [submissions, setSubmissions] = useState([])
   const [error, setError] = useState(null)
-  const [following, setFollowing] = useState(false)
   const [showAiWidget, setShowAiWidget] = useState(false)
 
   useEffect(() => {
@@ -47,17 +46,6 @@ export default function ProfilePublic() {
 
   const avatarSrc = user?.image_url || ''
 
-  const handleFollow = async () => {
-    // Optimistic UI toggle; backend follow endpoint may be implemented later
-    setFollowing((prev) => !prev)
-    try {
-      await apiClient.post(`/public/users/${userId}/follow`)
-    } catch (err) {
-      // Revert on failure
-      setFollowing((prev) => !prev)
-    }
-  }
-
   const handleMessage = () => {
     if (user?.email) {
       window.location.href = `mailto:${user.email}`
@@ -83,7 +71,6 @@ export default function ProfilePublic() {
               </div>
               <div className="flex items-center gap-2">
                 <Button variant="outline" onClick={() => navigate('/')}>Trang chủ</Button>
-                <Button variant={following ? 'primary' : 'ghost'} onClick={handleFollow}>{following ? 'Đang theo dõi' : 'Theo dõi'}</Button>
                 <Button variant="ghost" onClick={handleMessage}>Nhắn tin</Button>
               </div>
             </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Card, Button, cn } from '../components/UI'
-import { Send, ThumbsUp, Edit3, ShieldCheck, PenTool, BookOpen, User, Calendar, X, Sparkles, FileText, MessageSquare, Eye } from 'lucide-react'
+import { Send, ThumbsUp, Edit3, ShieldCheck, PenTool, BookOpen, User, Calendar, X, Sparkles, FileText, MessageSquare, Eye, XCircle } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import ReCAPTCHA from 'react-google-recaptcha'
 import { showApiError, toastError, toastInfo, toastSuccess } from '@/lib/notify'
@@ -15,6 +15,7 @@ const SUBMISSION_DRAFT_KEY = 'phanmon_van_submission_draft_v1'
 const MAX_UPLOAD_BYTES = 15 * 1024 * 1024
 const TITLE_MIN_LENGTH = 6
 const CONTENT_MIN_LENGTH = 30
+const CONTENT_MAX_LENGTH = 60000
 const FLIP_PREVIEW_WIDTH = 360
 const FLIP_PREVIEW_MIN_HEIGHT = 440
 const FLIP_PREVIEW_MAX_HEIGHT = 620
@@ -334,6 +335,8 @@ export const PhanMonVan = () => {
       errors.content = 'Vui lòng nhập nội dung sáng tác.'
     } else if (normalizedContent.length < CONTENT_MIN_LENGTH) {
       errors.content = `Nội dung cần tối thiểu ${CONTENT_MIN_LENGTH} ký tự.`
+    } else if (normalizedContent.length > CONTENT_MAX_LENGTH) {
+      errors.content = `Nội dung vượt quá ${CONTENT_MAX_LENGTH.toLocaleString('vi-VN')} ký tự.`
     }
 
     setFormErrors(errors)
