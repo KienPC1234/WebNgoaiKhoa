@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Clock, User } from 'lucide-react'
 import { Card } from '@/components/ui/core'
 import { PublicDocumentView } from '@/cms-editor/renderer/PublicDocumentView'
@@ -9,9 +9,11 @@ const API_URL = import.meta.env.VITE_API_URL || '/api'
 
 export const StoryDetail = () => {
   const { storyId } = useParams()
+  const navigate = useNavigate()
   const [story, setStory] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [showError, setShowError] = useState(false)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -42,19 +44,36 @@ export const StoryDetail = () => {
     return () => controller.abort()
   }, [storyId])
 
-  if (loading) {
+  // Delay showing the error UI briefly to avoid transient flashes
+  useEffect(() => {
+    let t = null
+    if (!loading && !story) {
+      t = setTimeout(() => setShowError(true), 300)
+    } else {
+      setShowError(false)
+    }
+    return () => {
+      if (t) clearTimeout(t)
+    }
+  }, [loading, story])
+
+  if (loading || (!story && !showError)) {
     return <div className="min-h-screen flex items-center justify-center text-gray-400 font-black">Đang tải câu chuyện...</div>
   }
 
-  if (!story || error) {
+  if (!story && showError) {
     return (
       <div className="min-h-screen bg-gray-50/50 py-16 px-4">
         <div className="max-w-4xl mx-auto">
           <Card className="p-8 rounded-3xl bg-white border border-red-100">
             <p className="font-black text-red-500">{error || 'Không thể tải câu chuyện.'}</p>
-            <Link to="/stories/inspiring" className="inline-flex mt-4 items-center gap-2 text-fpt-blue font-black">
-              <ArrowLeft size={16} /> Quay lại danh sách câu chuyện
-            </Link>
+            <button
+              type="button"
+              onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/stories/inspiring'))}
+              className="inline-flex mt-4 items-center gap-2 text-fpt-blue font-black"
+            >
+              <ArrowLeft size={16} /> Quay lại
+            </button>
           </Card>
         </div>
       </div>
@@ -67,9 +86,13 @@ export const StoryDetail = () => {
     <div className="page-shell-public bg-gray-50/50">
       <section className="page-hero page-hero-caro text-slate-700">
         <div className="max-w-5xl mx-auto space-y-5">
-          <Link to="/stories/inspiring" className="tap-target inline-flex items-center gap-2 rounded-full border border-orange-200 bg-white/90 px-4 py-2 text-xs font-black uppercase tracking-widest text-fpt-blue">
+          <button
+            type="button"
+            onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/stories/inspiring'))}
+            className="tap-target inline-flex items-center gap-2 rounded-full border border-orange-200 bg-white/90 px-4 py-2 text-xs font-black uppercase tracking-widest text-fpt-blue"
+          >
             <ArrowLeft size={14} /> Quay lại
-          </Link>
+          </button>
           <h1 className="text-4xl md:text-6xl font-black italic leading-tight text-fpt-blue">{story.title}</h1>
           <div className="flex flex-wrap gap-4 text-xs font-black uppercase tracking-widest text-slate-500">
             <span className="inline-flex items-center gap-1.5"><User size={14} /> {story.author}</span>

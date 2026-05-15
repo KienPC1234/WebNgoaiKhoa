@@ -1,7 +1,9 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from app.api import ai, auth, admin, public
+from app.api import notifications
 from app.db.notifications import manager
 import uvicorn
 import os
@@ -43,11 +45,18 @@ app.add_middleware(
     allowed_hosts=trusted_hosts,
 )
 
+app.add_middleware(
+    GZipMiddleware,
+    minimum_size=1024,
+    compresslevel=5,
+)
+
 # Include Routers
 app.include_router(public.router, prefix="/api/public", tags=["Public"])
 app.include_router(ai.router, prefix="/api/ai", tags=["AI"])
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
+app.include_router(notifications.router, prefix="/api", tags=["Notifications"])
 
 @app.get("/")
 async def root():
@@ -73,7 +82,7 @@ async def websocket_endpoint(websocket: WebSocket):
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 3002))
     uvicorn.run(
-        "main:app",
+        "app.main:app",
         host="0.0.0.0",
         port=port,
         reload=True,

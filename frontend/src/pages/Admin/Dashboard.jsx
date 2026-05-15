@@ -1,22 +1,23 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { cn } from '../../components/UI'
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table"
 import { Users, FileText, Send, AlertCircle, TrendingUp, Calendar, Zap } from 'lucide-react'
 import { cmsService } from '@/lib/cmsService'
-import { 
+import { roleHasPermission } from '@/lib/rolePolicy'
+import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
 
 const data = [
-  { name: 'T2', views: 400, submissions: 24 },
-  { name: 'T3', views: 300, submissions: 13 },
-  { name: 'T4', views: 200, submissions: 98 },
-  { name: 'T5', views: 278, submissions: 39 },
-  { name: 'T6', views: 189, submissions: 48 },
-  { name: 'T7', views: 239, submissions: 38 },
-  { name: 'CN', views: 349, submissions: 43 },
+  { name: 'T2', publications: 400, submissions: 24 },
+  { name: 'T3', publications: 300, submissions: 13 },
+  { name: 'T4', publications: 200, submissions: 98 },
+  { name: 'T5', publications: 278, submissions: 39 },
+  { name: 'T6', publications: 189, submissions: 48 },
+  { name: 'T7', publications: 239, submissions: 38 },
+  { name: 'CN', publications: 349, submissions: 43 },
 ];
 
 export const AdminDashboard = () => {
@@ -26,32 +27,113 @@ export const AdminDashboard = () => {
   const [overview, setOverview] = useState(null)
   const [aiOverview, setAiOverview] = useState(null)
   const [loading, setLoading] = useState(true)
+  // determine current user role from localStorage
+  let currentUser = null
+  try {
+    currentUser = JSON.parse(localStorage.getItem('user') || 'null')
+  } catch {
+    currentUser = null
+  }
+  const currentRole = currentUser?.role || ''
 
+  const wsRef = useRef(null)
+  const retryCountRef = useRef(0)
+
+  const fetchData = useCallback(async () => {
+    try {
+      const rawUser = localStorage.getItem('user')
+      let role = null
+      try { role = rawUser ? JSON.parse(rawUser)?.role : null } catch { role = null }
+      const isAdmin = roleHasPermission(role, 'admin')
+      const canManageWebsite = isAdmin || roleHasPermission(role, 'content_manage')
+      const canReviewSubmissions = isAdmin || roleHasPermission(role, 'submission_review')
+
+      const overviewPromise = typeof cmsService.getAdminOverview === 'function' && (roleHasPermission(role, 'admin_panel') || canManageWebsite || canReviewSubmissions)
+        ? cmsService.getAdminOverview()
+        : Promise.resolve(null)
+
+      const aiOverviewPromise = roleHasPermission(role, 'ai_knowledge') ? cmsService.getAIKnowledgeOverview() : Promise.resolve(null)
+
+      const subsPromise = canReviewSubmissions ? cmsService.getRecentSubmissions() : Promise.resolve([])
+
+      const [statsRes, subsRes, overviewRes, aiOverviewRes] = await Promise.all([
+        cmsService.getStats(),
+        subsPromise,
+        overviewPromise,
+        aiOverviewPromise,
+      ])
+
+      setStats(overviewRes?.stats || statsRes)
+      setRecentSubmissions((subsRes || []).slice(0, 5))
+      setOverview(overviewRes || null)
+      setAiOverview(aiOverviewRes || null)
+    } catch (err) {
+      console.error('Error fetching dashboard data:', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  // Initial data fetch
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const overviewPromise = typeof cmsService.getAdminOverview === 'function'
-          ? cmsService.getAdminOverview()
-          : Promise.resolve(null)
+    fetchData()
+  }, [fetchData])
 
-        const [statsRes, subsRes, overviewRes, aiOverviewRes] = await Promise.all([
-          cmsService.getStats(),
-          cmsService.getRecentSubmissions(),
-          overviewPromise,
-          cmsService.getAIKnowledgeOverview(),
-        ])
-        setStats(overviewRes?.stats || statsRes)
-        setRecentSubmissions((subsRes || []).slice(0, 5))
-        setOverview(overviewRes || null)
-        setAiOverview(aiOverviewRes || null)
-      } catch (err) {
-        console.error('Error fetching dashboard data:', err)
-      } finally {
-        setLoading(false)
+  // WebSocket for real-time dashboard updates
+  useEffect(() => {
+    const wsBase = import.meta.env.VITE_WS_URL || ''
+    const isLocalHost = ['localhost', '127.0.0.1'].includes(window.location.hostname)
+    const shouldConnect = Boolean(wsBase) || isLocalHost
+    if (!shouldConnect) return
+
+    let reconnectTimeout
+
+    const connectWS = () => {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+      const wsUrl = wsBase
+        ? `${wsBase.replace(/\/$/, '')}/notifications`
+        : `${protocol}//${window.location.host}/ws/notifications`
+
+      try {
+        const ws = new WebSocket(wsUrl)
+        wsRef.current = ws
+
+        ws.onopen = () => {
+          retryCountRef.current = 0
+        }
+
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data)
+            // On any real-time event (new submission, notification, etc.),
+            // refresh dashboard data to keep stats and recent submissions current.
+            if (data?.type === 'new_submission' || data?.type === 'notification') {
+              fetchData()
+            }
+          } catch {
+            // ignore invalid payloads
+          }
+        }
+
+        ws.onclose = () => {
+          const delay = Math.min(30000, 3000 * (2 ** retryCountRef.current))
+          retryCountRef.current += 1
+          reconnectTimeout = setTimeout(connectWS, delay)
+        }
+      } catch {
+        const delay = Math.min(30000, 3000 * (2 ** retryCountRef.current))
+        retryCountRef.current += 1
+        reconnectTimeout = setTimeout(connectWS, delay)
       }
     }
-    fetchData()
-  }, [])
+
+    connectWS()
+
+    return () => {
+      if (wsRef.current) wsRef.current.close()
+      if (reconnectTimeout) clearTimeout(reconnectTimeout)
+    }
+  }, [fetchData])
 
   if (loading) return (
     <div className="flex h-full items-center justify-center">
@@ -62,6 +144,29 @@ export const AdminDashboard = () => {
     </div>
   )
 
+  const chartData = (overview && Array.isArray(overview.weekly_metrics) && overview.weekly_metrics.length)
+    ? overview.weekly_metrics.map((m) => ({ name: m.name, publications: m.publications || 0, submissions: m.submissions || 0 }))
+    : data
+
+  // Derived dashboard trend values (use overview.weekly_metrics when available)
+  const metrics = (overview && Array.isArray(overview.weekly_metrics)) ? overview.weekly_metrics : null
+  const todayMetric = metrics && metrics.length ? metrics[metrics.length - 1] : null
+  const publicationsToday = todayMetric ? (todayMetric.publications || 0) : 0
+  const submissionsToday = todayMetric ? (todayMetric.submissions || 0) : 0
+  const publicationsThisWeek = metrics ? metrics.reduce((acc, m) => acc + (m.publications || 0), 0) : 0
+  const submissionsThisWeek = metrics ? metrics.reduce((acc, m) => acc + (m.submissions || 0), 0) : 0
+
+  // Completion rate = (total - pending) / total
+  const submissionCompletionRate = stats.submissions
+    ? Math.round(((stats.submissions - (stats.pending_submissions || 0)) / stats.submissions) * 100)
+    : 0
+
+  const pendingCount = stats.pending_submissions || 0
+  // Use backend-provided user weekly growth when available (percentage)
+  const membersTrend = (overview && overview.user_weekly_growth != null)
+    ? `${overview.user_weekly_growth > 0 ? '+' : ''}${overview.user_weekly_growth}%`
+    : null
+
   return (
     <div className="space-y-6 pb-8">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -70,7 +175,7 @@ export const AdminDashboard = () => {
           label="Thành viên" 
           value={stats.users} 
           tone="default"
-          trend="+5.2%"
+          trend={membersTrend}
           description="Tăng trưởng tuần này"
         />
         <StatCard 
@@ -78,15 +183,15 @@ export const AdminDashboard = () => {
           label="Bài viết" 
           value={stats.publications} 
           tone="default"
-          trend="+2"
-          description="Đã xuất bản hôm nay"
+          trend={publicationsToday ? `+${publicationsToday}` : '0'}
+          description="Bài mới hôm nay"
         />
         <StatCard 
           icon={Send} 
           label="Bài dự thi" 
           value={stats.submissions} 
           tone="default"
-          trend="92%"
+          trend={`${submissionCompletionRate}%`}
           description="Tỉ lệ hoàn thành"
         />
         <StatCard 
@@ -94,30 +199,31 @@ export const AdminDashboard = () => {
           label="Chờ duyệt" 
           value={stats.pending_submissions} 
           tone={stats.pending_submissions > 0 ? 'danger' : 'default'}
-          trend="Cần xử lý"
+          trend={pendingCount > 0 ? String(pendingCount) : '0'}
           description="Yêu cầu đang đợi"
           isAlert={stats.pending_submissions > 0}
         />
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {(roleHasPermission(currentRole, 'admin') || roleHasPermission(currentRole, 'submission_review')) && (
         <Card className="lg:col-span-2 rounded-2xl border border-slate-200 shadow-sm">
           <CardHeader className="border-b border-slate-100 pb-4">
             <CardTitle className="flex items-center gap-2 text-base font-semibold text-slate-800">
-              <TrendingUp size={16} className="text-slate-500" /> Hiệu suất hệ thống
+              <TrendingUp size={16} className="text-slate-500" /> Xu hướng nội dung
             </CardTitle>
-            <p className="text-xs text-slate-500">Lượt truy cập và bài nộp trong tuần</p>
+            <p className="text-xs text-slate-500">Số lượng bài mới và bài nộp trong tuần</p>
           </CardHeader>
           <CardContent className="pt-4">
             <div>
               <div className="mb-4 flex gap-4 text-xs text-slate-500">
-                <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-slate-400" />Views</span>
-                <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-slate-700" />Submissions</span>
+                <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-slate-400" />Ấn phẩm mới</span>
+                <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-slate-700" />Bài dự thi</span>
               </div>
             </div>
             <div className="h-[280px] w-full min-w-0">
               <ResponsiveContainer width="100%" height={280} minWidth={0} minHeight={240}>
-              <AreaChart data={data}>
+                <AreaChart data={chartData}>
                 <defs>
                   <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#475569" stopOpacity={0.15}/>
@@ -135,62 +241,67 @@ export const AdminDashboard = () => {
                   contentStyle={{borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 6px 16px -8px rgb(15 23 42 / 0.3)', padding: '10px'}}
                   itemStyle={{fontSize: '12px', fontWeight: '600'}}
                 />
-                <Area type="monotone" dataKey="views" stroke="#475569" strokeWidth={2.2} fillOpacity={1} fill="url(#colorViews)" />
+                <Area type="monotone" dataKey="publications" stroke="#475569" strokeWidth={2.2} fillOpacity={1} fill="url(#colorViews)" />
                 <Area type="monotone" dataKey="submissions" stroke="#0f172a" strokeWidth={2.2} fillOpacity={1} fill="url(#colorSubs)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
           </CardContent>
         </Card>
+      )}
 
-        <Card className="rounded-2xl border border-slate-200 shadow-sm">
-          <CardHeader className="space-y-2">
-            <CardTitle className="flex items-center gap-2 text-base font-semibold text-slate-800">
-              <Zap size={16} className="text-slate-500" /> Trạng thái AI
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-slate-700">AI Knowledge Core</span>
-                <span className={cn(
-                  'rounded-full px-2 py-1 text-xs font-medium',
-                  overview?.ai_status === 'ok' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
-                )}>
-                  {overview?.ai_status === 'ok' ? 'Online' : 'Degraded'}
-                </span>
-              </div>
-              <p className="mt-2 text-sm text-slate-600">
-                {(aiOverview?.documents_total ?? overview?.ai_documents ?? 0)} vector docs · core {(aiOverview?.documents_core ?? 0)} · static {(aiOverview?.source_counts?.site_static ?? 0)} · uploaded {(aiOverview?.documents_uploaded ?? 0)} chunks from {(aiOverview?.knowledge_assets ?? overview?.knowledge_assets ?? 0)} files
-              </p>
-            </div>
+      {roleHasPermission(currentRole, 'admin') && (
+            <Card className="rounded-2xl border border-slate-200 shadow-sm">
+              <CardHeader className="space-y-2">
+                <CardTitle className="flex items-center gap-2 text-base font-semibold text-slate-800">
+                  <Zap size={16} className="text-slate-500" /> Trạng thái AI
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-slate-700">AI Knowledge Core</span>
+                    <span className={cn(
+                      'rounded-full px-3 py-1.5 text-xs font-medium',
+                      overview?.ai_status === 'ok' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                    )}>
+                      {overview?.ai_status === 'ok' ? 'Online' : 'Degraded'}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm text-slate-600">
+                    {(aiOverview?.documents_total ?? overview?.ai_documents ?? 0)} vector docs · core {(aiOverview?.documents_core ?? 0)} · static {(aiOverview?.source_counts?.site_static ?? 0)} · uploaded {(aiOverview?.documents_uploaded ?? 0)} chunks from {(aiOverview?.knowledge_assets ?? overview?.knowledge_assets ?? 0)} files
+                  </p>
+                </div>
 
-            <div className="grid grid-cols-3 gap-3">
-              <MiniInfo label="Knowledge files" value={String(aiOverview?.knowledge_assets ?? overview?.knowledge_assets ?? 0)} />
-              <MiniInfo label="Uploaded chunks" value={String(aiOverview?.documents_uploaded ?? 0)} />
-              <MiniInfo label="Pending" value={String(stats.pending_submissions || 0)} />
-            </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <MiniInfo label="Knowledge files" value={String(aiOverview?.knowledge_assets ?? overview?.knowledge_assets ?? 0)} />
+                  <MiniInfo label="Uploaded chunks" value={String(aiOverview?.documents_uploaded ?? 0)} />
+                  <MiniInfo label="Pending" value={String(stats.pending_submissions || 0)} />
+                </div>
 
-            <button
-              onClick={() => navigate('/admin/ai-knowledge')}
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100"
-            >
-              Mở AI Knowledge
-            </button>
-          </CardContent>
-        </Card>
+                <button
+                  onClick={() => navigate('/admin/ai-knowledge')}
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100"
+                >
+                  Mở AI Knowledge
+                </button>
+              </CardContent>
+            </Card>
+          )}
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2 rounded-2xl border border-slate-200 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between border-b border-slate-100 pb-3">
             <CardTitle className="text-base font-semibold text-slate-800">Bài dự thi mới nhất</CardTitle>
-            <button
-              onClick={() => navigate('/admin/submissions')}
-              className="rounded-md border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
-            >
-              Xem tất cả
-            </button>
+            {(roleHasPermission(currentRole, 'admin') || roleHasPermission(currentRole, 'submission_review')) && (
+              <button
+                onClick={() => navigate('/admin/submissions')}
+                className="rounded-md border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+              >
+                Xem tất cả
+              </button>
+            )}
           </CardHeader>
           <CardContent className="p-0">
             <Table>
@@ -246,11 +357,21 @@ export const AdminDashboard = () => {
             <CardTitle className="text-base font-semibold text-slate-800">Thao tác nhanh</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <ActionButton onClick={() => navigate('/admin/publications/new')} icon={FileText} label="Viết học liệu mới" />
-            <ActionButton onClick={() => navigate('/admin/submissions')} icon={Send} label="Phê duyệt bài nộp" />
-            <ActionButton onClick={() => navigate('/admin/users')} icon={Users} label="Quản lý người dùng" />
-            <ActionButton onClick={() => navigate('/admin/events')} icon={Calendar} label="Lên lịch sự kiện" />
-            <ActionButton onClick={() => navigate('/admin/ai-knowledge')} icon={Zap} label="Quản trị AI Knowledge" />
+            { (roleHasPermission(currentRole, 'admin') || roleHasPermission(currentRole, 'content_manage')) && (
+              <ActionButton onClick={() => navigate('/admin/publications/new')} icon={FileText} label="Viết học liệu mới" />
+            )}
+            { (roleHasPermission(currentRole, 'admin') || roleHasPermission(currentRole, 'submission_review')) && (
+              <ActionButton onClick={() => navigate('/admin/submissions')} icon={Send} label="Phê duyệt bài nộp" />
+            )}
+            { roleHasPermission(currentRole, 'admin') && (
+              <ActionButton onClick={() => navigate('/admin/users')} icon={Users} label="Quản lý người dùng" />
+            )}
+            { (roleHasPermission(currentRole, 'admin') || roleHasPermission(currentRole, 'content_manage')) && (
+              <ActionButton onClick={() => navigate('/admin/events')} icon={Calendar} label="Lên lịch sự kiện" />
+            )}
+            { roleHasPermission(currentRole, 'admin') && (
+              <ActionButton onClick={() => navigate('/admin/ai-knowledge')} icon={Zap} label="Quản trị AI Knowledge" />
+            )}
           </CardContent>
         </Card>
       </div>
@@ -274,13 +395,15 @@ const StatCard = ({ icon: Icon, label, value, trend, description, isAlert, tone 
         </div>
       </div>
       <div className="mt-4 flex items-center gap-2 text-xs">
-        <span className={cn(
-          'rounded px-1.5 py-0.5 font-medium',
-          isAlert ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'
-        )}>
-          {trend}
-        </span>
-        <span className="text-slate-500">{description}</span>
+            {trend != null && (
+              <span className={cn(
+                'rounded px-1.5 py-0.5 font-medium',
+                isAlert ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'
+              )}>
+                {trend}
+              </span>
+            )}
+            <span className="text-slate-500">{description}</span>
       </div>
     </CardContent>
   </Card>
@@ -309,7 +432,7 @@ const StatusPill = ({ status }) => {
   }
 
   return (
-    <span className={cn('rounded-full px-2 py-1 text-xs font-medium', map[status] || 'bg-slate-100 text-slate-700')}>
+    <span className={cn('rounded-full px-3 py-1.5 text-xs font-medium', map[status] || 'bg-slate-100 text-slate-700')}>
       {labelMap[status] || status}
     </span>
   )

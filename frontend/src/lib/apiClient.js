@@ -17,18 +17,26 @@ apiClient.interceptors.request.use((config) => {
   return config
 })
 
+apiClient.isCancel = axios.isCancel
+
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Ignore canceled requests (AbortController / axios cancel) — don't show a toast for these
+    if (axios.isCancel(error)) {
+      return Promise.reject(error)
+    }
+
     const status = error?.response?.status
     if (status === 401) {
       localStorage.removeItem('token')
       localStorage.removeItem('user')
-      toastError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.')
+      try { window.dispatchEvent(new Event('auth-changed')) } catch (e) { /* noop */ }
     } else {
       const message = extractErrorMessage(error, 'Không thể kết nối tới máy chủ.')
       toastError(message)
     }
+
     return Promise.reject(error)
   }
 )

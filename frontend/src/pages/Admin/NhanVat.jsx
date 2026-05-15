@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react'
-import axios from 'axios'
+import { apiClient } from '@/lib/apiClient'
 import { Card, Button, RichTextEditor } from '@/components/UI'
-import { Plus, Save, Trash2, Users, Building2 } from 'lucide-react'
+import { Plus, Save, Trash2, Users, Building2, ImagePlus } from 'lucide-react'
 import { confirmAction, showApiError, toastSuccess } from '@/lib/notify'
-
-const API_URL = import.meta.env.VITE_API_URL || '/api'
+import { cmsService } from '@/lib/cmsService'
 
 const defaultScale = {
   hero_title: '',
@@ -26,26 +25,41 @@ const defaultStaff = {
   email: '',
   image_url: '',
   expertise: '',
+  tier: '',
   display_order: 0,
   is_active: true,
 }
 
 export const AdminNhanVat = () => {
-  const token = localStorage.getItem('token')
-  const headers = { Authorization: `Bearer ${token}` }
-
   const [loading, setLoading] = useState(true)
   const [scale, setScale] = useState(defaultScale)
   const [staff, setStaff] = useState([])
   const [staffForm, setStaffForm] = useState(defaultStaff)
   const [editingId, setEditingId] = useState(null)
+  const [uploadingImage, setUploadingImage] = useState(false)
+
+  const uploadStaffImage = async (file) => {
+    if (!file) return
+    setUploadingImage(true)
+    try {
+      const res = await cmsService.uploadImage(file, 'doingu')
+      const url = res?.url || ''
+      if (!url) throw new Error('Upload không trả về URL')
+      setStaffForm((prev) => ({ ...prev, image_url: url }))
+      toastSuccess('Đã tải ảnh giáo viên')
+    } catch (err) {
+      showApiError(err, 'Tải ảnh thất bại')
+    } finally {
+      setUploadingImage(false)
+    }
+  }
 
   const loadData = async () => {
     setLoading(true)
     try {
       const [scaleRes, staffRes] = await Promise.all([
-        axios.get(`${API_URL}/admin/social-scale`, { headers }),
-        axios.get(`${API_URL}/admin/staff`, { headers }),
+        apiClient.get('/admin/social-scale'),
+        apiClient.get('/admin/staff'),
       ])
       setScale(scaleRes.data)
       setStaff(staffRes.data || [])
@@ -63,7 +77,7 @@ export const AdminNhanVat = () => {
 
   const saveScale = async () => {
     try {
-      await axios.put(`${API_URL}/admin/social-scale`, scale, { headers })
+      await apiClient.put('/admin/social-scale', scale)
       toastSuccess('Đã lưu thông tin quy mô.')
     } catch (error) {
       console.error('Error saving social scale:', error)
@@ -80,9 +94,9 @@ export const AdminNhanVat = () => {
     e.preventDefault()
     try {
       if (editingId) {
-        await axios.put(`${API_URL}/admin/staff/${editingId}`, staffForm, { headers })
+        await apiClient.put(`/admin/staff/${editingId}`, staffForm)
       } else {
-        await axios.post(`${API_URL}/admin/staff`, staffForm, { headers })
+        await apiClient.post('/admin/staff', staffForm)
       }
       resetStaffForm()
       toastSuccess(editingId ? 'Đã cập nhật hồ sơ giáo viên.' : 'Đã thêm hồ sơ giáo viên.')
@@ -102,6 +116,7 @@ export const AdminNhanVat = () => {
       email: item.email || '',
       image_url: item.image_url || '',
       expertise: item.expertise || '',
+      tier: item.tier || '',
       display_order: item.display_order ?? 0,
       is_active: item.is_active ?? true,
     })
@@ -115,7 +130,7 @@ export const AdminNhanVat = () => {
     })
     if (!confirmed) return
     try {
-      await axios.delete(`${API_URL}/admin/staff/${id}`, { headers })
+      await apiClient.delete(`/admin/staff/${id}`)
       toastSuccess('Đã xóa hồ sơ giáo viên.')
       loadData()
     } catch (error) {
@@ -133,7 +148,7 @@ export const AdminNhanVat = () => {
       <Card className="p-8 rounded-[32px] border-none shadow-xl bg-white">
         <div className="flex items-center gap-3 mb-6">
           <div className="p-2 rounded-xl bg-blue-50 text-fpt-blue"><Building2 size={20} /></div>
-          <h3 className="text-xl font-black text-fpt-blue uppercase tracking-tight">CMS Quy mô Tổ xã hội</h3>
+          <h3 className="text-xl font-black text-fpt-blue uppercase tracking-tight">CMS Quy mô</h3>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -177,7 +192,7 @@ export const AdminNhanVat = () => {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-xl bg-orange-50 text-fpt-orange"><Users size={20} /></div>
-            <h3 className="text-xl font-black text-fpt-blue uppercase tracking-tight">CMS Đội ngũ giáo viên</h3>
+            <h3 className="text-xl font-black text-fpt-blue uppercase tracking-tight">Đội ngũ</h3>
           </div>
           <Button onClick={resetStaffForm} className="bg-gray-100 text-gray-700 px-4 py-2 rounded-xl font-black inline-flex items-center gap-2 border-none">
             <Plus size={14} /> Mới
@@ -189,7 +204,40 @@ export const AdminNhanVat = () => {
           <input required className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="Chức danh" value={staffForm.title} onChange={(e) => setStaffForm({ ...staffForm, title: e.target.value })} />
           <input className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="Email" value={staffForm.email} onChange={(e) => setStaffForm({ ...staffForm, email: e.target.value })} />
           <input className="px-4 py-3 rounded-xl bg-gray-50 font-bold" placeholder="Chuyên môn" value={staffForm.expertise} onChange={(e) => setStaffForm({ ...staffForm, expertise: e.target.value })} />
-          <input className="px-4 py-3 rounded-xl bg-gray-50 font-bold md:col-span-2" placeholder="Image URL" value={staffForm.image_url} onChange={(e) => setStaffForm({ ...staffForm, image_url: e.target.value })} />
+          <select className="px-4 py-3 rounded-xl bg-gray-50 font-bold md:col-span-2" value={staffForm.tier || ''} onChange={(e) => setStaffForm({ ...staffForm, tier: e.target.value })}>
+            <option value="">— Chọn vị trí —</option>
+            <option value="management">Tổ trưởng</option>
+            <option value="senior">Trưởng bộ môn</option>
+            <option value="instructor">Giáo viên</option>
+            <option value="assistant">Trợ giảng</option>
+          </select>
+          <div className="md:col-span-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100">
+                <ImagePlus size={14} /> {uploadingImage ? 'Đang tải...' : 'Upload ảnh'}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  disabled={uploadingImage}
+                  onChange={(e) => {
+                    const file = e.target.files && e.target.files[0]
+                    if (file) uploadStaffImage(file)
+                    e.target.value = ''
+                  }}
+                />
+              </label>
+              <input className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" placeholder="Hoặc dán URL ảnh" value={staffForm.image_url} onChange={(e) => setStaffForm({ ...staffForm, image_url: e.target.value })} />
+            </div>
+            {staffForm.image_url ? (
+              <div className="mt-2 flex items-start gap-3">
+                <img src={staffForm.image_url} alt="Preview" className="h-24 w-24 rounded-lg border border-slate-200 object-cover" />
+                <button type="button" onClick={() => setStaffForm({ ...staffForm, image_url: '' })} className="mt-1 inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-700">
+                  <Trash2 size={12} /> Xóa ảnh
+                </button>
+              </div>
+            ) : null}
+          </div>
           <RichTextEditor
             className="md:col-span-2"
             size="compact"

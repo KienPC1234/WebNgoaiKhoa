@@ -3,10 +3,9 @@ import { useParams } from 'react-router-dom'
 import { Link } from 'react-router-dom'
 import { Award, BookOpen, Compass, ExternalLink, RefreshCw } from 'lucide-react'
 import { Card } from '@/components/ui/core'
+import { getPublicationCardDescription } from '@/lib/publicationSummary'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
-const toPlainText = (value) => (value || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
-
 const SUBJECT_LABELS = {
   van: 'Ngữ Văn',
   ktpl: 'Kinh tế pháp luật',
@@ -16,15 +15,17 @@ const SUBJECT_LABELS = {
 }
 
 const CONTENT_TYPE_LABELS = {
-  'an-pham': 'Ấn phẩm/sp học tập',
+  'an-pham': 'Ấn phẩm/sản phẩm học tập',
   'tai-lieu': 'Tài liệu tham khảo',
   'vinh-danh': 'Vinh danh năm học',
+  'cuoc-thi': 'Cuộc thi',
 }
 
 const CONTENT_TYPE_ICON = {
   'an-pham': BookOpen,
   'tai-lieu': Compass,
   'vinh-danh': Award,
+  'cuoc-thi': Award,
 }
 
 export const SubjectContentHub = () => {
@@ -36,6 +37,13 @@ export const SubjectContentHub = () => {
   const subjectLabel = useMemo(() => SUBJECT_LABELS[subject] || subject, [subject])
   const typeLabel = useMemo(() => CONTENT_TYPE_LABELS[contentType] || contentType, [contentType])
   const TypeIcon = CONTENT_TYPE_ICON[contentType] || BookOpen
+
+  const heroDescription = useMemo(() => {
+    if (contentType === 'cuoc-thi') {
+      return `Danh sách cuộc thi, thể lệ và hướng dẫn nộp bài cho phân môn ${subjectLabel}.`
+    }
+    return `Danh sách nội dung được xuất bản chính thức cho chuyên môn ${subjectLabel}.`
+  }, [subjectLabel, contentType])
 
   const loadItems = async () => {
     setLoading(true)
@@ -73,7 +81,7 @@ export const SubjectContentHub = () => {
             {subjectLabel}
           </div>
           <h1 className="text-4xl md:text-6xl font-black mt-6 italic uppercase tracking-tight text-fpt-blue">{typeLabel}</h1>
-          <p className="text-slate-500 mt-4 font-medium">Danh sách nội dung được xuất bản chính thức cho chuyên môn {subjectLabel}.</p>
+          <p className="text-slate-500 mt-4 font-medium">{heroDescription}</p>
         </div>
       </section>
 
@@ -122,8 +130,8 @@ export const SubjectContentHub = () => {
                   )}
                 </div>
                 <div className="p-6 space-y-3">
-                  <h3 className="font-black text-lg text-fpt-blue line-clamp-2">{item.title}</h3>
-                  <p className="text-sm text-gray-500 font-medium line-clamp-4">{toPlainText(item.content)}</p>
+                  <h3 className="font-black text-lg text-fpt-blue line-clamp-2 pt-2 md:pt-2">{item.title}</h3>
+                  <p className="text-sm text-gray-500 font-medium line-clamp-4">{getPublicationCardDescription(item, 220)}</p>
                   <div className="flex items-center justify-between pt-2 border-t border-gray-100">
                     <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
                       {new Date(item.created_at).toLocaleDateString('vi-VN')}

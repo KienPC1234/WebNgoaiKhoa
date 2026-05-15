@@ -1,24 +1,39 @@
 import { useState, useEffect, useRef } from 'react'
 import { Card, Button, cn } from '../components/UI'
-import { Send, ThumbsUp, Edit3, ShieldCheck, PenTool, BookOpen, User, Calendar, X, Sparkles, FileText, MessageSquare, Eye } from 'lucide-react'
-import axios from 'axios'
+import { Send, ThumbsUp, Edit3, ShieldCheck, PenTool, BookOpen, User, Calendar, X, Sparkles, FileText, MessageSquare, Eye, XCircle } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import ReCAPTCHA from 'react-google-recaptcha'
 import { showApiError, toastError, toastInfo, toastSuccess } from '@/lib/notify'
 import { apiClient } from '@/lib/apiClient'
+import { roleHasPermission } from '@/lib/rolePolicy'
 import { PageFlip } from 'page-flip'
 import * as pdfjsLib from 'pdfjs-dist'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
 
-const API_URL = import.meta.env.VITE_API_URL || '/api'
 const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY || ''
 const SUBMISSION_DRAFT_KEY = 'phanmon_van_submission_draft_v1'
 const MAX_UPLOAD_BYTES = 15 * 1024 * 1024
 const TITLE_MIN_LENGTH = 6
 const CONTENT_MIN_LENGTH = 30
+const CONTENT_MAX_LENGTH = 60000
 const FLIP_PREVIEW_WIDTH = 360
 const FLIP_PREVIEW_MIN_HEIGHT = 440
 const FLIP_PREVIEW_MAX_HEIGHT = 620
+
+const getRecaptchaTokenSafely = async (recaptchaRef) => {
+  if (!RECAPTCHA_SITE_KEY || !recaptchaRef.current) return null
+
+  try {
+    const token = await Promise.race([
+      recaptchaRef.current.executeAsync(),
+      new Promise((resolve) => setTimeout(() => resolve(null), 8000)),
+    ])
+    recaptchaRef.current.reset()
+    return token || null
+  } catch {
+    return null
+  }
+}
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString()
 
@@ -48,11 +63,14 @@ export const PhanMonVan = () => {
   const [mySubmissions, setMySubmissions] = useState([])
   const [mySubsLoading, setMySubsLoading] = useState(false)
   const navigate = useNavigate()
+
+  const userJson = localStorage.getItem('user')
+  const user = userJson ? JSON.parse(userJson) : null
+  const token = localStorage.getItem('token')
+
   const recaptchaRef = useRef(null)
   const flipRef = useRef(null)
   const flipInstanceRef = useRef(null)
-
-  const token = localStorage.getItem('token')
   const pdfFlipHeight = Math.min(
     FLIP_PREVIEW_MAX_HEIGHT,
     Math.max(FLIP_PREVIEW_MIN_HEIGHT, Math.round(FLIP_PREVIEW_WIDTH * pdfPreviewAspectRatio)),
@@ -69,7 +87,15 @@ export const PhanMonVan = () => {
     if (activeTab === 'bai-thi') {
       fetchApprovedSubmissions()
       if (token) {
-        fetchMyVotedSubmissionIds()
+        let role = null
+        try {
+          role = JSON.parse(localStorage.getItem('user'))?.role
+        } catch (e) {
+          role = null
+        }
+        if (roleHasPermission(role, 'contestant')) {
+          fetchMyVotedSubmissionIds()
+        }
       }
     }
   }, [activeTab, token])
@@ -87,11 +113,12 @@ export const PhanMonVan = () => {
       const parsed = JSON.parse(draft)
       setTitle(parsed?.title || '')
       setContent(parsed?.content || '')
-      setStudentName(parsed?.studentName || '')
+      setStudentName(parsed?.studentName || (user?.full_name || ''))
     } catch {
+      setStudentName(user?.full_name || '')
       localStorage.removeItem(SUBMISSION_DRAFT_KEY)
     }
-  }, [])
+  }, [user?.full_name])
 
   useEffect(() => {
     const hasDraftContent = title.trim() || content.trim() || studentName.trim()
@@ -112,6 +139,13 @@ export const PhanMonVan = () => {
 
   useEffect(() => {
     if (activeTab === 'sang-tac' && token) {
+      let role = null
+      try {
+        role = JSON.parse(localStorage.getItem('user'))?.role
+      } catch (e) {
+        role = null
+      }
+      if (!roleHasPermission(role, 'contestant')) return
       fetchMySubmissions()
     }
   }, [activeTab, token])
@@ -246,7 +280,7 @@ export const PhanMonVan = () => {
   const fetchApprovedSubmissions = async () => {
     setLoading(true)
     try {
-      const response = await axios.get(`${API_URL}/public/submissions`)
+      const response = await apiClient.get('/public/submissions')
       setApprovedSubmissions(response.data)
     } catch (error) {
       console.error('Error fetching submissions:', error)
@@ -301,6 +335,8 @@ export const PhanMonVan = () => {
       errors.content = 'Vui lòng nhập nội dung sáng tác.'
     } else if (normalizedContent.length < CONTENT_MIN_LENGTH) {
       errors.content = `Nội dung cần tối thiểu ${CONTENT_MIN_LENGTH} ký tự.`
+    } else if (normalizedContent.length > CONTENT_MAX_LENGTH) {
+      errors.content = `Nội dung vượt quá ${CONTENT_MAX_LENGTH.toLocaleString('vi-VN')} ký tự.`
     }
 
     setFormErrors(errors)
@@ -315,7 +351,7 @@ export const PhanMonVan = () => {
   const handleSendToBGK = async () => {
     if (!token) {
       toastInfo('Vui lòng đăng nhập để gửi bài thi.')
-      navigate('/login')
+      navigate('/login', { state: { from: typeof window !== 'undefined' ? window.location.pathname : '/' } })
       return
     }
 
@@ -327,11 +363,7 @@ export const PhanMonVan = () => {
 
     setSubmissionStatus('loading')
     try {
-      let recaptchaToken = null
-      if (RECAPTCHA_SITE_KEY && recaptchaRef.current) {
-        recaptchaToken = await recaptchaRef.current.executeAsync()
-        recaptchaRef.current.reset()
-      }
+      const recaptchaToken = await getRecaptchaTokenSafely(recaptchaRef)
 
       if (pdfFile) {
         const formData = new FormData()
@@ -384,12 +416,7 @@ export const PhanMonVan = () => {
   const handleVote = async (id) => {
     if (!token) {
       toastInfo('Vui lòng đăng nhập để bình chọn bài thi.')
-      navigate('/login')
-      return
-    }
-
-    if (votedSubmissionIds.includes(id)) {
-      toastInfo('Bạn đã bình chọn cho bài thi này rồi.')
+      navigate('/login', { state: { from: typeof window !== 'undefined' ? window.location.pathname : '/' } })
       return
     }
 
@@ -397,36 +424,57 @@ export const PhanMonVan = () => {
       return
     }
 
+    const alreadyVoted = votedSubmissionIds.includes(id)
     setVotingSubmissionIds((prev) => [...prev, id])
 
     try {
-      let recaptchaToken = null
-      if (RECAPTCHA_SITE_KEY && recaptchaRef.current) {
-        recaptchaToken = await recaptchaRef.current.executeAsync()
-        recaptchaRef.current.reset()
+      if (alreadyVoted) {
+        // Perform un-vote
+        const response = await apiClient.delete(`/public/submissions/${id}/vote`)
+        const nextVotes = response.data.votes
+        
+        setApprovedSubmissions(prev => prev.map(s => s.id === id ? { ...s, votes: nextVotes ?? Math.max(0, s.votes - 1) } : s))
+        setSelectedSubmission((prev) => {
+          if (!prev || prev.id !== id) return prev
+          return { ...prev, votes: nextVotes ?? Math.max(0, prev.votes - 1) }
+        })
+        setVotedSubmissionIds((prev) => prev.filter(vid => vid !== id))
+        toastInfo('Đã bỏ bình chọn.')
+      } else {
+        // Perform vote
+        const recaptchaToken = await getRecaptchaTokenSafely(recaptchaRef)
+        const response = await apiClient.post(`/public/submissions/${id}/vote`, {
+          recaptcha_token: recaptchaToken,
+        })
+        const nextVotes = response.data.votes
+        
+        setApprovedSubmissions(prev => prev.map(s => s.id === id ? { ...s, votes: nextVotes ?? (s.votes + 1) } : s))
+        setSelectedSubmission((prev) => {
+          if (!prev || prev.id !== id) return prev
+          return { ...prev, votes: nextVotes ?? (prev.votes + 1) }
+        })
+        setVotedSubmissionIds((prev) => (prev.includes(id) ? prev : [...prev, id]))
+        toastSuccess('Đã bình chọn thành công.')
       }
-
-      const response = await axios.post(`${API_URL}/public/submissions/${id}/vote`, {
-        recaptcha_token: recaptchaToken,
-      }, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      const nextVotes = response.data.votes
-      setApprovedSubmissions(prev => prev.map(s => s.id === id ? { ...s, votes: nextVotes || (s.votes + 1) } : s))
-      setSelectedSubmission((prev) => {
-        if (!prev || prev.id !== id) return prev
-        return { ...prev, votes: nextVotes || (prev.votes + 1) }
-      })
-      setVotedSubmissionIds((prev) => (prev.includes(id) ? prev : [...prev, id]))
-      toastSuccess('Đã bình chọn thành công.')
     } catch (error) {
       console.error('Vote error:', error)
       const statusCode = error?.response?.status
+      const errorData = error?.response?.data?.detail
+
       if (statusCode === 409) {
         setVotedSubmissionIds((prev) => (prev.includes(id) ? prev : [...prev, id]))
+        // Sync latest vote count if backend provided it in the 409 error detail
+        if (errorData && typeof errorData.votes === 'number') {
+          const latestVotes = errorData.votes
+          setApprovedSubmissions(prev => prev.map(s => s.id === id ? { ...s, votes: latestVotes } : s))
+          setSelectedSubmission((prev) => {
+            if (!prev || prev.id !== id) return prev
+            return { ...prev, votes: latestVotes }
+          })
+        }
         toastInfo('Bạn đã bình chọn cho bài thi này rồi.')
       } else {
-        showApiError(error, 'Bình chọn thất bại.')
+        showApiError(error, 'Thao tác thất bại.')
       }
     } finally {
       setVotingSubmissionIds((prev) => prev.filter((item) => item !== id))
@@ -436,7 +484,7 @@ export const PhanMonVan = () => {
   const fetchSubmissionComments = async (submissionId) => {
     setCommentsLoadingBySubmission((prev) => ({ ...prev, [submissionId]: true }))
     try {
-      const response = await axios.get(`${API_URL}/public/submissions/${submissionId}/comments`)
+      const response = await apiClient.get(`/public/submissions/${submissionId}/comments`)
       setCommentsBySubmission((prev) => ({ ...prev, [submissionId]: response.data || [] }))
     } catch (error) {
       setCommentsBySubmission((prev) => ({ ...prev, [submissionId]: [] }))
@@ -478,11 +526,12 @@ export const PhanMonVan = () => {
     if (!selectedSubmission) return
     if (!token) {
       toastInfo('Vui lòng đăng nhập để bình luận bài thi.')
-      navigate('/login')
+      navigate('/login', { state: { from: typeof window !== 'undefined' ? window.location.pathname : '/' } })
       return
     }
 
-    const plainText = commentEditorValue.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim()
+    const normalizedCommentValue = typeof commentEditorValue === 'string' ? commentEditorValue : String(commentEditorValue || '')
+    const plainText = normalizedCommentValue.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim()
     if (!plainText || plainText.length < 2) {
       toastError('Bình luận cần tối thiểu 2 ký tự.')
       return
@@ -490,20 +539,13 @@ export const PhanMonVan = () => {
 
     setCommentSubmitting(true)
     try {
-      let recaptchaToken = null
-      if (RECAPTCHA_SITE_KEY && recaptchaRef.current) {
-        recaptchaToken = await recaptchaRef.current.executeAsync()
-        recaptchaRef.current.reset()
-      }
+      const recaptchaToken = await getRecaptchaTokenSafely(recaptchaRef)
 
-      const response = await axios.post(
-        `${API_URL}/public/submissions/${selectedSubmission.id}/comments`,
+      const response = await apiClient.post(
+        `/public/submissions/${selectedSubmission.id}/comments`,
         {
-          content: commentEditorValue,
+          content: normalizedCommentValue,
           recaptcha_token: recaptchaToken,
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
         },
       )
 
@@ -793,6 +835,14 @@ export const PhanMonVan = () => {
                             </span>
                           </div>
                           <p className="mt-1 text-xs font-semibold text-slate-500">Nộp lúc: {new Date(sub.created_at).toLocaleString('vi-VN')}</p>
+                          {sub.status === 'rejected' && sub.rejection_reason && (
+                            <div className="mt-2 rounded-xl bg-red-50 border border-red-100 p-3">
+                               <p className="text-[10px] font-black uppercase tracking-widest text-red-600 mb-1 flex items-center gap-1">
+                                 <XCircle size={12} /> Phản hồi từ Ban giám khảo
+                               </p>
+                               <p className="text-xs font-bold text-red-800 italic">"{sub.rejection_reason}"</p>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -897,12 +947,14 @@ export const PhanMonVan = () => {
                           <div className="flex items-center justify-between pt-2">
                             <button 
                               onClick={() => handleVote(sub.id)}
-                              disabled={hasVotedSubmission(sub.id) || isVotingSubmission(sub.id)}
+                              disabled={isVotingSubmission(sub.id)}
                               className={cn(
                                 'flex items-center gap-2 transition-colors group/vote bg-orange-50 px-4 py-2 rounded-xl',
-                                hasVotedSubmission(sub.id) || isVotingSubmission(sub.id)
-                                  ? 'text-slate-400 cursor-not-allowed'
-                                  : 'text-gray-400 hover:text-white hover:bg-fpt-orange'
+                                isVotingSubmission(sub.id)
+                                  ? 'opacity-50 cursor-wait'
+                                  : hasVotedSubmission(sub.id)
+                                    ? 'text-fpt-orange bg-orange-100 ring-1 ring-fpt-orange/20'
+                                    : 'text-gray-400 hover:text-white hover:bg-fpt-orange'
                               )}
                             >
                               <ThumbsUp size={18} className={cn('group-active/vote:scale-125 transition-transform', hasVotedSubmission(sub.id) || isVotingSubmission(sub.id) ? 'text-slate-400' : 'group-hover/vote:text-white text-fpt-orange')} />
@@ -954,12 +1006,14 @@ export const PhanMonVan = () => {
                 <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 inline-flex items-center gap-1.5"><Calendar size={13} /> {new Date(selectedSubmission.created_at).toLocaleString('vi-VN')}</span>
                 <button
                   onClick={() => handleVote(selectedSubmission.id)}
-                  disabled={hasVotedSubmission(selectedSubmission.id) || isVotingSubmission(selectedSubmission.id)}
+                  disabled={isVotingSubmission(selectedSubmission.id)}
                   className={cn(
                     'rounded-full border px-3 py-1 inline-flex items-center gap-1.5 transition-colors',
-                    hasVotedSubmission(selectedSubmission.id) || isVotingSubmission(selectedSubmission.id)
-                      ? 'border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed'
-                      : 'border-orange-200 bg-orange-50 text-fpt-orange hover:bg-fpt-orange hover:text-white'
+                    isVotingSubmission(selectedSubmission.id)
+                      ? 'border-slate-200 bg-slate-100 text-slate-400 cursor-wait'
+                      : hasVotedSubmission(selectedSubmission.id)
+                        ? 'border-orange-300 bg-orange-100 text-fpt-orange'
+                        : 'border-orange-200 bg-orange-50 text-fpt-orange hover:bg-fpt-orange hover:text-white'
                   )}
                 >
                   <ThumbsUp size={13} /> {selectedSubmission.votes} {hasVotedSubmission(selectedSubmission.id) ? 'đã bình chọn' : 'lượt thích'}

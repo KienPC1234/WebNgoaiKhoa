@@ -65,6 +65,7 @@ export const createInitialEditorState = (): EditorState => ({
   history: { past: [], future: [] },
   dirty: false,
   lastSavedAt: null,
+  lastDraftSavedAt: null,
 })
 
 export const editorReducer = (state: EditorState, action: EditorAction): EditorState => {
@@ -193,6 +194,12 @@ export const editorReducer = (state: EditorState, action: EditorAction): EditorS
     case 'MARK_SAVED':
       next.dirty = false
       next.lastSavedAt = action.payload.savedAt
+      next.lastDraftSavedAt = action.payload.savedAt
+      return next
+
+    case 'MARK_DRAFT_SAVED':
+      next.lastDraftSavedAt = action.payload.savedAt
+      // keep next.dirty = true — draft save does not clear unsaved/permanent state
       return next
 
     default:

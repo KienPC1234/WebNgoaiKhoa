@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Card, Button } from '../components/UI'
 import { Globe, Map, Compass, FileText, BookOpen, ExternalLink, Download, ArrowRight, Mountain } from 'lucide-react'
-import axios from 'axios'
-
-const API_URL = import.meta.env.VITE_API_URL || '/api'
+import { apiClient } from '@/lib/apiClient'
 
 export const PhanMonDiaLi = () => {
     const [publications, setPublications] = useState([])
@@ -22,7 +20,7 @@ export const PhanMonDiaLi = () => {
     const fetchPublications = async () => {
         setLoading(true)
         try {
-            const response = await axios.get(`${API_URL}/public/publications?category=dia-li`)
+            const response = await apiClient.get('/public/publications?subject=dia-li')
             setPublications(response.data)
         } catch (error) {
             console.error('Error fetching publications:', error)
@@ -124,7 +122,7 @@ export const PhanMonDiaLi = () => {
                                             )}
                                         </div>
                                         <div className="flex-1 space-y-3 py-1">
-                                            <h4 className="font-black text-lg text-gray-800 group-hover:text-[#004d40] transition-colors leading-snug line-clamp-2">{pub.title}</h4>
+                                            <h4 className="font-black text-lg text-gray-800 group-hover:text-[#004d40] transition-colors leading-snug line-clamp-2 pt-2 md:pt-2">{pub.title}</h4>
                                             <div className="flex flex-wrap items-center gap-3">
                                                 <span className="text-[9px] text-white bg-gradient-to-r from-emerald-400 to-teal-600 font-black px-2 py-1 rounded-md uppercase tracking-widest flex items-center gap-1 shadow-sm">
                                                     <Download size={10} /> DỮ LIỆU ĐỊA LÍ

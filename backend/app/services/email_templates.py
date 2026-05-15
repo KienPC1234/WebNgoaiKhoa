@@ -88,7 +88,7 @@ def get_base_html_template(content_html: str, unsubscribe_link: Optional[str] = 
 </html>
 """
 
-def get_otp_html(otp: str, expire_minutes: int, unsubscribe_link: Optional[str] = None) -> str:
+def get_otp_html(otp: str, expire_minutes: int, unsubscribe_link: Optional[str] = None, verify_link: Optional[str] = None) -> str:
     content = f"""
     <h2 style="margin-top: 0; color: #0f172a; font-size: 24px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 16px;">Xác thực tài khoản</h2>
     <p style="font-size: 16px; color: #475569; margin-bottom: 32px;">Chào bạn, mã OTP để xác nhận hành động của bạn trên hệ thống <strong>Tổ Xã Hội</strong> là:</p>
@@ -107,7 +107,17 @@ def get_otp_html(otp: str, expire_minutes: int, unsubscribe_link: Optional[str] 
             💡 <strong>Lưu ý:</strong> Nếu bạn không yêu cầu mã này, có thể ai đó đã nhập nhầm email của bạn. Bạn không cần làm gì thêm, tài khoản vẫn an toàn.
         </p>
     </div>
+    
     """
+
+    if verify_link:
+        cta = f"""
+        <div style="margin-top: 24px; text-align: center;">
+            <a href="{verify_link}" style="background-color: #f58020; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;">Xác minh tài khoản</a>
+        </div>
+        <p style="text-align: center; font-size: 13px; color: #64748b; margin-top: 12px;">Hoặc mở liên kết nếu nút không hoạt động: <a href="{verify_link}" style="color: #3b82f6;">{verify_link}</a></p>
+        """
+        content = content + cta
     return get_base_html_template(content, unsubscribe_link)
 
 def get_newsletter_html(subject: str, body_text: str, action_url: Optional[str] = None, unsubscribe_link: Optional[str] = None) -> str:

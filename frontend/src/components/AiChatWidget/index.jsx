@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Send, X, Bot, Sparkles, Trash2, Maximize2, Minimize2, Square, ArrowDown, User, Zap } from 'lucide-react'
+import { Send, X, Bot, Sparkles, Trash2, Maximize2, Minimize2, Square, ArrowDown, User, Zap, Brain, ChevronDown, MapPin, LocateFixed } from 'lucide-react'
 import { Card } from '@/components/ui/core'
 import { cn } from '@/lib/utils'
 import { createAiActionEngine } from '@/lib/ai-navigation/actionEngine'
@@ -13,6 +13,7 @@ const API_URL = import.meta.env.VITE_API_URL || '/api'
 const CHAT_STORAGE_KEY = 'fpt_edu_ai_chat_history'
 const CHAT_OPEN_STORAGE_KEY = 'fpt_edu_ai_chat_open'
 const CHAT_MIN_STORAGE_KEY = 'fpt_edu_ai_chat_minimized'
+const CHAT_SESSION_KEY = 'fpt_edu_ai_chat_session_id'
 const MAX_MESSAGES = 15
 const MAX_SERVER_HISTORY_MESSAGES = 8
 const STREAM_UI_THROTTLE_MS = 45
@@ -36,8 +37,8 @@ const linkifyInternalPaths = (line = '') => {
   // Handle raw HTML code tags: <code>/path</code>
   line = line.replace(/<code>((?:\/|\.\.|\.\/|\?|#)[^<\s`]+)<\/code>/gi, (_, p) => `[${p}](${p})`)
 
-  // General replacement for bare paths preceded by start or whitespace or '>' (covers cases after tags)
-  return line.replace(/(^|\s|>)(\/(?:[^\s`<>\)\]]+))/g, (m, prefix, path) => {
+  // General replacement for bare paths preceded by start or whitespace or '(' or '>' (covers cases after tags and parentheses)
+  return line.replace(/(^|[\s(>])(\/(?:[^\s`<>\)\]]+))/g, (m, prefix, path) => {
     let trailing = ''
     if (/[.,;:!?]$/.test(path)) {
       trailing = path.slice(-1)
@@ -216,7 +217,7 @@ const toInternalRoute = (href = '') => {
 }
 
 const createMarkdownComponents = (navigate) => ({
-  a: ({ href, children, ...props }) => {
+  a: ({ node, href, children, ...props }) => {
     const value = String(href || '').trim()
     const isInternal = isInternalHref(value)
 
@@ -242,10 +243,92 @@ const createMarkdownComponents = (navigate) => ({
       </a>
     )
   },
-  ul: ({ ...props }) => <ul {...props} className="list-disc pl-5" />,
-  ol: ({ ...props }) => <ol {...props} className="list-decimal pl-5" />,
-  code: ({ inline, className, children, ...props }) =>
-    inline ? (
+  strong: ({ node, children, ...props }) => {
+    const singleText = Array.isArray(children) && children.length === 1 && typeof children[0] === 'string' ? children[0] : null
+    if (singleText) {
+      const value = String(singleText).trim()
+      if (isInternalHref(value)) {
+        const handleClick = (event) => {
+          if (event.defaultPrevented) return
+          if (event.button !== 0) return
+          if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+          event.preventDefault()
+          navigate(toInternalRoute(value))
+        }
+
+        return (
+          <strong {...props}>
+            <a
+              href={value || '#'}
+              onClick={handleClick}
+              className="font-semibold text-blue-700 underline decoration-blue-300 underline-offset-2 transition-colors hover:text-blue-900"
+            >
+              {value}
+            </a>
+          </strong>
+        )
+      }
+    }
+    return <strong {...props}>{children}</strong>
+  },
+  em: ({ node, children, ...props }) => {
+    const singleText = Array.isArray(children) && children.length === 1 && typeof children[0] === 'string' ? children[0] : null
+    if (singleText) {
+      const value = String(singleText).trim()
+      if (isInternalHref(value)) {
+        const handleClick = (event) => {
+          if (event.defaultPrevented) return
+          if (event.button !== 0) return
+          if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+          event.preventDefault()
+          navigate(toInternalRoute(value))
+        }
+
+        return (
+          <em {...props}>
+            <a
+              href={value || '#'}
+              onClick={handleClick}
+              className="font-semibold text-blue-700 underline decoration-blue-300 underline-offset-2 transition-colors hover:text-blue-900"
+            >
+              {value}
+            </a>
+          </em>
+        )
+      }
+    }
+    return <em {...props}>{children}</em>
+  },
+  ul: ({ node, ...props }) => <ul {...props} className="list-disc pl-5" />,
+  ol: ({ node, ...props }) => <ol {...props} className="list-decimal pl-5" />,
+  code: ({ node, inline, className, children, ...props }) => {
+    const raw = Array.isArray(children) ? children.join('') : String(children ?? '')
+    const text = String(raw).replace(/\n/g, '').trim()
+
+    // If the code content is a single internal path, render it as a clickable internal link
+    if (text && isInternalHref(text)) {
+      const value = text
+      const handleClick = (event) => {
+        if (event.defaultPrevented) return
+        if (event.button !== 0) return
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+        event.preventDefault()
+        navigate(toInternalRoute(value))
+      }
+
+      return (
+        <a
+          {...props}
+          href={value || '#'}
+          onClick={handleClick}
+          className="font-semibold text-blue-700 underline decoration-blue-300 underline-offset-2 transition-colors hover:text-blue-900"
+        >
+          {value}
+        </a>
+      )
+    }
+
+    return inline ? (
       <code {...props} className={cn('rounded bg-slate-100/90 px-1.5 py-0.5 text-[0.92em] font-semibold text-slate-700', className)}>
         {children}
       </code>
@@ -253,7 +336,8 @@ const createMarkdownComponents = (navigate) => ({
       <code {...props} className={cn('block rounded-xl bg-slate-900/95 p-3 text-[0.92em] text-slate-100', className)}>
         {children}
       </code>
-    ),
+    )
+  },
 })
 
 const MarkdownTable = ({ header = [], rows = [], alignments = [], markdownComponents, isMobile = false }) => {
@@ -315,6 +399,91 @@ const MarkdownTable = ({ header = [], rows = [], alignments = [], markdownCompon
   )
 }
 
+const ThinkingBlock = ({ thinking, isMobile = false }) => {
+  const [expanded, setExpanded] = useState(false)
+  if (!thinking || typeof thinking !== 'string' || !thinking.trim()) return null
+
+  const lines = thinking.trim().split('\n')
+  const lineCount = lines.length
+  const charCount = thinking.trim().length
+
+  return (
+    <div className={cn(
+      'mb-2 rounded-xl border border-violet-200/60 bg-violet-50/50',
+      isMobile ? 'px-2.5 py-2' : 'px-3 py-2.5'
+    )}>
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="flex w-full items-center gap-1.5 text-left"
+      >
+        <Brain size={isMobile ? 12 : 13} className="text-violet-500 shrink-0" />
+        <span className={cn('font-bold text-violet-600 uppercase tracking-wide', isMobile ? 'text-[9px]' : 'text-[10px]')}>
+          Suy nghĩ
+        </span>
+        <span className={cn('text-violet-400', isMobile ? 'text-[9px]' : 'text-[10px]')}>
+          ({lineCount} dòng, {charCount} ký tự)
+        </span>
+        <ChevronDown size={12} className={cn('ml-auto shrink-0 text-violet-500 transition-transform', expanded && 'rotate-180')} />
+      </button>
+      {expanded && (
+        <div className={cn(
+          'mt-2 text-violet-700/80 whitespace-pre-wrap break-words border-t border-violet-200/40 pt-2',
+          isMobile ? 'text-[11px] leading-relaxed' : 'text-xs leading-relaxed'
+        )}>
+          {thinking.trim()}
+        </div>
+      )}
+    </div>
+  )
+}
+
+const ToolMarkerBlock = ({ markers = [], isMobile = false }) => {
+  const [expanded, setExpanded] = useState(false)
+  if (!Array.isArray(markers) || markers.length === 0) return null
+
+  return (
+    <div className={cn(
+      'mb-2 rounded-xl border border-cyan-200/70 bg-cyan-50/60',
+      isMobile ? 'px-2.5 py-2' : 'px-3 py-2.5'
+    )}>
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="flex w-full items-center gap-1.5 text-left"
+      >
+        <MapPin size={isMobile ? 12 : 13} className="text-cyan-600 shrink-0" />
+        <span className={cn('font-bold text-cyan-700 uppercase tracking-wide', isMobile ? 'text-[9px]' : 'text-[10px]')}>
+          Marker điều hướng
+        </span>
+        <span className={cn('text-cyan-500', isMobile ? 'text-[9px]' : 'text-[10px]')}>
+          ({markers.length} bước)
+        </span>
+        <ChevronDown size={12} className={cn('ml-auto shrink-0 text-cyan-600 transition-transform', expanded && 'rotate-180')} />
+      </button>
+      {expanded && (
+        <div className={cn('mt-2 border-t border-cyan-200/50 pt-2 space-y-1.5', isMobile ? 'text-[11px]' : 'text-xs')}>
+          {markers.map((m, idx) => {
+            const type = String(m?.type || '').toLowerCase()
+            const label = m?.label || m?.action || 'tool'
+            const detail = m?.detail || ''
+            const icon = type === 'highlight' ? <LocateFixed size={12} className="text-cyan-600" /> : <MapPin size={12} className="text-cyan-600" />
+            return (
+              <div key={`${label}-${idx}`} className="rounded-md bg-white/70 px-2 py-1.5 border border-cyan-100 text-cyan-800">
+                <div className="flex items-center gap-1.5">
+                  {icon}
+                  <span className="font-semibold">{idx + 1}. {label}</span>
+                </div>
+                {detail ? <div className="mt-0.5 text-cyan-700/85">{detail}</div> : null}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 const MarkdownMessage = ({ content, role, navigate, isMobile = false }) => {
   const segments = useMemo(() => parseMarkdownSegments(content), [content])
   const markdownComponents = useMemo(() => createMarkdownComponents(navigate), [navigate])
@@ -343,7 +512,7 @@ const MarkdownMessage = ({ content, role, navigate, isMobile = false }) => {
 
 const DEFAULT_WELCOME = { 
   role: 'assistant', 
-  content: 'Chào bạn! Tôi là trợ lý AI của **Tổ xã hội**. Tôi có thể giúp bạn tìm hiểu về các hoạt động ngoại khóa, hướng dẫn gửi bài cho ấn phẩm **Nhái Bén**, hoặc giải đáp các thắc mắc về câu lạc bộ.' 
+  content: 'Chào bạn! Mình là trợ lý AI của **Tổ xã hội**. Mình có thể giúp bạn bất cứ điều gì!'
 }
 
 const TOOL_REASON_MESSAGES = {
@@ -363,7 +532,8 @@ const buildActionFeedback = (results = []) => {
     .map((item) => item.actionSummary.trim())
 
   if (successSummaries.length > 0) {
-    return successSummaries.slice(0, 2).join(' ')
+    // Only show the first success summary, keep it concise
+    return successSummaries[0]
   }
 
   const firstFailure = results.find((item) => item?.ok === false)
@@ -386,6 +556,17 @@ export const AiChatWidget = ({ pendingOpen = false, onPendingOpenHandled }) => {
   const [isMinimized, setIsMinimized] = useState(() => localStorage.getItem(CHAT_MIN_STORAGE_KEY) === '1')
   const [input, setInput] = useState('')
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches)
+  const [sessionId, setSessionId] = useState(() => {
+    try {
+      const existing = localStorage.getItem(CHAT_SESSION_KEY)
+      if (existing && existing.trim()) return existing
+      const generated = `s-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+      localStorage.setItem(CHAT_SESSION_KEY, generated)
+      return generated
+    } catch {
+      return `s-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+    }
+  })
   
   // Load initial messages from localStorage
   const [messages, setMessages] = useState(() => {
@@ -498,6 +679,18 @@ export const AiChatWidget = ({ pendingOpen = false, onPendingOpenHandled }) => {
     }
   }, [messages, isTyping, showScrollDown])
 
+  // Mark global presence so pages can avoid double-mounting the widget
+  useEffect(() => {
+    try {
+      window.__AI_WIDGET_PRESENT = true
+    } catch (e) {}
+    return () => {
+      try {
+        delete window.__AI_WIDGET_PRESENT
+      } catch (e) {}
+    }
+  }, [])
+
   const handleScroll = () => {
     if (!scrollRef.current || scrollRafRef.current) return
 
@@ -526,6 +719,11 @@ export const AiChatWidget = ({ pendingOpen = false, onPendingOpenHandled }) => {
     const resetState = [DEFAULT_WELCOME]
     setMessages(resetState)
     localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(resetState))
+    try {
+      const generated = `s-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+      localStorage.setItem(CHAT_SESSION_KEY, generated)
+      setSessionId(generated)
+    } catch (e) {}
     setIsTyping(false)
   }
 
@@ -561,11 +759,16 @@ export const AiChatWidget = ({ pendingOpen = false, onPendingOpenHandled }) => {
     setShowScrollDown(false)
 
     try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      const headers = { 'Content-Type': 'application/json' }
+      if (token) headers.Authorization = `Bearer ${token}`
+
       const response = await fetch(`${API_URL}/ai/chat`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ 
           message: messageToSend,
+          session_id: sessionId,
           history: recentServerHistory,
           model: "gpt-oss:120b-cloud",
           enable_tools: true,
@@ -583,8 +786,10 @@ export const AiChatWidget = ({ pendingOpen = false, onPendingOpenHandled }) => {
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
       let assistantContent = ''
+      let thinkingContent = ''
       let rawBuffer = ''
       let toolCalls = []
+      let serverToolResults = []
       let lastUiUpdateAt = 0
 
       const applyAssistantContent = (force = false) => {
@@ -595,7 +800,7 @@ export const AiChatWidget = ({ pendingOpen = false, onPendingOpenHandled }) => {
         setMessages(prev => {
           if (!prev.length) return prev
           const newMessages = [...prev]
-          newMessages[newMessages.length - 1] = { role: 'assistant', content: assistantContent }
+          newMessages[newMessages.length - 1] = { role: 'assistant', content: assistantContent, thinking: thinkingContent || undefined }
           return newMessages
         })
       }
@@ -625,16 +830,30 @@ export const AiChatWidget = ({ pendingOpen = false, onPendingOpenHandled }) => {
             assistantContent += data.text
           }
 
+          if (data.type === 'thinking' && typeof data.text === 'string') {
+            thinkingContent += data.text
+          }
+
           if (data.type === 'meta') {
             if (typeof data.assistant_text === 'string' && data.assistant_text.length > 0) {
               assistantContent = data.assistant_text
             }
+            if (typeof data.thinking_text === 'string' && data.thinking_text.length > 0) {
+              thinkingContent = data.thinking_text
+            }
             if (Array.isArray(data.tool_calls)) {
               toolCalls = data.tool_calls
             }
+            if (Array.isArray(data.tool_results)) {
+              serverToolResults = data.tool_results
+            }
+            if (typeof data.session_id === 'string' && data.session_id.trim()) {
+              setSessionId(data.session_id)
+              try { localStorage.setItem(CHAT_SESSION_KEY, data.session_id) } catch (e) {}
+            }
           }
 
-          if (data.type === 'chunk' || data.type === 'meta') {
+          if (data.type === 'chunk' || data.type === 'thinking' || data.type === 'meta') {
             applyAssistantContent(false)
           }
         }
@@ -651,6 +870,13 @@ export const AiChatWidget = ({ pendingOpen = false, onPendingOpenHandled }) => {
           }
           return prev
         })
+      }
+
+      if (serverToolResults.length > 0 && !hasTextContent(assistantContent)) {
+        const serverToolFeedback = buildActionFeedback(serverToolResults)
+        if (serverToolFeedback) {
+          setMessages(prev => [...prev.slice(-(MAX_MESSAGES - 1)), { role: 'assistant', content: serverToolFeedback }])
+        }
       }
 
       if (toolCalls.length > 0) {
@@ -673,6 +899,41 @@ export const AiChatWidget = ({ pendingOpen = false, onPendingOpenHandled }) => {
           }
         } catch (e) {
           // ignore any detection errors
+        }
+
+        // Build a compact "thinking" trace for navigation/tool execution steps
+        try {
+          const thinkingSteps = Array.isArray(toolResults)
+            ? toolResults.map((r, i) => {
+                const name = r?.action || r?.name || 'tool'
+                const summary = (r && (r.actionSummary || (r.ok ? 'Thực hiện thành công' : r.reason))) || ''
+                const tentativeFlag = r?.tentative ? ' (gợi ý)' : ''
+                let extras = ''
+                if (r && r.confidence != null) extras = ` (confidence: ${Number(r.confidence).toFixed(2)})`
+                return `${i + 1}. ${name}${tentativeFlag} → ${summary}${extras}`
+              }).join('\n')
+            : ''
+
+          const markers = Array.isArray(toolResults)
+            ? toolResults
+              .filter((r) => r && (r.action || r.name))
+              .map((r) => {
+                const action = r.action || r.name || 'tool'
+                const type = /highlight/.test(action) ? 'highlight' : (/navigate|search_content|open_and_focus|scroll/.test(action) ? 'navigate' : 'tool')
+                return {
+                  type,
+                  action,
+                  label: type === 'highlight' ? 'Đánh dấu phần tử' : (type === 'navigate' ? 'Điều hướng/cuộn trang' : action),
+                  detail: r.actionSummary || '',
+                }
+              })
+            : []
+
+          if (thinkingSteps) {
+            setMessages(prev => [...prev.slice(-(MAX_MESSAGES - 1)), { role: 'assistant', content: '', thinking: thinkingSteps, markers }])
+          }
+        } catch (e) {
+          // ignore thinking trace failures
         }
 
         const actionFeedback = buildActionFeedback(toolResults)
@@ -702,24 +963,32 @@ export const AiChatWidget = ({ pendingOpen = false, onPendingOpenHandled }) => {
   }
 
   if (!isOpen) return (
-    <div className="fixed right-3 z-[140] sm:right-4 md:right-6" style={{ bottom: floatingBottom }}>
+    <div className="fixed right-3 z-[5100] sm:right-4 md:right-6" style={{ bottom: floatingBottom }}>
       <button
         onClick={() => setIsOpen(true)}
-        className="tap-target group relative flex h-14 w-14 items-center justify-center rounded-[1.15rem] border border-white/65 bg-gradient-to-br from-fpt-orange via-orange-500 to-amber-500 p-0 text-white shadow-[0_24px_52px_-16px_rgba(242,112,36,0.75)] ring-4 ring-orange-200/60 transition-all duration-300 hover:scale-110 hover:shadow-[0_30px_64px_-14px_rgba(242,112,36,0.95)] hover:ring-orange-300/80 active:scale-95 sm:h-16 sm:w-16 sm:rounded-[1.25rem]"
+        className="tap-target group relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-fpt-orange via-orange-500 to-amber-500 p-0 text-white shadow-[0_16px_48px_-12px_rgba(242,112,36,0.7)] transition-all duration-300 hover:scale-110 hover:shadow-[0_24px_64px_-8px_rgba(242,112,36,0.9)] active:scale-95 sm:h-16 sm:w-16"
         aria-label="Mở trợ lý AI"
       >
-        <span className="pointer-events-none absolute -inset-1 rounded-[1.35rem] border border-orange-200/75" />
-        <span className="pointer-events-none absolute -inset-3 rounded-[1.8rem] bg-orange-400/30 blur-md animate-pulse" />
-        <span className="pointer-events-none absolute -inset-5 hidden rounded-[2rem] border border-orange-300/40 sm:block animate-ping" />
+        {/* Breathing glow effect */}
+        <span className="pointer-events-none absolute -inset-3 rounded-full bg-gradient-to-r from-orange-400 via-fpt-orange to-amber-400 opacity-40 blur-xl animate-[breathe_3s_ease-in-out_infinite]" />
+        
+        {/* Subtle ring */}
+        <span className="pointer-events-none absolute -inset-1 rounded-full border border-white/20" />
+        
+        {/* Glass highlight */}
+        <span className="pointer-events-none absolute inset-0 rounded-full bg-gradient-to-b from-white/25 via-white/5 to-transparent" />
 
-        <Sparkles size={30} className="relative z-10 transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110" />
+        {/* Icon */}
+        <Sparkles
+          size={26}
+          className="relative z-10 drop-shadow-[0_2px_6px_rgba(0,0,0,0.2)] transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12 sm:h-7 sm:w-7"
+          strokeWidth={2}
+        />
 
-        <span className="pointer-events-none absolute -right-1 -top-1 rounded-full bg-fpt-blue px-2 py-1 text-[9px] font-black uppercase tracking-wider text-white shadow-[0_8px_18px_-8px_rgba(29,42,87,0.8)]">
-          AI
-        </span>
-
-        <span className="pointer-events-none absolute -left-[7.8rem] top-1/2 hidden -translate-y-1/2 whitespace-nowrap rounded-xl border border-orange-100 bg-white px-4 py-2 text-[11px] font-black text-fpt-orange shadow-[0_20px_36px_-18px_rgba(15,23,42,0.45)] transition-all duration-300 group-hover:-translate-x-1 lg:block">
+        {/* Tooltip */}
+        <span className="pointer-events-none absolute -left-[8rem] top-1/2 hidden -translate-y-1/2 whitespace-nowrap rounded-xl bg-white/95 px-4 py-2 text-[11px] font-bold text-fpt-orange shadow-lg backdrop-blur-sm transition-all duration-200 group-hover:-translate-x-1 lg:block">
           Chat với AI
+          <span className="absolute right-0 top-1/2 h-2 w-2 -translate-y-1/2 translate-x-1/2 rotate-45 bg-white/95" />
         </span>
       </button>
     </div>
@@ -727,7 +996,7 @@ export const AiChatWidget = ({ pendingOpen = false, onPendingOpenHandled }) => {
 
   return (
     <div className={cn(
-      'fixed z-[120] flex flex-col transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]',
+      'fixed z-[5001] flex flex-col transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]',
       isFullscreen ? 'inset-0' : (isMobile ? 'left-0 right-0 px-3' : 'right-3 sm:right-4 md:right-6'),
       isMinimized
         ? 'h-16 w-[min(82vw,320px)]'
@@ -766,11 +1035,11 @@ export const AiChatWidget = ({ pendingOpen = false, onPendingOpenHandled }) => {
                 "font-bold leading-none tracking-tight text-white",
                 (isMinimized || isMobile) ? "text-sm" : "text-lg"
               )}>
-                FPT Education AI
+                Trợ lý AI Tổ Xã Hội
               </span>
               {!isMinimized && (
                 <span className="mt-1.5 text-[11px] font-bold text-blue-200/80 uppercase tracking-widest">
-                  Online & Intelligent
+                  Online & sẵn sàng hỗ trợ
                 </span>
               )}
             </div>
@@ -847,6 +1116,12 @@ export const AiChatWidget = ({ pendingOpen = false, onPendingOpenHandled }) => {
                     isMobile ? 'max-w-[92%]' : 'max-w-[82%]',
                     msg.role === 'user' ? 'items-end' : 'items-start'
                   )}>
+                    {msg.role === 'assistant' && msg.thinking && (
+                      <ThinkingBlock thinking={msg.thinking} isMobile={isMobile} />
+                    )}
+                    {msg.role === 'assistant' && Array.isArray(msg.markers) && msg.markers.length > 0 && (
+                      <ToolMarkerBlock markers={msg.markers} isMobile={isMobile} />
+                    )}
                     <div className={cn(
                       'relative shadow-[0_2px_10px_-4px_rgba(0,0,0,0.1)] transition-all',
                       isMobile ? 'px-3 py-2 text-sm' : 'px-4 py-3 text-sm leading-relaxed',
@@ -859,7 +1134,7 @@ export const AiChatWidget = ({ pendingOpen = false, onPendingOpenHandled }) => {
                       <MarkdownMessage content={msg.content} role={msg.role} navigate={navigate} isMobile={isMobile} />
                     </div>
                     <span className={cn('font-bold uppercase tracking-wider text-slate-400 px-1', isMobile ? 'text-[8px]' : 'text-[9px]')}>
-                      {msg.role === 'user' ? 'Sinh viên' : msg.role === 'assistant' ? 'AI Assistant' : ''}
+                      {msg.role === 'user' ? 'Sinh viên' : msg.role === 'assistant' ? 'Trợ lý AI' : ''}
                     </span>
                   </div>
                 </div>

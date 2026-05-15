@@ -16,6 +16,18 @@ const toastBase = {
 }
 
 export const extractErrorMessage = (error, fallback = 'Có lỗi xảy ra. Vui lòng thử lại.') => {
+  // Treat cancellation/abort-like errors as non-actionable (return fallback)
+  const isCancelLike = (e) => {
+    if (!e) return false
+    if (typeof e === 'string') {
+      return /\b(cancel|canceled|cancelled|abort|aborted|err_canceled|cancelederror)\b/i.test(e)
+    }
+    const msg = String(e?.message || e?.code || e?.name || '')
+    return /\b(cancel|canceled|cancelled|abort|aborted|err_canceled|cancelederror)\b/i.test(msg)
+  }
+
+  if (isCancelLike(error)) return fallback
+
   const detail = error?.response?.data?.detail
   if (Array.isArray(detail)) {
     return detail.map((x) => x?.msg).filter(Boolean).join(', ') || fallback
@@ -32,8 +44,19 @@ export const showToast = (icon = 'info', title = '') => Swal.fire({
 })
 
 export const toastSuccess = (title) => showToast('success', title)
-export const toastError = (title) => showToast('error', title)
-export const toastInfo = (title) => showToast('info', title)
+export const toastError = (title) => {
+  // Avoid showing toasts for cancellation/abort-like messages
+  if (!title) return
+  const s = typeof title === 'string' ? title : String(title)
+  if (/\b(cancel|canceled|cancelled|abort|aborted|err_canceled|cancelederror)\b/i.test(s)) return
+  return showToast('error', title)
+}
+export const toastInfo = (title) => {
+  if (!title) return
+  const s = typeof title === 'string' ? title : String(title)
+  if (/\b(cancel|canceled|cancelled|abort|aborted|err_canceled|cancelederror)\b/i.test(s)) return
+  return showToast('info', title)
+}
 
 export const showApiError = (error, fallback) => {
   const message = extractErrorMessage(error, fallback)

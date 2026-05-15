@@ -61,6 +61,37 @@ const KNOWN_TAB_HINTS = [
     text: 'Nộp bài dự thi',
     source: 'manual-tab-hint',
   },
+  // Manual hints for new 'cuộc thi' content type per subject
+  {
+    route: '/phanmon/van/cuoc-thi',
+    kind: 'label',
+    text: 'Danh sách cuộc thi',
+    source: 'manual-tab-hint',
+  },
+  {
+    route: '/phanmon/ktpl/cuoc-thi',
+    kind: 'label',
+    text: 'Danh sách cuộc thi',
+    source: 'manual-tab-hint',
+  },
+  {
+    route: '/phanmon/lich-su/cuoc-thi',
+    kind: 'label',
+    text: 'Danh sách cuộc thi',
+    source: 'manual-tab-hint',
+  },
+  {
+    route: '/phanmon/dia-li/cuoc-thi',
+    kind: 'label',
+    text: 'Danh sách cuộc thi',
+    source: 'manual-tab-hint',
+  },
+  {
+    route: '/phanmon/vovinam/cuoc-thi',
+    kind: 'label',
+    text: 'Danh sách cuộc thi',
+    source: 'manual-tab-hint',
+  },
 ]
 
 const CODEY_TOKENS = [

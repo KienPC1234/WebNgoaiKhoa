@@ -3,7 +3,7 @@ node_modules/
 dist/
 build/
 .eslintcache
-
+backups/
 # Python
 __pycache__/
 *.py[cod]
@@ -15,6 +15,7 @@ venv/
 ENV/
 env/
 .conda/
+.pytest_cache
 
 # Logs
 *.log
@@ -23,3 +24,14 @@ env/
 # OS
 .DS_Store
 Thumbs.db
+*.jpg
+*.jpeg
+*.png
+*.woff2
+*.sql
+*.bin
+*.sqlite3
+nohup.out
+.backend_pid
+qdrant_storage
+backend/uploads

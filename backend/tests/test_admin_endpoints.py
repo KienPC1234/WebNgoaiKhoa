@@ -139,6 +139,17 @@ def test_admin_overview_returns_ai_and_activity(client, admin_headers):
     assert "recent_activity" in payload
 
 
+def test_admin_uploads_images_get_compat(client, admin_headers):
+    response = client.get("/api/admin/uploads/images?context=cover", headers=admin_headers)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["method"] == "GET"
+    assert payload["upload_method"] == "POST"
+    assert payload["context"] == "cover"
+    assert isinstance(payload["items"], list)
+
+
 def test_ai_knowledge_upload_list_delete_flow(client, admin_headers):
     upload_res = client.post(
         "/api/admin/ai-knowledge/upload",

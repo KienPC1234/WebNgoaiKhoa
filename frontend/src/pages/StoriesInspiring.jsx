@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Card } from '@/components/ui/core'
 import { Heart, User, Clock, ArrowRight, Quote, Sparkles } from 'lucide-react'
-import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 
 const API_URL = import.meta.env.VITE_API_URL || '/api'
@@ -43,30 +42,17 @@ export const StoriesInspiring = () => {
         <div className="page-shell-public bg-gray-50/50">
             <section className="page-hero page-hero-caro text-slate-700">
                 <div className="max-w-6xl mx-auto relative z-10 text-center space-y-8">
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="inline-flex items-center gap-2 bg-white/90 px-6 py-2 rounded-full text-xs font-black uppercase tracking-[0.3em] border border-orange-200 shadow-xl"
-                    >
+                    <div className="inline-flex items-center gap-2 bg-white/90 px-6 py-2 rounded-full text-xs font-black uppercase tracking-[0.3em] border border-orange-200 shadow-xl animate-[fadeInStories_260ms_ease-out]">
                         <Heart size={16} className="text-fpt-orange fill-fpt-orange" />
                         <span>Chạm tới trái tim</span>
-                    </motion.div>
-                    <motion.h1
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="text-6xl md:text-8xl font-black italic leading-tight uppercase text-fpt-blue"
-                    >
+                    </div>
+                    <h1 className="text-6xl md:text-8xl font-black italic leading-tight uppercase text-fpt-blue animate-[fadeInStories_320ms_ease-out]">
                         CÂU CHUYỆN <br />
                         <span className="text-transparent bg-clip-text bg-gradient-to-r from-fpt-orange to-orange-500 not-italic inline-block pt-1 md:pt-2 gradient-text-fix">TRUYỀN CẢM HỨNG</span>
-                    </motion.h1>
-                    <motion.p
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.2 }}
-                        className="text-xl text-slate-500 max-w-3xl mx-auto font-medium leading-relaxed italic"
-                    >
+                    </h1>
+                    <p className="text-xl text-slate-500 max-w-3xl mx-auto font-medium leading-relaxed italic animate-[fadeInStories_420ms_ease-out]">
                         Lắng nghe những chia sẻ thật chân thành về hành trình trưởng thành và khám phá bản thân tại Tổ Xã hội.
-                    </motion.p>
+                    </p>
                 </div>
             </section>
 
@@ -79,13 +65,7 @@ export const StoriesInspiring = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                     {!loading && stories.map((story, i) => (
-                        <motion.div
-                            key={story.id}
-                            initial={{ opacity: 0, y: 20 }}
-                            whileInView={{ opacity: 1, y: 0 }}
-                            transition={{ delay: i * 0.1 }}
-                            viewport={{ once: true }}
-                        >
+                        <div key={story.id} className="animate-[fadeInStories_260ms_ease-out]" style={{ animationDelay: `${Math.min(i * 80, 360)}ms` }}>
                             <Card className="p-0 border border-white/60 bg-white/95 backdrop-blur shadow-[0_22px_60px_-35px_rgba(15,23,42,0.35)] rounded-[32px] overflow-hidden group hover:-translate-y-2 transition-all duration-500 flex flex-col h-full">
                                 <div className="relative aspect-video overflow-hidden">
                                     <img src={story.image_url} alt={story.title} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110" />
@@ -118,7 +98,7 @@ export const StoriesInspiring = () => {
                                     </div>
                                 </div>
                             </Card>
-                        </motion.div>
+                        </div>
                     ))}
                 </div>
 
@@ -144,6 +124,7 @@ export const StoriesInspiring = () => {
                     </div>
                 </section>
             </div>
+            <style>{`@keyframes fadeInStories { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }`}</style>
         </div>
     )
 }

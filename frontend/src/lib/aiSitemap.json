@@ -1,0 +1,66 @@
+[
+  {
+    "path": "/",
+    "title": "Trang chủ"
+  },
+  {
+    "path": "/doingu/scale",
+    "title": "Quy mô"
+  },
+  {
+    "path": "/doingu/staff",
+    "title": "Đội ngũ"
+  },
+  {
+    "path": "/events/upcoming",
+    "title": "Sự kiện sắp tới"
+  },
+  {
+    "path": "/stories/inspiring",
+    "title": "Câu chuyện truyền cảm hứng"
+  },
+  {
+    "path": "/doingu/honors",
+    "title": "Vinh danh và giải thưởng"
+  },
+  {
+    "path": "/phanmon/van",
+    "title": "Phân môn Ngữ văn"
+  },
+  {
+    "path": "/phanmon/ktpl",
+    "title": "Phân môn Kinh tế pháp luật"
+  },
+  {
+    "path": "/phanmon/lich-su",
+    "title": "Phân môn Lịch sử"
+  },
+  {
+    "path": "/phanmon/dia-li",
+    "title": "Phân môn Địa lí"
+  },
+  {
+    "path": "/phanmon/vovinam",
+    "title": "Phân môn Vovinam"
+  },
+  {
+    "path": "/phanmon/van/cuoc-thi",
+    "title": "Cuộc thi - Ngữ văn"
+  },
+  {
+    "path": "/phanmon/ktpl/cuoc-thi",
+    "title": "Cuộc thi - Kinh tế pháp luật"
+  },
+  {
+    "path": "/phanmon/lich-su/cuoc-thi",
+    "title": "Cuộc thi - Lịch sử"
+  },
+  {
+    "path": "/phanmon/dia-li/cuoc-thi",
+    "title": "Cuộc thi - Địa lí"
+  },
+  {
+    "path": "/phanmon/vovinam/cuoc-thi",
+    "title": "Cuộc thi - Vovinam"
+  }
+]

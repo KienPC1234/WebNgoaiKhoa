@@ -8,6 +8,10 @@ from app.models.publication import (
     Story,
     Submission,
     SubmissionVote,
+    StaffReaction,
+    PublicationViewEvent,
+    PublicationFavorite,
+    PublicationVote,
 )
 import pymysql
 import os
@@ -16,6 +20,7 @@ from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import sessionmaker
 from app.db.session import Base
 from app.models.user import User, UserRole
+from app.models.role import Role
 from passlib.context import CryptContext
 from datetime import datetime, timezone, timedelta
 
@@ -81,6 +86,14 @@ def init_database():
             statements.append("ALTER TABLE publications ADD COLUMN featured_year VARCHAR(20) NULL")
         if "layout_metadata" not in pub_columns:
             statements.append("ALTER TABLE publications ADD COLUMN layout_metadata JSON NULL")
+        if "comments_enabled" not in pub_columns:
+            statements.append("ALTER TABLE publications ADD COLUMN comments_enabled TINYINT(1) NOT NULL DEFAULT 1")
+        if "view_count" not in pub_columns:
+            statements.append("ALTER TABLE publications ADD COLUMN view_count INT NOT NULL DEFAULT 0")
+        if "favorites_count" not in pub_columns:
+            statements.append("ALTER TABLE publications ADD COLUMN favorites_count INT NOT NULL DEFAULT 0")
+        if "votes_count" not in pub_columns:
+            statements.append("ALTER TABLE publications ADD COLUMN votes_count INT NOT NULL DEFAULT 0")
         if "layout_metadata" not in story_columns:
             statements.append("ALTER TABLE stories ADD COLUMN layout_metadata JSON NULL")
 
@@ -96,6 +109,8 @@ def init_database():
             statements.append("ALTER TABLE users ADD COLUMN is_subscribed BOOLEAN NOT NULL DEFAULT 1")
         if "attachment_url" not in submission_columns:
             statements.append("ALTER TABLE submissions ADD COLUMN attachment_url VARCHAR(500) NULL")
+        if "rejection_reason" not in submission_columns:
+            statements.append("ALTER TABLE submissions ADD COLUMN rejection_reason TEXT NULL")
         if "linked_post_id" not in event_columns:
             statements.append("ALTER TABLE events ADD COLUMN linked_post_id INT NULL")
 
@@ -106,8 +121,9 @@ def init_database():
             print("Legacy publication schema upgraded.")
 
         with engine.begin() as conn:
-            conn.execute(text("UPDATE publications SET subject = category WHERE subject IS NULL OR subject = ''"))
-            conn.execute(text("UPDATE publications SET category = subject WHERE category IS NULL OR category = ''"))
+            if "category" in pub_columns:
+                conn.execute(text("UPDATE publications SET subject = category WHERE subject IS NULL OR subject = ''"))
+                conn.execute(text("UPDATE publications SET category = subject WHERE category IS NULL OR category = ''"))
             conn.execute(text("UPDATE publications SET content_type = 'an-pham' WHERE content_type IS NULL OR content_type = ''"))
             conn.execute(text("UPDATE users SET is_subscribed = 1 WHERE is_subscribed IS NULL"))
     except Exception as e:
@@ -116,6 +132,23 @@ def init_database():
     # 3. Seed Demo Admin User
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     db = SessionLocal()
+    try:
+        # Seed default roles if not present
+        existing_roles = db.query(Role).count()
+        if existing_roles == 0:
+            print("Seeding default roles...")
+            default_roles = [
+                Role(slug='admin', name='Admin hệ thống', permissions=['admin', 'admin_panel', 'user_manage', 'auth_audit', 'ai_knowledge', 'content_manage', 'submission_review'], built_in=True),
+                Role(slug='website_manager', name='Quản lý website', permissions=['admin_panel', 'content_manage'], built_in=True),
+                Role(slug='submission_judge', name='Người chấm bài', permissions=['admin_panel', 'submission_review'], built_in=True),
+                Role(slug='teacher', name='Giáo viên', permissions=['public_user'], built_in=True),
+                Role(slug='student', name='Học sinh/sinh viên', permissions=['public_user'], built_in=True),
+            ]
+            db.add_all(default_roles)
+            db.commit()
+            print("Default roles seeded.")
+    except Exception as e:
+        print(f"Warning: failed to seed default roles: {e}")
     try:
         admin_email = "admin@webngoaikhoa.edu.vn"
         admin = db.query(User).filter(User.email == admin_email).first()
@@ -133,14 +166,9 @@ def init_database():
             db.commit()
             print("Admin user created.")
         else:
-            # If existing admin hash is not using pbkdf2_sha256, replace it with the demo password hash
             existing_hash = (admin.hashed_password or "")
             if not existing_hash.startswith("$pbkdf2-sha256$"):
-                print("Admin exists but password hash uses an unsupported scheme. Resetting to demo password...")
-                admin.hashed_password = get_password_hash("admin123")
-                db.add(admin)
-                db.commit()
-                print("Admin password reset to demo credentials.")
+                print("WARNING: Admin password hash uses an unsupported scheme. Please reset password manually via admin panel or API.")
             else:
                 print("Admin user already exists with compatible password hash.")
             admin.email_verified = True
@@ -261,7 +289,7 @@ def init_database():
         if db.query(SocialScale).count() == 0:
             print("Seeding social scale profile...")
             scale = SocialScale(
-                hero_title="Tổ xã hội - Quy mô & phát triển",
+                hero_title="Quy mô & phát triển",
                 hero_subtitle="Deep learning with love - Kết nối tri thức xã hội trong môi trường số.",
                 vision="Phát triển năng lực công dân toàn cầu cho học sinh sinh viên thông qua các phân môn xã hội và hoạt động liên ngành.",
                 subjects_overview="Ngữ Văn, Kinh tế pháp luật, Lịch sử, Địa lí, Vovinam",
@@ -285,15 +313,17 @@ def init_database():
                     bio="Hơn 15 năm kinh nghiệm giảng dạy và nghiên cứu văn học hiện đại.",
                     expertise="Văn học hiện đại",
                     image_url="https://i.pravatar.cc/300?u=staff-a",
+                    tier='management',
                     display_order=1,
                     is_active=True,
                 ),
                 StaffProfile(
                     full_name="TS. Trần Thị B",
-                    title="Giảng viên Lịch sử",
+                    title="Giáo viên Lịch sử",
                     bio="Chuyên gia về lịch sử bang giao quốc tế và văn hóa Việt Nam.",
                     expertise="Lịch sử và văn hóa",
                     image_url="https://i.pravatar.cc/300?u=staff-b",
+                    tier='instructor',
                     display_order=2,
                     is_active=True,
                 ),
@@ -303,15 +333,17 @@ def init_database():
                     bio="Võ sư trung đẳng, tâm huyết với sự nghiệp phát triển võ thuật học đường.",
                     expertise="Vovinam",
                     image_url="https://i.pravatar.cc/300?u=staff-c",
+                    tier='instructor',
                     display_order=3,
                     is_active=True,
                 ),
                 StaffProfile(
                     full_name="ThS. Phạm Thị D",
-                    title="Giảng viên Địa lí",
+                    title="Giáo viên Địa lí",
                     bio="Nghiên cứu sâu về biến đổi khí hậu và quy hoạch vùng.",
                     expertise="Địa lí ứng dụng",
                     image_url="https://i.pravatar.cc/300?u=staff-d",
+                    tier='instructor',
                     display_order=4,
                     is_active=True,
                 ),

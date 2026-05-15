@@ -1,10 +1,9 @@
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
-import { AnimatePresence, motion } from 'framer-motion'
-import { lazy, Suspense, useEffect, useState } from 'react'
-import AOS from 'aos'
-import 'aos/dist/aos.css'
-import { AdminPostDesigner } from '@/pages/Admin/PostDesigner'
-import { NotificationPermissionPrompt } from '@/components/NotificationPermissionPrompt'
+import { BrowserRouter, Routes, Route, Navigate, useLocation, Outlet } from 'react-router-dom'
+import { lazy, Suspense, useEffect, useState, useMemo } from 'react'
+import { refreshAuthOverview, getRolesWithPermission, roleHasPermission } from '@/lib/rolePolicy'
+import MediaLibraryProvider from '@/lib/mediaLibrary'
+import { GoogleOAuthProvider } from '@react-oauth/google'
+
 
 const MissingLazyComponent = ({ componentName }) => (
   <div className="p-6 text-sm font-semibold text-red-600">
@@ -29,6 +28,7 @@ const lazyNamed = (importer, name) =>
 
 const MainLayout = lazyNamed(() => import('@/layouts/MainLayout'), 'MainLayout')
 const AdminLayout = lazyNamed(() => import('@/layouts/AdminLayout'), 'AdminLayout')
+const NotificationPermissionPrompt = lazyNamed(() => import('@/components/NotificationPermissionPrompt'), 'NotificationPermissionPrompt')
 
 const Home = lazyNamed(() => import('@/pages/Home'), 'Home')
 const PhanMonVan = lazyNamed(() => import('@/pages/PhanMonVan'), 'PhanMonVan')
@@ -39,6 +39,7 @@ const PhanMonVovinam = lazyNamed(() => import('@/pages/PhanMonVovinam'), 'PhanMo
 const GioiThieuQuyMo = lazyNamed(() => import('@/pages/GioiThieuQuyMo'), 'GioiThieuQuyMo')
 const GioiThieuDoiNgu = lazyNamed(() => import('@/pages/GioiThieuDoiNgu'), 'GioiThieuDoiNgu')
 const EventsUpcoming = lazyNamed(() => import('@/pages/EventsUpcoming'), 'EventsUpcoming')
+const News = lazyNamed(() => import('@/pages/News'), 'News')
 const StoriesInspiring = lazyNamed(() => import('@/pages/StoriesInspiring'), 'StoriesInspiring')
 const StoryDetail = lazyNamed(() => import('@/pages/StoryDetail'), 'StoryDetail')
 const SubjectContentHub = lazyNamed(() => import('@/pages/SubjectContentHub'), 'SubjectContentHub')
@@ -47,7 +48,9 @@ const PublicPostDetail = lazyNamed(() => import('@/pages/PublicPostDetail'), 'Pu
 const Login = lazyNamed(() => import('@/pages/Login'), 'Login')
 const Register = lazyNamed(() => import('@/pages/Register'), 'Register')
 const Profile = lazyNamed(() => import('@/pages/Profile'), 'Profile')
+const ProfilePublic = lazyNamed(() => import('@/pages/ProfilePublic'), 'ProfilePublic')
 const VerifyEmail = lazyNamed(() => import('@/pages/VerifyEmail'), 'VerifyEmail')
+const ForgotPassword = lazyNamed(() => import('@/pages/ForgotPassword'), 'ForgotPassword')
 
 const AdminDashboard = lazyNamed(() => import('@/pages/Admin/Dashboard'), 'AdminDashboard')
 const AdminNhanVatCMS = lazyNamed(() => import('@/pages/Admin/NhanVatCMS'), 'AdminNhanVatCMS')
@@ -59,39 +62,90 @@ const AdminUsers = lazyNamed(() => import('@/pages/Admin/Users'), 'AdminUsers')
 const AdminAIKnowledge = lazyNamed(() => import('@/pages/Admin/AIKnowledge'), 'AdminAIKnowledge')
 const AdminCMSEditorFramework = lazyNamed(() => import('@/pages/Admin/CMSEditorFramework'), 'AdminCMSEditorFramework')
 const AdminAuthOverview = lazyNamed(() => import('@/pages/Admin/AuthOverview'), 'AuthOverview')
+const AdminSiteTexts = lazyNamed(() => import('@/pages/Admin/SiteTexts'), 'AdminSiteTexts')
+const AdminComments = lazyNamed(() => import('@/pages/Admin/Comments'), 'AdminComments')
+const AdminPostDesigner = lazyNamed(() => import('@/pages/Admin/PostDesigner'), 'AdminPostDesigner')
+const AdminContests = lazyNamed(() => import('@/pages/Admin/Contests'), 'AdminContests')
+const ContestListPage = lazyNamed(() => import('@/pages/ContestListPage'), 'ContestListPage')
+const ContestDetailPage = lazyNamed(() => import('@/pages/ContestDetailPage'), 'ContestDetailPage')
+const DieuKhoanSuDung = lazyNamed(() => import('@/pages/DieuKhoanSuDung'), 'DieuKhoanSuDung')
+const ChinhSachBaoMat = lazyNamed(() => import('@/pages/ChinhSachBaoMat'), 'ChinhSachBaoMat')
 
-const ADMIN_PANEL_ROLES = new Set(['admin', 'website_manager', 'submission_judge'])
-const WEBSITE_MANAGER_ROLES = new Set(['admin', 'website_manager'])
-const SUBMISSION_REVIEW_ROLES = new Set(['admin', 'submission_judge'])
+let aosLoaderPromise
+
+const loadAOSIfNeeded = async () => {
+  if (typeof window === 'undefined') return null
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) return null
+
+  if (!aosLoaderPromise) {
+    aosLoaderPromise = Promise.all([
+      import('aos'),
+      import('aos/dist/aos.css'),
+    ])
+      .then(([aosModule]) => {
+        const AOS = aosModule?.default || aosModule
+        AOS.init({
+          duration: 680,
+          once: true,
+          easing: 'ease-out-cubic',
+          mirror: false,
+          offset: 40,
+        })
+        return AOS
+      })
+      .catch(() => null)
+  }
+
+  const aosInstance = await aosLoaderPromise
+  if (aosInstance?.refreshHard) aosInstance.refreshHard()
+  return aosInstance
+}
+
+// Role/permission sets are computed dynamically from server-driven policy via `rolePolicy`.
+
+const GOOGLE_OAUTH_CLIENT_ID = import.meta.env.VITE_GOOGLE_OAUTH_CLIENT_ID || ''
+
+/**
+ * Wraps auth routes (Login, Register) in a single GoogleOAuthProvider
+ * so the Google Identity Services script is only initialized once,
+ * avoiding the "google.accounts.id.initialize() is called multiple times" warning.
+ */
+const AuthRoutesWrapper = () => {
+  const content = <Outlet />
+  if (!GOOGLE_OAUTH_CLIENT_ID) return content
+  return (
+    <GoogleOAuthProvider clientId={GOOGLE_OAUTH_CLIENT_ID}>
+      {content}
+    </GoogleOAuthProvider>
+  )
+}
 
 const PageWrapper = ({ children }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 10 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, y: -10 }}
-    transition={{ duration: 0.3, ease: 'easeOut' }}
-  >
+  <div className="animate-[fadeInPage_220ms_ease-out]">
     {children}
-  </motion.div>
+  </div>
 )
 
 
 const AnimatedRoutes = () => {
-  const location = useLocation()
+  useLocation()
   
   return (
-    <AnimatePresence mode="wait">
-      <Routes location={location} key={location.pathname}>
+      <Routes>
         <Route path="/" element={<MainLayout />}>
           <Route index element={<PageWrapper><Home /></PageWrapper>} />
 
           <Route path="doingu/scale" element={<PageWrapper><GioiThieuQuyMo /></PageWrapper>} />
             <Route path="doingu/staff" element={<PageWrapper><GioiThieuDoiNgu /></PageWrapper>} />
           <Route path="events/upcoming" element={<PageWrapper><EventsUpcoming /></PageWrapper>} />
+          <Route path="news" element={<PageWrapper><News /></PageWrapper>} />
           <Route path="stories/inspiring" element={<PageWrapper><StoriesInspiring /></PageWrapper>} />
           <Route path="stories/inspiring/:storyId" element={<PageWrapper><StoryDetail /></PageWrapper>} />
           <Route path="posts/:postId" element={<PageWrapper><PublicPostDetail /></PageWrapper>} />
           <Route path="doingu/honors" element={<PageWrapper><HonorsYearly /></PageWrapper>} />
+
+          <Route path="cuoc-thi" element={<PageWrapper><ContestListPage /></PageWrapper>} />
+          <Route path="cuoc-thi/:slug" element={<PageWrapper><ContestDetailPage /></PageWrapper>} />
 
           <Route path="phanmon/van" element={<PageWrapper><PhanMonVan /></PageWrapper>} />
           <Route path="phanmon/ktpl" element={<PageWrapper><PhanMonKTPL /></PageWrapper>} />
@@ -110,14 +164,24 @@ const AnimatedRoutes = () => {
           <Route path="doingu/*" element={<Navigate to="/doingu/scale" replace />} />
           <Route path="phanmon/*" element={<Navigate to="/phanmon/van/an-pham" replace />} />
 
+          <Route path="profile/public/:userId" element={<PageWrapper><ProfilePublic /></PageWrapper>} />
+
+          <Route path="dieu-khoan" element={<PageWrapper><DieuKhoanSuDung /></PageWrapper>} />
+          <Route path="bao-mat" element={<PageWrapper><ChinhSachBaoMat /></PageWrapper>} />
+
+          <Route path="profile" element={<UserProtectedRoute><PageWrapper><Profile /></PageWrapper></UserProtectedRoute>} />
+
           <Route path="ngoaikhoa" element={<div className="text-center py-32 text-gray-400 font-black italic uppercase tracking-widest animate-pulse">Trang Hoạt động ngoại khoá đang cập nhật...</div>} />
           <Route path="lienhe" element={<PageWrapper><EventsUpcoming /></PageWrapper>} />
         </Route>
         
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        {/* Auth routes — wrapped in a single GoogleOAuthProvider to avoid double-init */}
+        <Route element={<AuthRoutesWrapper />}>
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+        </Route>
         <Route path="/verify-email" element={<VerifyEmail />} />
-        <Route path="/profile" element={<UserProtectedRoute><Profile /></UserProtectedRoute>} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
 
         {/* Admin Routes */}
         <Route path="/admin/login" element={<Navigate to="/login" replace />} />
@@ -127,31 +191,35 @@ const AnimatedRoutes = () => {
           </ProtectedRoute>
         }>
           <Route path="dashboard" element={<PageWrapper><AdminDashboard /></PageWrapper>} />
-          <Route path="publications" element={<RoleProtectedRoute allowedRoles={WEBSITE_MANAGER_ROLES}><PageWrapper><AdminPublications /></PageWrapper></RoleProtectedRoute>} />
-          <Route path="vinh-danh" element={<RoleProtectedRoute allowedRoles={WEBSITE_MANAGER_ROLES}><PageWrapper><AdminVinhDanh /></PageWrapper></RoleProtectedRoute>} />
-          <Route path="vinh-danh/:subject" element={<RoleProtectedRoute allowedRoles={WEBSITE_MANAGER_ROLES}><PageWrapper><AdminVinhDanh /></PageWrapper></RoleProtectedRoute>} />
-          <Route path="events" element={<RoleProtectedRoute allowedRoles={WEBSITE_MANAGER_ROLES}><PageWrapper><AdminEvents /></PageWrapper></RoleProtectedRoute>} />
-          <Route path="publications/new" element={<RoleProtectedRoute allowedRoles={WEBSITE_MANAGER_ROLES}><PageWrapper><AdminPostDesigner /></PageWrapper></RoleProtectedRoute>} />
-          <Route path="publications/:publicationId/edit" element={<RoleProtectedRoute allowedRoles={WEBSITE_MANAGER_ROLES}><PageWrapper><AdminPostDesigner /></PageWrapper></RoleProtectedRoute>} />
+            <Route path="publications" element={<RoleProtectedRoute allowedRoles={getRolesWithPermission('content_manage')}><PageWrapper><AdminPublications /></PageWrapper></RoleProtectedRoute>} />
+            <Route path="vinh-danh" element={<RoleProtectedRoute allowedRoles={getRolesWithPermission('content_manage')}><PageWrapper><AdminVinhDanh /></PageWrapper></RoleProtectedRoute>} />
+            <Route path="vinh-danh/:subject" element={<RoleProtectedRoute allowedRoles={getRolesWithPermission('content_manage')}><PageWrapper><AdminVinhDanh /></PageWrapper></RoleProtectedRoute>} />
+            <Route path="events" element={<RoleProtectedRoute allowedRoles={getRolesWithPermission('content_manage')}><PageWrapper><AdminEvents /></PageWrapper></RoleProtectedRoute>} />
+          <Route path="contests" element={<RoleProtectedRoute allowedRoles={getRolesWithPermission('content_manage')}><PageWrapper><AdminContests /></PageWrapper></RoleProtectedRoute>} />
+            <Route path="publications/new" element={<RoleProtectedRoute allowedRoles={getRolesWithPermission('content_manage')}><PageWrapper><AdminPostDesigner /></PageWrapper></RoleProtectedRoute>} />
+            <Route path="publications/:publicationId/edit" element={<RoleProtectedRoute allowedRoles={getRolesWithPermission('content_manage')}><PageWrapper><AdminPostDesigner /></PageWrapper></RoleProtectedRoute>} />
           <Route path="cms/stories" element={<Navigate to="/admin/publications" replace />} />
-          <Route path="cms/doingu" element={<RoleProtectedRoute allowedRoles={WEBSITE_MANAGER_ROLES}><PageWrapper><AdminNhanVatCMS /></PageWrapper></RoleProtectedRoute>} />
-          <Route path="cms/submissions" element={<RoleProtectedRoute allowedRoles={SUBMISSION_REVIEW_ROLES}><PageWrapper><AdminSubmissions /></PageWrapper></RoleProtectedRoute>} />
-          <Route path="cms-editor" element={<RoleProtectedRoute allowedRoles={WEBSITE_MANAGER_ROLES}><PageWrapper><AdminCMSEditorFramework /></PageWrapper></RoleProtectedRoute>} />
+          <Route path="cms/doingu" element={<RoleProtectedRoute allowedRoles={getRolesWithPermission('content_manage')}><PageWrapper><AdminNhanVatCMS /></PageWrapper></RoleProtectedRoute>} />
+          <Route path="cms/submissions" element={<RoleProtectedRoute allowedRoles={getRolesWithPermission('submission_review')}><PageWrapper><AdminSubmissions /></PageWrapper></RoleProtectedRoute>} />
+          <Route path="cms-editor" element={<RoleProtectedRoute allowedRoles={getRolesWithPermission('content_manage')}><PageWrapper><AdminCMSEditorFramework /></PageWrapper></RoleProtectedRoute>} />
+          <Route path="homepage" element={<RoleProtectedRoute allowedRoles={getRolesWithPermission('content_manage')}><PageWrapper><AdminSiteTexts /></PageWrapper></RoleProtectedRoute>} />
+          <Route path="site-texts" element={<Navigate to="/admin/homepage" replace />} />
           <Route path="stories" element={<Navigate to="/admin/publications" replace />} />
           <Route path="doingu" element={<Navigate to="/admin/cms/doingu" replace />} />
           <Route path="submissions" element={<Navigate to="/admin/cms/submissions" replace />} />
-          <Route path="users" element={<RoleProtectedRoute allowedRoles={new Set(['admin'])}><PageWrapper><AdminUsers /></PageWrapper></RoleProtectedRoute>} />
-          <Route path="ai-knowledge" element={<RoleProtectedRoute allowedRoles={new Set(['admin'])}><PageWrapper><AdminAIKnowledge /></PageWrapper></RoleProtectedRoute>} />
-          <Route path="auth-overview" element={<RoleProtectedRoute allowedRoles={new Set(['admin'])}><PageWrapper><AdminAuthOverview /></PageWrapper></RoleProtectedRoute>} />
+          <Route path="users" element={<RoleProtectedRoute allowedRoles={getRolesWithPermission('user_manage')}><PageWrapper><AdminUsers /></PageWrapper></RoleProtectedRoute>} />
+          <Route path="ai-knowledge" element={<RoleProtectedRoute allowedRoles={getRolesWithPermission('ai_knowledge')}><PageWrapper><AdminAIKnowledge /></PageWrapper></RoleProtectedRoute>} />
+          <Route path="auth-overview" element={<RoleProtectedRoute allowedRoles={getRolesWithPermission('auth_audit')}><PageWrapper><AdminAuthOverview /></PageWrapper></RoleProtectedRoute>} />
+          <Route path="comments" element={<RoleProtectedRoute allowedRoles={getRolesWithPermission('content_manage')}><PageWrapper><AdminComments /></PageWrapper></RoleProtectedRoute>} />
           <Route index element={<Navigate to="/admin/dashboard" replace />} />
         </Route>
       </Routes>
-    </AnimatePresence>
   )
 }
 
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('token')
+  const location = useLocation()
 
   let role = null
   try {
@@ -161,12 +229,13 @@ const ProtectedRoute = ({ children }) => {
     role = null
   }
 
-  if (!token || !ADMIN_PANEL_ROLES.has(role)) return <Navigate to="/login" replace />
+  if (!token || !roleHasPermission(role, 'admin_panel')) return <Navigate to={{ pathname: '/login', state: { from: location.pathname } }} replace />
   return children
 }
 
 const RoleProtectedRoute = ({ children, allowedRoles }) => {
   const token = localStorage.getItem('token')
+  const location = useLocation()
 
   let role = null
   try {
@@ -176,14 +245,15 @@ const RoleProtectedRoute = ({ children, allowedRoles }) => {
     role = null
   }
 
-  if (!token) return <Navigate to="/login" replace />
+  if (!token) return <Navigate to={{ pathname: '/login', state: { from: location.pathname } }} replace />
   if (!allowedRoles?.has(role)) return <Navigate to="/admin/dashboard" replace />
   return children
 }
 
 const UserProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('token')
-  if (!token) return <Navigate to="/login" replace />
+  const location = useLocation()
+  if (!token) return <Navigate to={{ pathname: '/login', state: { from: location.pathname } }} replace />
   return children
 }
 
@@ -193,11 +263,7 @@ const TransitionOverlay = ({ active }) => (
     aria-hidden="true"
   >
     <div className="absolute left-0 top-0 h-[2px] w-full overflow-hidden bg-transparent">
-      <motion.div
-        className="h-full w-2/5 bg-fpt-orange shadow-[0_0_8px_rgba(242,112,36,0.8)]"
-        animate={{ x: ['-42%', '158%'] }}
-        transition={{ duration: 0.62, ease: 'easeOut', repeat: Infinity }}
-      />
+      <div className="h-full w-2/5 bg-fpt-orange shadow-[0_0_8px_rgba(242,112,36,0.8)] animate-[routeProgress_620ms_ease-out_infinite]" />
     </div>
     <div className="absolute inset-0 bg-white/5 backdrop-blur-[2px]" />
   </div>
@@ -232,31 +298,82 @@ const AppShell = () => {
     return () => clearTimeout(timer)
   }, [location.pathname])
 
+  useEffect(() => {
+    let idleId = null
+    let timeoutId = null
+    let refreshTimeoutId = null
+
+    const refreshAOS = (aosInstance) => {
+      if (!aosInstance) return
+
+      window.requestAnimationFrame(() => {
+        aosInstance.refreshHard?.()
+      })
+
+      refreshTimeoutId = window.setTimeout(() => {
+        aosInstance.refresh?.()
+      }, 320)
+    }
+
+    const triggerAOSLoad = () => {
+      const isPublicRoute = !location.pathname.startsWith('/admin')
+      if (!isPublicRoute) return
+
+      loadAOSIfNeeded()
+        .then((aosInstance) => {
+          refreshAOS(aosInstance)
+        })
+        .catch(() => null)
+    }
+
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      idleId = window.requestIdleCallback(triggerAOSLoad, { timeout: 700 })
+    } else {
+      timeoutId = window.setTimeout(triggerAOSLoad, 120)
+    }
+
+    return () => {
+      if (idleId && 'cancelIdleCallback' in window) {
+        window.cancelIdleCallback(idleId)
+      }
+      if (timeoutId) window.clearTimeout(timeoutId)
+      if (refreshTimeoutId) window.clearTimeout(refreshTimeoutId)
+    }
+  }, [location.pathname, location.search])
+
   return (
     <div className="relative min-h-screen">
+      <style>{`
+        @keyframes routeProgress {
+          from { transform: translateX(-42%); }
+          to { transform: translateX(158%); }
+        }
+      `}</style>
       <div className={`transition-opacity duration-200 ${isRouteTransitioning ? 'opacity-90' : 'opacity-100'}`}>
         <Suspense fallback={null}>
           <AnimatedRoutes />
         </Suspense>
       </div>
       <TransitionOverlay active={isRouteTransitioning} />
-      <NotificationPermissionPrompt />
+      <Suspense fallback={null}>
+        <NotificationPermissionPrompt />
+      </Suspense>
     </div>
   )
 }
 
 function App() {
   useEffect(() => {
-    AOS.init({
-      duration: 800,
-      once: true,
-      easing: 'ease-out-cubic',
-    });
-  }, []);
+    // Refresh server-driven role/permission policy on app start so route guards
+    // and UI can rely on up-to-date mappings.
+    refreshAuthOverview().catch(() => {})
+  }, [])
 
   return (
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <AppShell />
+      <MediaLibraryProvider>
+        <AppShell />
+      </MediaLibraryProvider>
     </BrowserRouter>
   )
 }

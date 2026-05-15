@@ -161,15 +161,19 @@ const BlockTree: React.FC<{
         const colStart = placement?.colStart
         const rowStart = placement?.rowStart
 
+        const wrapperStyle: React.CSSProperties = {
+          gridColumn: `${colStart ?? 'auto'} / span ${colSpan}`,
+          gridRow: `${rowStart ?? 'auto'} / span ${rowSpan}`,
+        }
+        if (rowSpan > 1) {
+          wrapperStyle.minHeight = `${rowSpan * rowHeight}px`
+        }
+
         return (
           <div
             key={block.id}
-            className="space-y-2"
-            style={{
-              gridColumn: `${colStart ?? 'auto'} / span ${colSpan}`,
-              gridRow: `${rowStart ?? 'auto'} / span ${rowSpan}`,
-              minHeight: `${rowSpan * rowHeight}px`,
-            }}
+            className="min-w-0"
+            style={wrapperStyle}
           >
             <BlockBody
               block={block}

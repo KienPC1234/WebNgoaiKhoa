@@ -4,7 +4,9 @@ import {
   Compass,
   GraduationCap,
   Sparkles,
+  BarChart,
   ChevronDown,
+  ChevronRight,
   ArrowUp,
   Bell,
   X,
@@ -16,25 +18,33 @@ import {
   Menu,
   PanelRightClose,
   LogOut,
+  MessageCircle,
+  Trophy,
 } from 'lucide-react'
-import { useState, useEffect, useRef } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { ShimmerButton } from '@/components/aceternity'
-import { AiChatWidget } from '@/components/AiChatWidget'
+import { useState, useEffect, useRef, lazy, Suspense } from 'react'
+import NotificationButton from '@/components/NotificationButton'
 import { cn } from '@/lib/utils'
+import aiSitemap from '@/lib/aiSitemap.json'
+import { roleHasPermission } from '@/lib/rolePolicy'
+
+const AiChatWidget = lazy(() =>
+  import('@/components/AiChatWidget').then((module) => ({
+    default: module.AiChatWidget || module.default,
+  }))
+)
 
 const introMenu = [
   {
     to: '/doingu/scale',
-    title: 'Tổ xã hội - quy mô',
+    title: 'Quy mô',
     subtitle: 'Sứ mệnh, quy mô và định hướng',
-    icon: Users,
+    icon: BarChart,
   },
   {
     to: '/doingu/staff',
-    title: 'Đội ngũ giáo viên',
+    title: 'Đội ngũ',
     subtitle: 'Danh sách và hồ sơ giảng dạy',
-    icon: BookOpen,
+    icon: Users,
   },
 ]
 
@@ -67,15 +77,33 @@ const subjects = [
   { name: 'Vovinam', slug: 'vovinam' },
 ]
 
+const subjectTextClasses = {
+  'van': 'text-fpt-orange',
+  'ktpl': 'text-emerald-600',
+  'lich-su': 'text-amber-700',
+  'dia-li': 'text-emerald-600',
+  'vovinam': 'text-blue-700',
+}
+
+const subjectDescriptions = {
+  'van': 'Sáng tác, cảm thụ và kỹ năng diễn đạt học thuật.',
+  'ktpl': 'Kinh tế ứng dụng và hiểu biết pháp luật thực tiễn.',
+  'lich-su': 'Tư duy dòng thời gian, sự kiện và phân tích tư liệu.',
+  'dia-li': 'Dữ liệu không gian, bản đồ và góc nhìn toàn cầu.',
+  'vovinam': 'Thể chất, kỷ luật và tinh thần võ đạo học đường.',
+}
+
 const subjectContent = [
   { label: 'Ấn phẩm học tập', slug: 'an-pham', icon: BookOpen },
   { label: 'Tài liệu tham khảo', slug: 'tai-lieu', icon: Compass },
   { label: 'Vinh danh năm học', slug: 'vinh-danh', icon: Award },
+  { label: 'Cuộc thi', slug: 'cuoc-thi', icon: Award },
 ]
 
 // use subject name itself as the link target (remove separate "Trang môn" entry)
 
 const overflowMenu = [
+  { to: '/cuoc-thi', title: 'Cuộc thi', subtitle: 'Tham gia các cuộc thi đang diễn ra', icon: Trophy },
   { to: '/events/upcoming', title: 'Sự kiện sắp tới', subtitle: 'Lịch workshop và hoạt động mới', icon: Calendar },
   { to: '/stories/inspiring', title: 'Truyền cảm hứng', subtitle: 'Câu chuyện và chia sẻ nổi bật', icon: Heart },
   { to: '/doingu/honors', title: 'Vinh danh năm học', subtitle: 'Danh sách cá nhân, tập thể tiêu biểu', icon: Award },
@@ -92,21 +120,25 @@ export const MainLayout = () => {
   const [isLowSpecDevice, setIsLowSpecDevice] = useState(false)
   const [isScrollPerfMode, setIsScrollPerfMode] = useState(false)
   const [pendingAiOpen, setPendingAiOpen] = useState(false)
-  const [notifications, setNotifications] = useState([])
+  const [shouldMountAiWidget, setShouldMountAiWidget] = useState(false)
+  const [authHoverOpen, setAuthHoverOpen] = useState(false)
+  const [subjectHoverSlug, setSubjectHoverSlug] = useState(subjects[0]?.slug || 'van')
+  const authCloseTimerRef = useRef(null)
   const navRef = useRef(null)
   const floatingBottom = 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)'
   const FLOATING_BOTTOM_OFFSET = 'calc(env(safe-area-inset-bottom, 0px) + 1.25rem)'
 
   const token = localStorage.getItem('token')
-  let isAdmin = false
+  let hasAdminPanel = false
   try {
     const rawUser = localStorage.getItem('user')
     if (rawUser) {
       const parsedUser = JSON.parse(rawUser)
-      isAdmin = parsedUser?.role === 'admin'
+      const role = parsedUser?.role
+      hasAdminPanel = roleHasPermission(role, 'admin_panel')
     }
   } catch {
-    isAdmin = false
+    hasAdminPanel = false
   }
 
   const isActive = (path) => location.pathname === path
@@ -115,7 +147,9 @@ export const MainLayout = () => {
   const activeStories =
     location.pathname.startsWith('/doingu/honors') ||
     location.pathname.startsWith('/events') ||
-    location.pathname.startsWith('/stories')
+    location.pathname.startsWith('/stories') ||
+    location.pathname.startsWith('/news') ||
+    location.pathname.startsWith('/cuoc-thi')
 
   useEffect(() => {
     const nav = typeof navigator !== 'undefined' ? navigator : null
@@ -143,8 +177,14 @@ export const MainLayout = () => {
         setShowBackToTop((prev) => (prev === nextShowValue ? prev : nextShowValue))
 
         // Keep mode stable to avoid blur/shadow flashing while scrolling.
-        const nextPerfMode = Boolean(isLowSpecDevice && window.scrollY > 120)
-        setIsScrollPerfMode((prev) => (prev === nextPerfMode ? prev : nextPerfMode))
+        // Use a small hysteresis window so the mode isn't toggled rapidly
+        // when the scroll position hovers near the threshold.
+        setIsScrollPerfMode((prev) => {
+          const enableThreshold = 160
+          const disableThreshold = 100
+          const shouldEnable = Boolean(isLowSpecDevice && window.scrollY > (prev ? disableThreshold : enableThreshold))
+          return prev === shouldEnable ? prev : shouldEnable
+        })
 
         rafId = 0
       })
@@ -169,85 +209,21 @@ export const MainLayout = () => {
   }, [])
 
   useEffect(() => {
-    let ws
-    let reconnectTimeout
-    let closedByApp = false
-    let retryCount = 0
-    const wsBase = import.meta.env.VITE_WS_URL || ''
-    const isLocalHost = ['localhost', '127.0.0.1'].includes(window.location.hostname)
-    const shouldConnectWs = Boolean(wsBase) || isLocalHost
-
-    if (!shouldConnectWs) {
-      return undefined
-    }
-
-    const connectWS = () => {
-      if (closedByApp) return
-
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-      const wsUrl = wsBase
-        ? `${wsBase.replace(/\/$/, '')}/notifications`
-        : `${protocol}//${window.location.host}/ws/notifications`
-
-      try {
-        ws = new WebSocket(wsUrl)
-
-        ws.onopen = () => {
-          retryCount = 0
-        }
-
-        ws.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data)
-            const newNotif = { ...data, id: Date.now() }
-            setNotifications(prev => [newNotif, ...prev])
-
-            setTimeout(() => {
-              setNotifications(prev => prev.filter(n => n.id !== newNotif.id))
-            }, 8000)
-          } catch (e) {
-            console.error('Lỗi parse thông báo:', e)
-          }
-        }
-
-        ws.onclose = () => {
-          if (closedByApp) return
-          const reconnectDelay = Math.min(15000, 2000 * (2 ** retryCount))
-          retryCount += 1
-          reconnectTimeout = setTimeout(connectWS, reconnectDelay)
-        }
-
-        ws.onerror = () => {
-          // Browser already reports WebSocket handshake errors in DevTools.
-          // Keep runtime console clean to avoid noisy logs for expected network failures.
-        }
-      } catch (e) {
-        const reconnectDelay = Math.min(15000, 2000 * (2 ** retryCount))
-        retryCount += 1
-        reconnectTimeout = setTimeout(connectWS, reconnectDelay)
-      }
-    }
-
-    connectWS()
-
-    return () => {
-      closedByApp = true
-      if (ws) {
-        ws.onclose = null
-        ws.onerror = null
-        ws.onmessage = null
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.close(1000, 'Main layout unmount')
-        }
-      }
-      if (reconnectTimeout) clearTimeout(reconnectTimeout)
-    }
+    // Notifications websocket is provided by NotificationsProvider.
+    // MainLayout no longer manages its own WS to avoid creating multiple connections.
+    return undefined
   }, [])
 
   useEffect(() => {
     setMobileMenuOpen(false)
     setOpenMenu(null)
   }, [location.pathname])
+
+  useEffect(() => {
+    if (openMenu !== 'subjects') return
+    const matched = subjects.find((subject) => location.pathname.startsWith(`/phanmon/${subject.slug}`))
+    setSubjectHoverSlug(matched?.slug || subjects[0]?.slug || 'van')
+  }, [openMenu, location.pathname])
 
   useEffect(() => {
     if (!mobileMenuOpen) return undefined
@@ -269,12 +245,27 @@ export const MainLayout = () => {
     return () => document.removeEventListener('keydown', handleKey)
   }, [mobileMenuOpen])
 
+  useEffect(() => {
+    try {
+      const persistedOpen = localStorage.getItem('fpt_edu_ai_chat_open') === '1'
+      if (persistedOpen) {
+        setShouldMountAiWidget(true)
+        setPendingAiOpen(true)
+        return
+      }
+
+      // Auto popup the assistant on first website load.
+      setShouldMountAiWidget(true)
+      setPendingAiOpen(true)
+    } catch (error) {
+      // ignore storage read errors
+      setShouldMountAiWidget(true)
+      setPendingAiOpen(true)
+    }
+  }, [])
+
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
-
-  const removeNotification = (id) => {
-    setNotifications(prev => prev.filter(n => n.id !== id))
   }
 
   const handleLogout = () => {
@@ -284,10 +275,11 @@ export const MainLayout = () => {
   }
 
   const handleOpenAiChat = () => {
+    setShouldMountAiWidget(true)
     setPendingAiOpen(true)
-    window.requestAnimationFrame(() => {
+    window.setTimeout(() => {
       window.dispatchEvent(new CustomEvent('toggle-ai-chat'))
-    })
+    }, 0)
   }
 
   const handleNestedScroll = (event) => {
@@ -304,26 +296,57 @@ export const MainLayout = () => {
     }
   }
 
+  const openAuth = () => {
+    if (authCloseTimerRef.current) {
+      clearTimeout(authCloseTimerRef.current)
+      authCloseTimerRef.current = null
+    }
+    setAuthHoverOpen(true)
+  }
+
+  const scheduleCloseAuth = (delay = 250) => {
+    if (authCloseTimerRef.current) clearTimeout(authCloseTimerRef.current)
+    authCloseTimerRef.current = setTimeout(() => {
+      setAuthHoverOpen(false)
+      authCloseTimerRef.current = null
+    }, delay)
+  }
+
+  const cancelCloseAuth = () => {
+    if (authCloseTimerRef.current) {
+      clearTimeout(authCloseTimerRef.current)
+      authCloseTimerRef.current = null
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      if (authCloseTimerRef.current) {
+        clearTimeout(authCloseTimerRef.current)
+        authCloseTimerRef.current = null
+      }
+    }
+  }, [])
+
+  // width-sync logic removed to avoid unnecessary reflows
+
   return (
-    <div className={cn('app-shell relative overflow-x-clip', isScrollPerfMode && 'performance-scrolling')}>
+    <div className={cn('app-shell relative overflow-x-clip', isLowSpecDevice && 'low-spec-device', isScrollPerfMode && 'performance-scrolling')}>
       <header className={cn(
-        'glass-nav top-0 z-[100] overflow-visible sticky',
+        'glass-nav top-0 z-[4000] overflow-visible sticky',
         isScrollPerfMode && 'bg-[#fffaf3]/95'
       )}>
-        <div className="app-section px-3 py-4 md:px-6 lg:px-8">
+        <div className="app-section cv-auto px-3 py-4 md:px-6 lg:px-8">
           <div ref={navRef} className={cn(
-            'relative z-[101] flex items-center justify-between gap-3 rounded-3xl border border-orange-100/90 bg-gradient-to-r from-[#fff3e2] via-[#fff7ee] to-[#fff3e2] px-5 py-3.5 md:px-6 lg:px-8',
+            'relative z-[4001] flex items-center justify-between gap-3 rounded-3xl border border-orange-100/90 bg-gradient-to-r from-[#fff3e2] via-[#fff7ee] to-[#fff3e2] px-5 py-3.5 md:px-6 lg:px-8',
             isScrollPerfMode
               ? 'shadow-[0_10px_30px_-24px_rgba(15,23,42,0.25)]'
               : 'shadow-[0_20px_52px_-38px_rgba(15,23,42,0.35)]'
           )}>
             <Link to="/" className="group flex items-center gap-3">
-              <motion.div
-                whileHover={{ scale: 1.06 }}
-                className="flex h-12 w-12 items-center justify-center rounded-xl border border-orange-100 bg-[#fff9f1] shadow-[0_14px_28px_-18px_rgba(242,112,36,0.85)]"
-              >
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-orange-100 bg-[#fff9f1] shadow-[0_14px_28px_-18px_rgba(242,112,36,0.85)] transition-transform group-hover:scale-105">
                 <img src="/favicon.svg" alt="Logo Tổ xã hội" className="h-7 w-7 object-contain" />
-              </motion.div>
+              </div>
               <div className="space-y-0.5">
                 <p className="font-display text-lg font-extrabold uppercase tracking-tight text-fpt-blue md:text-xl">Tổ xã hội FSC Hoà Lạc</p>
                 <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-fpt-orange md:text-[11px]">Deep learning with love</p>
@@ -363,54 +386,27 @@ export const MainLayout = () => {
                 active={activeSubject}
                 align="center"
               >
-                <div className="w-[min(860px,calc(100vw-2.5rem))] p-3">
-                  <DropdownHeading
-                    title="Bản đồ chuyên môn"
-                    subtitle="Chọn phân môn và loại nội dung để đi nhanh tới tài nguyên cần học"
-                  />
-                  <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {subjects.map((subject) => (
-                      <div key={subject.slug} className="rounded-2xl border border-slate-200/80 bg-gradient-to-b from-slate-50 to-white p-3 shadow-[0_14px_30px_-24px_rgba(15,23,42,0.5)]">
-                        <Link
-                          to={`/phanmon/${subject.slug}`}
-                          className="mb-3 inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-fpt-blue hover:text-fpt-orange"
-                        >
-                          {subject.name}
-                          <GraduationCap size={14} className="text-slate-400" />
-                        </Link>
-                        <div className="space-y-2">
-                          {subjectContent.map((content) => (
-                            <Link
-                              key={`${subject.slug}-${content.slug}`}
-                              to={`/phanmon/${subject.slug}/${content.slug}`}
-                              className="flex items-center gap-2 rounded-xl border border-transparent px-2 py-2 text-[10px] font-black uppercase tracking-widest text-slate-500 transition-all hover:border-orange-100 hover:bg-orange-50/70 hover:text-fpt-orange"
-                            >
-                              <content.icon size={14} />
-                              {content.label}
-                            </Link>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                <SubjectNestedMenu
+                  subjects={subjects}
+                  subjectContent={subjectContent}
+                  subjectTextClasses={subjectTextClasses}
+                  activeSlug={subjectHoverSlug}
+                  onHover={setSubjectHoverSlug}
+                />
               </DesktopMenu>
 
               <DesktopMenu
-                label="Đội ngũ & sự kiện"
+                label="Tin tức"
                 icon={Menu}
                 menuKey="more"
                 openMenu={openMenu}
                 onOpen={setOpenMenu}
                 onClose={() => setOpenMenu(null)}
-                active={activeStories}
+                active={activeStories || isActive('/cuoc-thi')}
                 align="right"
+                onPrimaryClick={() => navigate('/news')}
               >
                 <div className="w-[min(380px,calc(100vw-2.5rem))] space-y-2 p-2">
-                  <DropdownHeading
-                    title="Liên kết nhanh"
-                    subtitle="Nhóm các mục mở rộng để thanh điều hướng luôn gọn"
-                  />
                   {overflowMenu.map((item) => (
                     <SubMenuCard key={item.to} item={item} />
                   ))}
@@ -419,7 +415,7 @@ export const MainLayout = () => {
             </nav>
 
             <div className="flex shrink-0 items-center gap-2 md:gap-2.5">
-              {token && isAdmin && (
+              {token && hasAdminPanel && (
                 <Link to="/admin/dashboard" className="btn-ghost hidden 2xl:inline-flex">
                   Admin
                 </Link>
@@ -441,23 +437,47 @@ export const MainLayout = () => {
                 </>
               ) : (
                 <>
-                  <Link to="/login" className="btn-ghost hidden 2xl:inline-flex">
-                    Đăng nhập
-                  </Link>
-                  <Link to="/register" className="btn-primary hidden 2xl:inline-flex">
-                    Đăng ký
-                  </Link>
+                  <div
+                    className="relative hidden 2xl:inline-flex"
+                    onMouseEnter={openAuth}
+                    onMouseLeave={() => scheduleCloseAuth()}
+                    onFocus={openAuth}
+                    onBlur={(e) => {
+                      if (!e.currentTarget.contains(e.relatedTarget)) scheduleCloseAuth()
+                    }}
+                  >
+                    <Link to="/register" className="btn-primary whitespace-nowrap">
+                      Đăng ký
+                    </Link>
+                    {authHoverOpen && (
+                      <div
+                        className="absolute top-full mt-3 right-0 z-[4002] pointer-events-auto animate-[fadeInMenu_180ms_ease-out]"
+                        onMouseEnter={cancelCloseAuth}
+                        onMouseLeave={() => scheduleCloseAuth()}
+                      >
+                        <div className="rounded-xl border border-transparent bg-transparent p-1 min-w-max pointer-events-auto shadow-sm">
+                          <Link to={{ pathname: '/login', state: { from: location.pathname } }} className="btn-ghost block text-left px-4 py-2 whitespace-nowrap">
+                            Đăng nhập
+                          </Link>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </>
               )}
 
-              <ShimmerButton
+              <button
                 type="button"
                 onClick={handleOpenAiChat}
-                className="tap-target hidden 2xl:inline-flex"
+                className="tap-target hidden 2xl:inline-flex items-center gap-2 rounded-full border border-orange-200 bg-white/90 px-4 py-2 text-[11px] font-black uppercase tracking-[0.11em] text-fpt-orange transition-all hover:bg-orange-50"
               >
                 <Sparkles size={16} />
                 AI Chat
-              </ShimmerButton>
+              </button>
+
+              <div className="hidden 2xl:inline-flex">
+                <NotificationButton />
+              </div>
 
               <button
                 type="button"
@@ -475,23 +495,14 @@ export const MainLayout = () => {
             the menu when clicked. */}
       </header>
 
-      <AnimatePresence>
-        {mobileMenuOpen && (
-          <motion.div
+      {mobileMenuOpen && (
+          <div
             key="mobile-menu-overlay"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[110] 2xl:hidden"
+            className="fixed inset-0 z-[4002] 2xl:hidden animate-[fadeInMenu_180ms_ease-out]"
           >
-            <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)} />
+            <div className={cn('absolute inset-0 bg-black/30', isLowSpecDevice ? 'backdrop-blur-0' : 'backdrop-blur-sm')} onClick={() => setMobileMenuOpen(false)} />
 
-            <motion.div
-              initial={{ y: -12 }}
-              animate={{ y: 0 }}
-              exit={{ y: -12 }}
-              className="absolute inset-x-0 top-12 max-h-[calc(100dvh-4rem)] overflow-y-auto overscroll-contain pb-6"
-            >
+            <div className="absolute inset-x-0 top-12 max-h-[calc(100dvh-4rem)] overflow-y-auto overscroll-contain pb-6 animate-[slideInMenu_190ms_ease-out]">
               <div className="app-section custom-scrollbar">
                 <div className="surface mb-4 p-3">
                   <div className="mb-2 flex items-center gap-3 rounded-xl border border-orange-100 bg-orange-50/60 p-3">
@@ -538,13 +549,9 @@ export const MainLayout = () => {
                     >
                       {subjects.map((subject) => (
                         <div key={subject.slug} className="mb-2 rounded-xl border border-slate-100 bg-slate-50/80 p-2">
-                          <Link
-                            to={`/phanmon/${subject.slug}`}
-                            className="mb-1 px-2 text-[10px] font-black uppercase tracking-widest text-fpt-blue"
-                            onClick={() => setMobileMenuOpen(false)}
-                          >
+                          <p className="mb-1 px-2 text-[10px] font-black uppercase tracking-widest text-fpt-blue">
                             {subject.name}
-                          </Link>
+                          </p>
                           {subjectContent.map((content) => (
                             <MobileLink
                               key={`${subject.slug}-${content.slug}`}
@@ -558,18 +565,19 @@ export const MainLayout = () => {
                   </MobileSection>
 
                   <MobileSection
-                    title="Đội ngũ & sự kiện"
-                    sectionKey="stories"
+                    title="Tin tức"
+                    sectionKey="more"
                     openSection={mobileSectionOpen}
                     onToggle={setMobileSectionOpen}
                   >
+                    <MobileLink to="/news" label="Tất cả tin tức" />
                     {overflowMenu.map((item) => (
                       <MobileLink key={item.to} to={item.to} label={item.title} />
                     ))}
                   </MobileSection>
 
                   <div className="mt-3 flex gap-2">
-                    {token && isAdmin && (
+                    {token && hasAdminPanel && (
                       <Link to="/admin/dashboard" className="btn-ghost flex-1" onClick={() => setMobileMenuOpen(false)}>
                         Admin Panel
                       </Link>
@@ -586,9 +594,9 @@ export const MainLayout = () => {
                       </>
                     ) : (
                       <>
-                        <Link to="/login" className="btn-ghost flex-1" onClick={() => setMobileMenuOpen(false)}>
-                          Đăng nhập
-                        </Link>
+                        <Link to={{ pathname: '/login', state: { from: location.pathname } }} className="btn-ghost flex-1" onClick={() => setMobileMenuOpen(false)}>
+                              Đăng nhập
+                            </Link>
                         <Link to="/register" className="btn-primary flex-1" onClick={() => setMobileMenuOpen(false)}>
                           Đăng ký
                         </Link>
@@ -597,10 +605,9 @@ export const MainLayout = () => {
                   </div>
                 </div>
               </div>
-            </motion.div>
-          </motion.div>
+            </div>
+          </div>
         )}
-      </AnimatePresence>
 
       <main className="flex-1">
         <Outlet />
@@ -611,7 +618,7 @@ export const MainLayout = () => {
         isScrollPerfMode && 'bg-white/90 backdrop-blur-0'
       )}>
         <div className="app-section">
-          <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-5">
             <div className="space-y-4 lg:col-span-2">
               <div className="flex items-center gap-2">
                 <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-orange-100 bg-white">
@@ -623,23 +630,51 @@ export const MainLayout = () => {
                 Nền tảng kết nối tri thức và phát triển kỹ năng toàn diện cho học sinh, sinh viên FPT Education.
               </p>
               <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-fpt-orange">Deep learning with love</p>
+
+              <a
+                href="https://www.facebook.com/toxahoifschoolhoalac"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex max-w-md items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md hover:border-blue-200"
+              >
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 transition-colors group-hover:bg-blue-100">
+                  <svg viewBox="0 0 24 24" className="h-6 w-6 fill-current"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-slate-800">Tổ xã hội FSC Hoà Lạc</p>
+                  <p className="text-xs text-slate-500">Theo dõi trên Facebook</p>
+                </div>
+              </a>
             </div>
 
             <div>
               <h4 className="mb-3 text-xs font-black uppercase tracking-widest text-fpt-blue">Khám phá</h4>
               <ul className="space-y-2 text-sm font-semibold text-slate-500">
-                <li><Link to="/phanmon/van" className="hover:text-fpt-orange">Phân môn Văn</Link></li>
-                <li><Link to="/phanmon/ktpl" className="hover:text-fpt-orange">Kinh tế pháp luật</Link></li>
-                <li><Link to="/events/upcoming" className="hover:text-fpt-orange">Sự kiện sắp tới</Link></li>
+                {aiSitemap && aiSitemap.slice(0, 6).map((item) => (
+                  <li key={item.path}>
+                    <Link to={item.path} className="hover:text-fpt-orange">{item.title}</Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="mb-3 text-xs font-black uppercase tracking-widest text-fpt-blue">Phân môn</h4>
+              <ul className="space-y-2 text-sm font-semibold text-slate-500">
+                {subjects.map((s) => (
+                  <li key={s.slug}>
+                    <Link to={`/phanmon/${s.slug}`} className="hover:text-fpt-orange">{s.name}</Link>
+                  </li>
+                ))}
               </ul>
             </div>
 
             <div>
               <h4 className="mb-3 text-xs font-black uppercase tracking-widest text-fpt-blue">Hệ thống</h4>
               <ul className="space-y-2 text-sm font-semibold text-slate-500">
-                <li><Link to={token ? '/profile' : '/login'} className="hover:text-fpt-orange">{token ? 'Hồ sơ' : 'Đăng nhập'}</Link></li>
-                <li><a href="#" className="hover:text-fpt-orange">Điều khoản sử dụng</a></li>
-                <li><a href="#" className="hover:text-fpt-orange">Chính sách bảo mật</a></li>
+                <li><Link to={token ? '/profile' : { pathname: '/login', state: { from: location.pathname } }} className="hover:text-fpt-orange">{token ? 'Hồ sơ' : 'Đăng nhập'}</Link></li>
+                <li><Link to="/dieu-khoan" className="hover:text-fpt-orange">Điều khoản sử dụng</Link></li>
+                <li><Link to="/bao-mat" className="hover:text-fpt-orange">Chính sách bảo mật</Link></li>
               </ul>
             </div>
           </div>
@@ -652,56 +687,64 @@ export const MainLayout = () => {
         </div>
       </footer>
 
-      <AiChatWidget pendingOpen={pendingAiOpen} onPendingOpenHandled={() => setPendingAiOpen(false)} />
+      {!shouldMountAiWidget && (
+        <div className="fixed right-3 z-[5000] sm:right-4 md:right-6" style={{ bottom: floatingBottom }}>
+          <button
+            type="button"
+            onClick={handleOpenAiChat}
+            className="tap-target group relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-fpt-orange via-orange-500 to-amber-500 p-0 text-white shadow-[0_16px_48px_-12px_rgba(242,112,36,0.7)] transition-all duration-300 hover:scale-110 hover:shadow-[0_24px_64px_-8px_rgba(242,112,36,0.9)] active:scale-95 sm:h-16 sm:w-16"
+            aria-label="Mở trợ lý AI"
+          >
+            {/* Breathing glow effect */}
+            <span className="pointer-events-none absolute -inset-3 rounded-full bg-gradient-to-r from-orange-400 via-fpt-orange to-amber-400 opacity-40 blur-xl animate-[breathe_3s_ease-in-out_infinite]" />
+            
+            {/* Subtle ring */}
+            <span className="pointer-events-none absolute -inset-1 rounded-full border border-white/20" />
+            
+            {/* Glass highlight */}
+            <span className="pointer-events-none absolute inset-0 rounded-full bg-gradient-to-b from-white/25 via-white/5 to-transparent" />
+
+            {/* Icon */}
+            <Sparkles
+              size={26}
+              className="relative z-10 drop-shadow-[0_2px_6px_rgba(0,0,0,0.2)] transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12 sm:h-7 sm:w-7"
+              strokeWidth={2}
+            />
+
+            {/* Tooltip */}
+            <span className="pointer-events-none absolute -left-[8rem] top-1/2 hidden -translate-y-1/2 whitespace-nowrap rounded-xl bg-white/95 px-4 py-2 text-[11px] font-bold text-fpt-orange shadow-lg backdrop-blur-sm transition-all duration-200 group-hover:-translate-x-1 lg:block">
+              Chat với AI
+              <span className="absolute right-0 top-1/2 h-2 w-2 -translate-y-1/2 translate-x-1/2 rotate-45 bg-white/95" />
+            </span>
+          </button>
+        </div>
+      )}
+
+      {shouldMountAiWidget && (
+        <Suspense fallback={null}>
+          <AiChatWidget pendingOpen={pendingAiOpen} onPendingOpenHandled={() => setPendingAiOpen(false)} />
+        </Suspense>
+      )}
 
       <div className="fixed left-3 z-[60] flex flex-col gap-4 sm:left-4 md:left-6" style={{ bottom: floatingBottom }}>
-        <AnimatePresence>
-          {showBackToTop && (
-            <motion.button
-              initial={{ opacity: 0, scale: 0.5, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.5, y: 20 }}
-              onClick={scrollToTop}
-              className={cn(
-                'group rounded-2xl border border-orange-100 bg-white/90 p-3 text-fpt-orange transition-all hover:bg-fpt-orange hover:text-white sm:p-4',
-                isScrollPerfMode
-                  ? 'shadow-[0_10px_28px_-16px_rgba(242,112,36,0.25)] backdrop-blur-0'
-                  : 'shadow-[0_20px_40px_-12px_rgba(242,112,36,0.3)] backdrop-blur-md'
-              )}
-            >
-              <ArrowUp size={22} className="transition-transform group-hover:-translate-y-1 sm:h-6 sm:w-6" />
-            </motion.button>
-          )}
-        </AnimatePresence>
+        {showBackToTop && (
+          <button
+            onClick={scrollToTop}
+            className={cn(
+              'group rounded-2xl border border-orange-100 bg-white/90 p-3 text-fpt-orange transition-all hover:bg-fpt-orange hover:text-white sm:p-4 animate-[fadeInMenu_160ms_ease-out]',
+              isScrollPerfMode
+                ? 'shadow-[0_10px_28px_-16px_rgba(242,112,36,0.25)] backdrop-blur-0'
+                : 'shadow-[0_20px_40px_-12px_rgba(242,112,36,0.3)] backdrop-blur-md'
+            )}
+          >
+            <ArrowUp size={22} className="transition-transform group-hover:-translate-y-1 sm:h-6 sm:w-6" />
+          </button>
+        )}
       </div>
 
-      <div className="pointer-events-none fixed right-4 top-24 z-[100] flex flex-col gap-3 md:right-6">
-        <AnimatePresence>
-          {notifications.map((notif) => (
-            <motion.div
-              key={notif.id}
-              initial={{ opacity: 0, x: 50, scale: 0.9 }}
-              animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ opacity: 0, x: 20, scale: 0.9 }}
-              className={cn(
-                'glass-card pointer-events-auto flex min-w-[280px] max-w-sm items-start gap-4 rounded-2xl border-l-4 border-fpt-orange p-4',
-                isScrollPerfMode && 'bg-white/95 shadow-[0_14px_40px_-28px_rgba(29,42,87,0.35)] backdrop-blur-0'
-              )}
-            >
-              <div className="rounded-xl bg-orange-500 p-2.5 text-white shadow-lg shadow-orange-100">
-                <Bell size={20} />
-              </div>
-              <div className="flex-1">
-                <h4 className="text-sm font-black uppercase tracking-tight text-fpt-blue">{notif.title}</h4>
-                <p className="mt-1 text-xs font-medium leading-relaxed text-slate-500">{notif.message}</p>
-              </div>
-              <button onClick={() => removeNotification(notif.id)} className="p-1 text-slate-300 hover:text-red-500">
-                <X size={18} />
-              </button>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
+      <style>{`@keyframes fadeInMenu { from { opacity: 0; transform: translateY(8px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } } @keyframes slideInMenu { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }`}</style>
+
+      {/* Toast toasts are rendered by NotificationsProvider via context; keep layout lean here. */}
     </div>
   )
 }
@@ -713,7 +756,7 @@ const NavItem = ({ to, icon: Icon, label, active }) => (
       'tap-target relative shrink-0 flex items-center gap-2 rounded-full border px-3.5 py-2 text-[11px] font-black uppercase tracking-[0.11em] transition-colors',
       active
         ? 'border-orange-200 bg-orange-100/80 text-fpt-orange'
-        : 'border-orange-100/80 bg-transparent text-slate-600 hover:border-orange-200 hover:bg-orange-50/70 hover:text-fpt-orange'
+        : 'border-orange-200 bg-transparent text-slate-600 hover:border-orange-200 hover:bg-orange-50/70 hover:text-fpt-orange'
     )}
   >
     <Icon size={16} />
@@ -721,7 +764,32 @@ const NavItem = ({ to, icon: Icon, label, active }) => (
   </Link>
 )
 
-const DesktopMenu = ({ label, icon: Icon, menuKey, openMenu, onOpen, onClose, active, children, align = 'left' }) => {
+const MENU_CLOSE_DELAY_MS = 300
+
+const DesktopMenu = ({ label, icon: Icon, menuKey, openMenu, onOpen, onClose, active, children, align = 'left', onPrimaryClick }) => {
+  const closeTimerRef = useRef(null)
+
+  const cancelScheduledClose = () => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current)
+      closeTimerRef.current = null
+    }
+  }
+
+  const scheduleClose = () => {
+    cancelScheduledClose()
+    closeTimerRef.current = setTimeout(() => {
+      onClose()
+      closeTimerRef.current = null
+    }, MENU_CLOSE_DELAY_MS)
+  }
+
+  useEffect(() => {
+    return () => {
+      cancelScheduledClose()
+    }
+  }, [])
+
   const handleDropdownWheel = (event) => {
     const container = event.currentTarget
     if (container.scrollHeight <= container.clientHeight) return
@@ -739,12 +807,18 @@ const DesktopMenu = ({ label, icon: Icon, menuKey, openMenu, onOpen, onClose, ac
   return (
   <div
     className="relative shrink-0"
-    onMouseEnter={() => onOpen(menuKey)}
-    onMouseLeave={onClose}
-    onFocusCapture={() => onOpen(menuKey)}
+    onMouseEnter={() => {
+      cancelScheduledClose()
+      onOpen(menuKey)
+    }}
+    onMouseLeave={scheduleClose}
+    onFocusCapture={() => {
+      cancelScheduledClose()
+      onOpen(menuKey)
+    }}
     onBlurCapture={(event) => {
       if (!event.currentTarget.contains(event.relatedTarget)) {
-        onClose()
+        scheduleClose()
       }
     }}
   >
@@ -752,11 +826,13 @@ const DesktopMenu = ({ label, icon: Icon, menuKey, openMenu, onOpen, onClose, ac
       type="button"
       aria-expanded={openMenu === menuKey}
       aria-haspopup="menu"
+      onClick={onPrimaryClick}
       className={cn(
         'tap-target flex items-center gap-2 rounded-full border px-3.5 py-2 text-[11px] font-black uppercase tracking-[0.11em] transition-colors',
+        onPrimaryClick && 'cursor-pointer',
         (active || openMenu === menuKey)
           ? 'border-orange-200 bg-orange-100/80 text-fpt-orange'
-          : 'border-orange-100/80 bg-transparent text-slate-600 hover:border-orange-200 hover:bg-orange-50/70 hover:text-fpt-orange'
+          : 'border-orange-200 bg-transparent text-slate-600 hover:border-orange-200 hover:bg-orange-50/70 hover:text-fpt-orange'
       )}
     >
       <Icon size={16} />
@@ -764,29 +840,93 @@ const DesktopMenu = ({ label, icon: Icon, menuKey, openMenu, onOpen, onClose, ac
       <ChevronDown size={14} className={cn('transition-transform', openMenu === menuKey && 'rotate-180')} />
     </button>
 
-    <AnimatePresence>
-      {openMenu === menuKey && (
-        <motion.div
-          initial={{ opacity: 0, y: 8, scale: 0.98 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 6, scale: 0.98 }}
-          onWheel={handleDropdownWheel}
-          className={cn(
-            'custom-scrollbar absolute top-[calc(100%+12px)] z-50 max-h-[78vh] max-w-[calc(100vw-2rem)] overflow-x-auto overflow-y-auto overscroll-contain rounded-[1.4rem] border border-orange-100/90 bg-[#fffaf3] p-2 shadow-[0_32px_72px_-42px_rgba(15,23,42,0.7)] origin-top',
-            align === 'right' ? 'right-0' : align === 'center' ? 'left-1/2 -translate-x-1/2' : 'left-0'
-          )}
-        >
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-fpt-orange via-orange-300 to-fpt-blue" />
-          <div className={cn(
-            'absolute top-0 h-3 w-3 -translate-y-1/2 rotate-45 border-l border-t border-orange-100/90 bg-[#fffaf3]',
-            align === 'right' ? 'right-8' : align === 'center' ? 'left-1/2 -translate-x-1/2' : 'left-8'
-          )} />
-          {children}
-        </motion.div>
-      )}
-    </AnimatePresence>
+    {openMenu === menuKey && (
+      <div
+        onMouseEnter={cancelScheduledClose}
+        onMouseLeave={scheduleClose}
+        onWheel={handleDropdownWheel}
+        className={cn(
+          'custom-scrollbar absolute top-[calc(100%+12px)] z-[4002] max-h-[78vh] max-w-[calc(100vw-2rem)] overflow-x-auto overflow-y-auto overscroll-contain rounded-[1.4rem] border border-orange-100/90 bg-[#fffaf3] p-2 shadow-[0_32px_72px_-42px_rgba(15,23,42,0.7)] origin-top animate-[fadeInMenu_180ms_ease-out]',
+          align === 'right' ? 'right-0' : align === 'center' ? 'left-1/2 -translate-x-1/2' : 'left-0'
+        )}
+      >
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-fpt-orange via-orange-300 to-fpt-blue" />
+        <div className={cn(
+          'absolute top-0 h-3 w-3 -translate-y-1/2 rotate-45 border-l border-t border-orange-100/90 bg-[#fffaf3]',
+          align === 'right' ? 'right-8' : align === 'center' ? 'left-1/2 -translate-x-1/2' : 'left-8'
+        )} />
+        {children}
+      </div>
+    )}
   </div>
 )
+}
+
+const SubjectNestedMenu = ({ subjects, subjectContent, subjectTextClasses, activeSlug, onHover }) => {
+  const activeSubject = subjects.find((subject) => subject.slug === activeSlug) || subjects[0]
+
+  return (
+    <div className="w-[min(700px,calc(100vw-2.5rem))] p-3">
+      <DropdownHeading
+        title="Chuyên môn"
+        subtitle="Chọn môn ở cột trái, nội dung chuyên biệt sẽ hiện ở cột phải"
+      />
+
+      <div className="mt-3 grid grid-cols-[220px_minmax(0,1fr)] gap-3">
+        <div className="rounded-2xl border border-slate-200 bg-white/80 p-2">
+          <div className="space-y-1">
+            {subjects.map((subject) => {
+              const isActive = subject.slug === activeSubject?.slug
+              return (
+                <Link
+                  key={subject.slug}
+                  to={`/phanmon/${subject.slug}`}
+                  onMouseEnter={() => onHover(subject.slug)}
+                  onFocus={() => onHover(subject.slug)}
+                  className={cn(
+                    'flex w-full items-center justify-between rounded-xl border px-3 py-2.5 text-left text-[11px] font-black uppercase tracking-wider transition-all',
+                    isActive
+                      ? 'border-orange-200 bg-orange-50 text-fpt-orange'
+                      : 'border-transparent text-slate-600 hover:border-slate-200 hover:bg-slate-50'
+                  )}
+                >
+                  <span>{subject.name}</span>
+                  <ChevronRight size={14} className={cn('transition-transform', isActive && 'translate-x-0.5')} />
+                </Link>
+              )
+            })}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-gradient-to-b from-white to-slate-50 p-3">
+          <div className="mb-3 border-b border-slate-200 pb-2">
+            <p className={cn(
+              'text-[11px] font-black uppercase tracking-[0.16em]',
+              subjectTextClasses[activeSubject?.slug] || 'text-fpt-blue'
+            )}>
+              {activeSubject?.name}
+            </p>
+            <p className="mt-1 text-[11px] font-semibold leading-relaxed text-slate-500">
+              {subjectDescriptions[activeSubject?.slug] || 'Kho nội dung theo môn học.'}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            {subjectContent.map((content) => (
+              <Link
+                key={`${activeSubject?.slug}-${content.slug}`}
+                to={`/phanmon/${activeSubject?.slug}/${content.slug}`}
+                className="group flex items-center gap-2 rounded-xl border border-slate-200/70 bg-white px-2.5 py-2 text-[10px] font-black uppercase tracking-wider text-slate-600 transition-all hover:-translate-y-0.5 hover:border-orange-200 hover:bg-orange-50 hover:text-fpt-orange"
+              >
+                <content.icon size={14} className="text-slate-400 transition-colors group-hover:text-fpt-orange" />
+                <span>{content.label}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 const SubMenuCard = ({ item }) => (

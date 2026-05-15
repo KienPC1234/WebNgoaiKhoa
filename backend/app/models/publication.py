@@ -1,6 +1,7 @@
 from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.sql import func
 from app.db.session import Base
+from datetime import datetime, timezone
 import enum
 
 class Category(str, enum.Enum):
@@ -14,6 +15,7 @@ class Category(str, enum.Enum):
 
 class ContentType(str, enum.Enum):
     AN_PHAM = "an-pham"
+    CUOC_THI = "cuoc-thi"
     TAI_LIEU = "tai-lieu"
     VINH_DANH = "vinh-danh"
 
@@ -23,7 +25,7 @@ class Publication(Base):
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(255), nullable=False)
     content = Column(Text, nullable=False)
-    category = Column(String(50), nullable=False)  # Legacy field, mirrors subject
+    # Merged field: `subject` is the canonical DB column. `category` kept as a legacy alias.
     subject = Column(String(50), nullable=False, default=Category.VAN.value)
     content_type = Column(String(50), nullable=False, default=ContentType.AN_PHAM.value)
     featured_year = Column(String(20), nullable=True)
@@ -32,6 +34,56 @@ class Publication(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     image_url = Column(String(500), nullable=True)
     layout_metadata = Column(JSON, nullable=True)
+    short_description = Column(Text, nullable=True)
+    @property
+    def category(self):
+        """Legacy compatibility: return `subject` value for older clients."""
+        return self.subject
+
+    @category.setter
+    def category(self, value):
+        """Assigning legacy `category` sets canonical `subject`."""
+        self.subject = value
+    comments_enabled = Column(Boolean, nullable=False, default=True)
+    view_count = Column(Integer, nullable=False, default=0)
+    favorites_count = Column(Integer, nullable=False, default=0)
+    votes_count = Column(Integer, nullable=False, default=0)
+
+    @staticmethod
+    def _normalize_tags(value):
+        if value is None:
+            return []
+        if isinstance(value, str):
+            raw_items = value.split(',')
+        elif isinstance(value, (list, tuple, set)):
+            raw_items = list(value)
+        else:
+            return []
+
+        seen = set()
+        cleaned = []
+        for item in raw_items:
+            token = str(item or '').strip()
+            if not token:
+                continue
+            key = token.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            cleaned.append(token)
+        return cleaned
+
+    @property
+    def tags(self):
+        metadata = self.layout_metadata if isinstance(self.layout_metadata, dict) else {}
+        return self._normalize_tags(metadata.get('tags'))
+
+    @tags.setter
+    def tags(self, value):
+        metadata = self.layout_metadata if isinstance(self.layout_metadata, dict) else {}
+        next_metadata = dict(metadata)
+        next_metadata['tags'] = self._normalize_tags(value)
+        self.layout_metadata = next_metadata
 
 
 class Event(Base):
@@ -42,6 +94,10 @@ class Event(Base):
     description = Column(Text, nullable=False)
     event_date = Column(DateTime(timezone=True), nullable=False)
     location = Column(String(255), nullable=False)
+    # Recurrence: store an RRULE string when event is recurring (RFC5545)
+    rrule = Column(String(500), nullable=True)
+    # Timezone name (e.g. 'Asia/Ho_Chi_Minh') — store per-event timezone
+    timezone = Column(String(100), nullable=True)
     image_url = Column(String(500), nullable=True)
     status = Column(String(50), nullable=False, default="upcoming")
     linked_post_id = Column(Integer, ForeignKey("publications.id"), nullable=True)
@@ -65,11 +121,22 @@ class Story(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
+class EventAttachment(Base):
+    __tablename__ = "event_attachments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    event_id = Column(Integer, ForeignKey("events.id"), nullable=False, index=True)
+    file_url = Column(String(500), nullable=False)
+    file_name = Column(String(255), nullable=True)
+    file_type = Column(String(50), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
 class SocialScale(Base):
     __tablename__ = "social_scale"
 
     id = Column(Integer, primary_key=True, index=True)
-    hero_title = Column(String(255), nullable=False, default="Tổ xã hội - Quy mô & phát triển")
+    hero_title = Column(String(255), nullable=False, default="Quy mô & phát triển")
     hero_subtitle = Column(Text, nullable=True)
     vision = Column(Text, nullable=True)
     subjects_overview = Column(String(500), nullable=True)
@@ -78,6 +145,8 @@ class SocialScale(Base):
     projects_count = Column(Integer, nullable=False, default=100)
     awards_count = Column(Integer, nullable=False, default=25)
     roadmap = Column(Text, nullable=True)
+    # Hero sentence specifically for the team page (ĐỘI NGŨ)
+    staff_hero = Column(Text, nullable=True)
     is_active = Column(Boolean, nullable=False, default=True)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -93,22 +162,192 @@ class StaffProfile(Base):
     email = Column(String(255), nullable=True)
     image_url = Column(String(500), nullable=True)
     expertise = Column(String(255), nullable=True)
+    # Optional tier/level for staff (e.g. management, senior, instructor, assistant)
+    tier = Column(String(50), nullable=True)
     display_order = Column(Integer, nullable=False, default=0)
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    @property
+    def tier_label(self):
+        """Human-readable Vietnamese label for the stored `tier` value."""
+        if not self.tier:
+            return None
+        mapping = {
+            'management': 'Tổ trưởng',
+            'senior': 'Trưởng bộ môn',
+            'instructor': 'Giáo viên',
+            'assistant': 'Trợ giảng',
+        }
+        return mapping.get(self.tier, self.tier)
+
+class ContestType(str, enum.Enum):
+    VAN_CHUONG = "van-chuong"
+    HOI_HOA = "hoi-hoa"
+    NGHIEP_VU = "nghiep-vu"
+    THUYET_TRINH = "thuyet-trinh"
+    THI_TU_TAP = "thi-tu-tap"
+    THI_CA_NHAN = "thi-ca-nhan"
+    CUSTOM = "custom"
+
+
+class ContestStatus(str, enum.Enum):
+    DRAFT = "draft"
+    UPCOMING = "upcoming"
+    ACTIVE = "active"
+    CLOSED = "closed"
+    ARCHIVED = "archived"
+
+
+class VotingMethod(str, enum.Enum):
+    NONE = "none"
+    PUBLIC_VOTE = "public-vote"
+    JUDGES_ONLY = "judges-only"
+    MIXED = "mixed"
+
+
+class Contest(Base):
+    __tablename__ = "contests"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(255), nullable=False)
+    slug = Column(String(255), nullable=False, unique=True, index=True)
+    description = Column(Text, nullable=True)
+    rules = Column(Text, nullable=True)
+    subject = Column(String(50), nullable=False, default=Category.VAN.value)
+    contest_type = Column(String(50), nullable=False, default=ContestType.CUSTOM.value)
+    custom_type_name = Column(String(255), nullable=True)
+    status = Column(String(50), nullable=False, default=ContestStatus.DRAFT.value)
+    image_url = Column(String(500), nullable=True)
+    banner_url = Column(String(500), nullable=True)
+    start_date = Column(DateTime(timezone=True), nullable=True)
+    end_date = Column(DateTime(timezone=True), nullable=True)
+    voting_method = Column(String(50), nullable=False, default=VotingMethod.PUBLIC_VOTE.value)
+    max_submissions_per_user = Column(Integer, nullable=False, default=1)
+    allowed_submission_types = Column(JSON, nullable=True, default=["text", "file", "image"])
+    allow_file_upload = Column(Boolean, nullable=False, default=True)
+    allowed_file_types = Column(String(500), nullable=True)
+    max_file_size_mb = Column(Integer, nullable=False, default=15)
+    allow_image_upload = Column(Boolean, nullable=False, default=True)
+    max_image_size_mb = Column(Integer, nullable=False, default=10)
+    allow_url_submission = Column(Boolean, nullable=False, default=True)
+    require_approval = Column(Boolean, nullable=False, default=True)
+    show_author = Column(Boolean, nullable=False, default=True)
+    show_vote_count = Column(Boolean, nullable=False, default=True)
+    show_comments = Column(Boolean, nullable=False, default=True)
+    min_title_length = Column(Integer, nullable=False, default=6)
+    max_title_length = Column(Integer, nullable=False, default=200)
+    min_content_length = Column(Integer, nullable=False, default=30)
+    max_content_length = Column(Integer, nullable=False, default=60000)
+    custom_fields = Column(JSON, nullable=True)
+    judging_criteria = Column(JSON, nullable=True)
+    prizes = Column(JSON, nullable=True)
+    contact_info = Column(Text, nullable=True)
+    submission_count = Column(Integer, nullable=False, default=0)
+    view_count = Column(Integer, nullable=False, default=0)
+    is_featured = Column(Boolean, nullable=False, default=False)
+    display_order = Column(Integer, nullable=False, default=0)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    @staticmethod
+    def _normalize_tags(value):
+        if value is None:
+            return []
+        if isinstance(value, str):
+            raw_items = value.split(',')
+        elif isinstance(value, (list, tuple, set)):
+            raw_items = list(value)
+        else:
+            return []
+        seen = set()
+        cleaned = []
+        for item in raw_items:
+            token = str(item or '').strip()
+            if not token:
+                continue
+            key = token.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            cleaned.append(token)
+        return cleaned
+
+    @property
+    def tags(self):
+        metadata = self.custom_fields if isinstance(self.custom_fields, dict) else {}
+        return self._normalize_tags(metadata.get('tags'))
+
+    @tags.setter
+    def tags(self, value):
+        metadata = self.custom_fields if isinstance(self.custom_fields, dict) else {}
+        next_metadata = dict(metadata)
+        next_metadata['tags'] = self._normalize_tags(value)
+        self.custom_fields = next_metadata
+
+    @property
+    def type_label(self):
+        mapping = {
+            'van-chuong': 'Văn chương',
+            'hoi-hoa': 'Hội họa',
+            'nghiep-vu': 'Nghiệp vụ',
+            'thuyet-trinh': 'Thuyết trình',
+            'thi-tu-tap': 'Thi tập thể',
+            'thi-ca-nhan': 'Thi cá nhân',
+        }
+        if self.contest_type == 'custom':
+            return self.custom_type_name or 'Tùy chỉnh'
+        return mapping.get(self.contest_type, self.contest_type)
+
+    @property
+    def status_label(self):
+        mapping = {
+            'draft': 'Nháp',
+            'upcoming': 'Sắp diễn ra',
+            'active': 'Đang diễn ra',
+            'closed': 'Đã đóng',
+            'archived': 'Lưu trữ',
+        }
+        return mapping.get(self.status, self.status)
+
+    @property
+    def is_accepting_submissions(self):
+        if self.status != 'active':
+            return False
+        now = datetime.now(timezone.utc)
+        if self.start_date:
+            # Ensure comparison is timezone-aware
+            start = self.start_date if self.start_date.tzinfo else self.start_date.replace(tzinfo=timezone.utc)
+            if now < start:
+                return False
+        if self.end_date:
+            # Ensure comparison is timezone-aware
+            end = self.end_date if self.end_date.tzinfo else self.end_date.replace(tzinfo=timezone.utc)
+            if now > end:
+                return False
+        return True
+
 
 class Submission(Base):
     __tablename__ = "submissions"
 
     id = Column(Integer, primary_key=True, index=True)
+    contest_id = Column(Integer, ForeignKey("contests.id"), nullable=True, index=True)
+    submission_type = Column(String(20), nullable=False, default="text")  # text, file, image
     title = Column(String(255), nullable=False)
-    content = Column(Text, nullable=False)
-    attachment_url = Column(String(500), nullable=True)
+    content = Column(Text, nullable=True)
+    attachment_url = Column(String(500), nullable=True)  # for file uploads
+    image_url = Column(String(500), nullable=True)  # for image uploads
+    external_url = Column(String(1000), nullable=True)  # for video links, slides, etc.
+    caption = Column(Text, nullable=True)  # for image captions
     student_name = Column(String(255))
     student_email = Column(String(255))
     status = Column(String(50), default="pending") # pending, approved, rejected
+    rejection_reason = Column(Text, nullable=True)
     votes = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
 
 class SubmissionVote(Base):
@@ -122,12 +361,114 @@ class SubmissionVote(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+
+class JudgeAssignment(Base):
+    __tablename__ = "judge_assignments"
+    __table_args__ = (
+        UniqueConstraint("contest_id", "user_id", name="uq_judge_assignment_contest_user"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    contest_id = Column(Integer, ForeignKey("contests.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    assigned_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class JudgeScore(Base):
+    __tablename__ = "judge_scores"
+    __table_args__ = (
+        UniqueConstraint("submission_id", "judge_id", "criterion_index", name="uq_judge_score_unique"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    submission_id = Column(Integer, ForeignKey("submissions.id"), nullable=False, index=True)
+    judge_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    criterion_index = Column(Integer, nullable=False, default=0)
+    score = Column(Integer, nullable=False)
+    comment = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
 class Comment(Base):
     __tablename__ = "comments"
 
     id = Column(Integer, primary_key=True, index=True)
     content = Column(Text, nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"))
-    publication_id = Column(Integer, ForeignKey("publications.id"), nullable=True)
-    submission_id = Column(Integer, ForeignKey("submissions.id"), nullable=True)
+    publication_id = Column(Integer, ForeignKey("publications.id"), nullable=True, index=True)
+    submission_id = Column(Integer, ForeignKey("submissions.id"), nullable=True, index=True)
+    parent_id = Column(Integer, ForeignKey("comments.id"), nullable=True, index=True)
+    is_visible = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class CommentReaction(Base):
+    __tablename__ = "comment_reactions"
+    __table_args__ = (
+        UniqueConstraint("comment_id", "user_id", name="uq_comment_reaction_comment_user"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    comment_id = Column(Integer, ForeignKey("comments.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    reaction_type = Column(String(20), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class StaffReaction(Base):
+    __tablename__ = "staff_reactions"
+    __table_args__ = (
+        UniqueConstraint("staff_id", "user_id", name="uq_staff_reaction_staff_user"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    staff_id = Column(Integer, ForeignKey("staff_profiles.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    reaction_type = Column(String(50), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class PublicationViewEvent(Base):
+    __tablename__ = "publication_view_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    publication_id = Column(Integer, ForeignKey("publications.id"), nullable=False, index=True)
+    session_id = Column(String(128), nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class PublicationFavorite(Base):
+    __tablename__ = "publication_favorites"
+    __table_args__ = (
+        UniqueConstraint("publication_id", "user_id", name="uq_pub_favorite_pub_user"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    publication_id = Column(Integer, ForeignKey("publications.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class PublicationVote(Base):
+    __tablename__ = "publication_votes"
+    __table_args__ = (
+        UniqueConstraint("publication_id", "user_id", name="uq_pub_vote_pub_user"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    publication_id = Column(Integer, ForeignKey("publications.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class CommentMention(Base):
+    __tablename__ = "comment_mentions"
+    __table_args__ = (
+        UniqueConstraint("comment_id", "user_id", name="uq_comment_mention_comment_user"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    comment_id = Column(Integer, ForeignKey("comments.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

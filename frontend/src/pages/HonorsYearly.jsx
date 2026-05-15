@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react'
-import axios from 'axios'
+import { apiClient } from '@/lib/apiClient'
 import { Award } from 'lucide-react'
 import { Card } from '@/components/UI'
 import { Link } from 'react-router-dom'
 
-const API_URL = import.meta.env.VITE_API_URL || '/api'
 const toPlainText = (value) => (value || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
 
 export const HonorsYearly = () => {
@@ -17,7 +16,7 @@ export const HonorsYearly = () => {
       try {
         const subjects = ['van', 'ktpl', 'lich-su', 'dia-li', 'vovinam']
         const requests = subjects.map((subject) =>
-          axios.get(`${API_URL}/public/publications`, {
+          apiClient.get('/public/publications', {
             params: { subject, content_type: 'vinh-danh' },
           })
         )
@@ -65,7 +64,7 @@ export const HonorsYearly = () => {
                 <div className="inline-flex items-center gap-2 bg-orange-50 text-fpt-orange px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">
                   <Award size={12} /> {item.subject}
                 </div>
-                <h3 className="text-lg font-black text-fpt-blue line-clamp-2">{item.title}</h3>
+                <h3 className="text-lg font-black text-fpt-blue line-clamp-2 pt-2 md:pt-2">{item.title}</h3>
                 <p className="text-sm text-gray-500 font-medium line-clamp-3">{toPlainText(item.content)}</p>
                 <div className="pt-2">
                   <Link to={`/posts/${item.id}`} className="text-xs font-black uppercase tracking-widest text-fpt-orange hover:text-orange-600">

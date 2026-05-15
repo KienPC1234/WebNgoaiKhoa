@@ -16,9 +16,13 @@ import {
   FolderKanban,
   Menu,
   X,
+  MessageSquare,
+  Trophy,
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/components/UI'
+import NotificationButton from '@/components/NotificationButton'
+import { roleHasPermission } from '@/lib/rolePolicy'
 
 export const AdminLayout = () => {
   const location = useLocation()
@@ -30,9 +34,9 @@ export const AdminLayout = () => {
     currentUser = null
   }
   const currentRole = currentUser?.role || ''
-  const isSuperAdmin = currentRole === 'admin'
-  const canManageWebsite = isSuperAdmin || currentRole === 'website_manager'
-  const canReviewSubmissions = isSuperAdmin || currentRole === 'submission_judge'
+  const isSuperAdmin = roleHasPermission(currentRole, 'admin')
+  const canManageWebsite = isSuperAdmin || roleHasPermission(currentRole, 'content_manage')
+  const canReviewSubmissions = isSuperAdmin || roleHasPermission(currentRole, 'submission_review')
   const isCmsRoute =
     location.pathname.startsWith('/admin/cms-editor') ||
     location.pathname.startsWith('/admin/doingu') ||
@@ -46,6 +50,7 @@ export const AdminLayout = () => {
     { title: 'Bảng điều khiển', path: '/admin/dashboard', icon: LayoutDashboard },
     ...(canManageWebsite ? [
       { title: 'Sự kiện', path: '/admin/events', icon: CalendarDays },
+      { title: 'Cuộc thi', path: '/admin/contests', icon: Trophy },
     ] : []),
     ...(isSuperAdmin ? [
       { title: 'Người dùng', path: '/admin/users', icon: User },
@@ -65,10 +70,12 @@ export const AdminLayout = () => {
 
   const cmsItems = [
     ...(canManageWebsite ? [{ title: 'Tất cả bài viết', path: '/admin/publications', icon: FileText }] : []),
+    ...(canManageWebsite ? [{ title: 'Bình luận', path: '/admin/comments', icon: MessageSquare }] : []),
     ...(canManageWebsite ? [{ title: 'Vinh danh', path: '/admin/vinh-danh', icon: Award }] : []),
     ...(canManageWebsite ? [{ title: 'Đội ngũ', path: '/admin/doingu', icon: Users2 }] : []),
     ...(canReviewSubmissions ? [{ title: 'Duyệt bài', path: '/admin/submissions', icon: Send }] : []),
     ...(canManageWebsite ? [{ title: 'CMS Editor', path: '/admin/cms-editor', icon: Sparkles }] : []),
+    ...(canManageWebsite ? [{ title: 'Trang chủ', path: '/admin/homepage', icon: FolderKanban }] : []),
   ]
 
   const isActive = (path) => location.pathname === path
@@ -77,9 +84,12 @@ export const AdminLayout = () => {
     if (location.pathname.startsWith('/admin/publications')) return 'Nội dung tổng hợp'
     if (location.pathname.startsWith('/admin/events')) return 'Sự kiện'
     if (location.pathname.startsWith('/admin/cms-editor')) return 'CMS Editor'
+    if (location.pathname.startsWith('/admin/homepage') || location.pathname.startsWith('/admin/site-texts')) return 'Trang chủ'
     if (location.pathname.startsWith('/admin/doingu')) return 'Đội ngũ'
     if (location.pathname.startsWith('/admin/submissions')) return 'Duyệt bài'
+    if (location.pathname.startsWith('/admin/contests')) return 'Cuộc thi'
     if (location.pathname.startsWith('/admin/auth-overview')) return 'Phân quyền hệ thống'
+    if (location.pathname.startsWith('/admin/comments')) return 'Bình luận'
 
     const matched = menuItems.find((item) => isActive(item.path))
     return matched?.title || 'Quản trị'
@@ -139,12 +149,24 @@ export const AdminLayout = () => {
                     const parentActive = location.pathname.startsWith('/admin/publications')
                     return (
                       <div key={item.path} className="space-y-1">
-                        <div className={cn('group flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium transition-colors', parentActive ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900')}>
-                          <a href="https://ngoaikhoa.fptoj.com/admin/publications" onClick={() => setMobileSidebarOpen(false)} className="flex items-center gap-3">
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { navigate(item.path); setMobileSidebarOpen(false); } }}
+                          onClick={() => { navigate(item.path); setMobileSidebarOpen(false); }}
+                          className={cn('group flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium transition-colors cursor-pointer', parentActive ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900')}
+                        >
+                          <div className="flex items-center gap-3">
                             <item.icon size={18} />
                             {item.title}
-                          </a>
-                          <button type="button" onClick={() => setPublicationsOpen((p) => !p)} className="rounded-md p-1 hover:bg-black/5" aria-expanded={publicationsOpen} aria-controls="admin-publications-dropdown">
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setPublicationsOpen((p) => !p); }}
+                            className="rounded-md p-1 hover:bg-black/5"
+                            aria-expanded={publicationsOpen}
+                            aria-controls="admin-publications-dropdown"
+                          >
                             <ChevronDown size={18} className={cn('transition-transform', publicationsOpen ? 'rotate-180' : '')} />
                           </button>
                         </div>
@@ -169,7 +191,7 @@ export const AdminLayout = () => {
                   }
 
                   // Make Đội ngũ / Duyệt bài / CMS Editor larger to match other main menu items
-                  const largeButtons = ['/admin/doingu', '/admin/submissions', '/admin/cms-editor', '/admin/vinh-danh']
+                  const largeButtons = ['/admin/doingu', '/admin/submissions', '/admin/cms-editor', '/admin/vinh-danh', '/admin/homepage', '/admin/comments']
                   if (largeButtons.includes(item.path)) {
                     const active = location.pathname === item.path
                     return (
@@ -230,10 +252,7 @@ export const AdminLayout = () => {
           </div>
 
           <div className="flex items-center gap-3">
-            <button className="relative rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700">
-              <Bell size={18} />
-              <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-amber-500"></span>
-            </button>
+            <NotificationButton />
 
             <div className="flex items-center gap-2 border-l border-slate-200 pl-3">
               <div className="hidden text-right sm:block">

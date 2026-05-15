@@ -26,7 +26,7 @@ class _FakeAsyncClient:
         return _FakeResponse()
 
 
-def test_ai_chat_stream_uses_chromadb_context(client, monkeypatch):
+def test_ai_chat_stream_uses_vector_db_context(client, monkeypatch):
     captured = {}
 
     async def fake_stream(prompt, model):
@@ -54,7 +54,7 @@ def test_ai_chat_stream_uses_chromadb_context(client, monkeypatch):
     assert "Thong tin the le" in captured["prompt"]
 
 
-def test_ai_chat_basic_uses_chromadb_context(client, monkeypatch):
+def test_ai_chat_basic_uses_vector_db_context(client, monkeypatch):
     captured = {}
 
     monkeypatch.setattr(ai_module, "_sync_knowledge_base", lambda db: None)
@@ -82,7 +82,7 @@ def test_ai_chat_basic_uses_chromadb_context(client, monkeypatch):
     assert "Noi dung bai du thi" in captured["prompt"]
 
 
-def test_ai_health_reports_chromadb_state(client, monkeypatch):
+def test_ai_health_reports_vector_db_state(client, monkeypatch):
     class FakeCollection:
         @staticmethod
         def count():

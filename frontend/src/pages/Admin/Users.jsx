@@ -1,17 +1,16 @@
 import { useState, useEffect } from 'react'
-import axios from 'axios'
+import { apiClient } from '@/lib/apiClient'
+import { cmsService } from '@/lib/cmsService'
+import { roleHasPermission } from '@/lib/rolePolicy'
 import { Card, Button, cn } from '../../components/UI'
 import { User, Search, Shield, CheckCircle2, XCircle, Trash2 } from 'lucide-react'
 import { confirmAction, showApiError, toastError, toastSuccess } from '@/lib/notify'
-
-const API_URL = import.meta.env.VITE_API_URL || '/api'
 
 export const AdminUsers = () => {
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
 
-  const token = localStorage.getItem('token')
   let currentUser = null
   try {
     currentUser = JSON.parse(localStorage.getItem('user') || 'null')
@@ -19,23 +18,26 @@ export const AdminUsers = () => {
     currentUser = null
   }
 
-  const roleOptions = [
-    { value: 'student', label: 'Học sinh/sinh viên' },
-    { value: 'teacher', label: 'Giáo viên' },
-    { value: 'submission_judge', label: 'Người chấm bài' },
-    { value: 'website_manager', label: 'Quản lý website' },
-    { value: 'admin', label: 'Admin hệ thống' },
-  ]
+  const [roleOptions, setRoleOptions] = useState([])
 
   useEffect(() => {
     fetchUsers()
+    fetchRoles()
   }, [])
+
+  const fetchRoles = async () => {
+    try {
+      const res = await cmsService.getRoles()
+      const opts = (res || []).map((r) => ({ value: r.slug, label: r.name || r.slug }))
+      setRoleOptions(opts)
+    } catch (err) {
+      console.error('Error fetching roles:', err)
+    }
+  }
 
   const fetchUsers = async () => {
     try {
-      const res = await axios.get(`${API_URL}/admin/users`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      const res = await apiClient.get('/admin/users')
       setUsers(res.data)
     } catch (err) {
       console.error('Error fetching users:', err)
@@ -46,10 +48,8 @@ export const AdminUsers = () => {
 
   const handleToggleStatus = async (user) => {
     try {
-      await axios.put(`${API_URL}/admin/users/${user.id}`, {
+      await apiClient.put(`/admin/users/${user.id}`, {
         is_active: !user.is_active
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
       })
       fetchUsers()
       toastSuccess(!user.is_active ? 'Đã kích hoạt tài khoản.' : 'Đã khóa tài khoản.')
@@ -67,9 +67,7 @@ export const AdminUsers = () => {
     if (!confirmed) return
 
     try {
-      await axios.delete(`${API_URL}/admin/users/${user.id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      await apiClient.delete(`/admin/users/${user.id}`)
       toastSuccess('Đã xóa người dùng.')
       fetchUsers()
     } catch (err) {
@@ -80,7 +78,7 @@ export const AdminUsers = () => {
   const handleUpdateRole = async (user, nextRole) => {
     if (!nextRole || nextRole === user.role) return
 
-    const isEditingOtherAdmin = user.role === 'admin' && user.id !== currentUser?.id
+    const isEditingOtherAdmin = roleHasPermission(user.role, 'admin_panel') && user.id !== currentUser?.id
     if (isEditingOtherAdmin) {
       toastError('Không thể thay đổi quyền của tài khoản admin khác.')
       return
@@ -94,10 +92,8 @@ export const AdminUsers = () => {
     if (!confirmed) return
 
     try {
-      await axios.put(`${API_URL}/admin/users/${user.id}`, {
+      await apiClient.put(`/admin/users/${user.id}`, {
         role: nextRole,
-      }, {
-        headers: { Authorization: `Bearer ${token}` },
       })
       toastSuccess('Đã cập nhật quyền người dùng.')
       fetchUsers()
@@ -130,9 +126,44 @@ export const AdminUsers = () => {
             />
           </div>
 
-          <div className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-            <User size={16} className="text-slate-500" />
-            <span className="text-sm font-medium text-slate-700">Tổng người dùng: {users.length}</span>
+          <div className="flex items-center gap-2">
+            <div className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+              <User size={16} className="text-slate-500" />
+              <span className="text-sm font-medium text-slate-700">Tổng: {users.length}</span>
+            </div>
+            <Button
+              onClick={() => {
+                if (filteredUsers.length === 0) {
+                  toastError('Không có dữ liệu để xuất.');
+                  return;
+                }
+                const headers = ['ID', 'Email', 'Họ tên', 'Vai trò', 'Trạng thái', 'Ngày tham gia'];
+                const csvRows = [headers.join(',')];
+                for (const u of filteredUsers) {
+                  const safeStr = (str) => `"${(str || '').replace(/"/g, '""')}"`;
+                  csvRows.push([
+                    u.id,
+                    safeStr(u.email),
+                    safeStr(u.full_name),
+                    safeStr(u.role),
+                    u.is_active ? 'Đang hoạt động' : 'Đã khóa',
+                    safeStr(new Date(u.created_at || new Date()).toLocaleString('vi-VN'))
+                  ].join(','));
+                }
+                const csvContent = csvRows.join('\n');
+                const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.setAttribute('href', url);
+                link.setAttribute('download', `nguoi-dung-${new Date().getTime()}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+              }}
+              className="border border-slate-200 bg-white px-3 text-slate-700 hover:bg-slate-100"
+            >
+              Xuất CSV
+            </Button>
           </div>
         </div>
       </Card>
@@ -168,10 +199,10 @@ export const AdminUsers = () => {
                         <select
                           value={user.role}
                           onChange={(e) => handleUpdateRole(user, e.target.value)}
-                          disabled={user.role === 'admin' && user.id !== currentUser?.id}
+                          disabled={roleHasPermission(user.role, 'admin_panel') && user.id !== currentUser?.id}
                           className={cn(
                             'rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700',
-                            user.role === 'admin' ? 'border-slate-700 text-slate-900' : ''
+                            roleHasPermission(user.role, 'admin_panel') ? 'border-slate-700 text-slate-900' : ''
                           )}
                         >
                           {roleOptions.map((option) => (

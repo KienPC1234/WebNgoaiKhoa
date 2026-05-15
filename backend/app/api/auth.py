@@ -1,12 +1,13 @@
 from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
-from fastapi import APIRouter, Depends, Form, HTTPException, status
+from fastapi import APIRouter, Depends, Form, HTTPException, status, UploadFile, File, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 from typing import Optional
+from pathlib import Path
 import hashlib
 import hmac
 import os
@@ -17,9 +18,10 @@ import uuid
 
 from app.db.session import get_db
 from app.models.user import User
+from app.models.role import Role
 from app.services import newsletter as newsletter_service
 from app.services.email_templates import get_otp_html
-from app.schemas.schemas import PushConfigOut, PushTokenIn, PushTokenOut
+from app.schemas.schemas import PushConfigOut, PushSubscriptionIn, PushTokenOut
 
 router = APIRouter()
 
@@ -33,6 +35,10 @@ RECAPTCHA_SECRET_KEY = os.getenv("RECAPTCHA_SECRET_KEY", "")
 RECAPTCHA_VERIFY_URL = os.getenv("RECAPTCHA_VERIFY_URL", "https://www.google.com/recaptcha/api/siteverify")
 RECAPTCHA_REQUIRED = os.getenv("RECAPTCHA_REQUIRED", "false").lower() == "true"
 
+# Image upload settings (reuse same uploads dir as admin/public)
+IMAGE_UPLOAD_DIR = Path(os.getenv("IMAGE_UPLOAD_DIR", "/data/WebNgoaiKhoa/backend/uploads/images"))
+IMAGE_MAX_UPLOAD_SIZE = int(os.getenv("IMAGE_MAX_UPLOAD_BYTES", str(12 * 1024 * 1024)))
+
 SMTP_HOST = os.getenv("SMTP_HOST", "")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USER = os.getenv("SMTP_USER", "")
@@ -42,6 +48,7 @@ UNSUBSCRIBE_URL_BASE = os.getenv("UNSUBSCRIBE_URL_BASE", "http://localhost:3002/
 UNSUBSCRIBE_SECRET = os.getenv("EMAIL_UNSUBSCRIBE_SECRET", SECRET_KEY)
 OTP_EXPIRE_MINUTES = int(os.getenv("OTP_EXPIRE_MINUTES", "10"))
 GOOGLE_OAUTH_CLIENT_ID = os.getenv("GOOGLE_OAUTH_CLIENT_ID", "")
+VERIFY_EMAIL_URL_BASE = os.getenv("VERIFY_EMAIL_URL_BASE", "http://localhost:3002/verify-email")
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
@@ -82,6 +89,18 @@ class UnsubscribeIn(BaseModel):
     token: str
 
 
+class ForgotPasswordIn(BaseModel):
+    email: str
+    recaptcha_token: Optional[str] = None
+
+
+class ResetPasswordIn(BaseModel):
+    email: str
+    otp: str = Field(min_length=4, max_length=12)
+    new_password: str = Field(min_length=6, max_length=128)
+    recaptcha_token: Optional[str] = None
+
+
 class GoogleAuthIn(BaseModel):
     id_token: str
     full_name: Optional[str] = None
@@ -94,6 +113,7 @@ class UserOut(BaseModel):
     email: str
     role: str
     full_name: Optional[str] = None
+    image_url: Optional[str] = None
     email_verified: bool
     is_subscribed: bool
 
@@ -125,6 +145,19 @@ def is_valid_email(email: str) -> bool:
 
 def normalize_email(email: Optional[str]) -> str:
     return (email or "").strip().lower()
+
+
+def _ensure_aware(dt: Optional[datetime]) -> Optional[datetime]:
+    """Return a timezone-aware datetime in UTC.
+
+    If `dt` is naive, assume it's UTC and attach UTC tzinfo. If it's already
+    timezone-aware, return as-is. If None, return None.
+    """
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
 
 
 def is_recaptcha_enabled() -> bool:
@@ -172,9 +205,10 @@ def make_otp() -> str:
 def send_otp_email(to_email: str, otp: str) -> None:
     unsubscribe_token = build_unsubscribe_token(to_email)
     unsubscribe_link = f"{UNSUBSCRIBE_URL_BASE}?email={to_email}&token={unsubscribe_token}"
+    verify_link = f"{VERIFY_EMAIL_URL_BASE}?token={otp}"
 
     msg = EmailMessage()
-    msg["Subject"] = "Ma xac thuc OTP - To xa hoi"
+    msg["Subject"] = "Mã xác thực OTP - Tổ Xã Hội"
     msg["From"] = SMTP_FROM
     msg["To"] = to_email
     msg["List-Unsubscribe"] = f"<{unsubscribe_link}>"
@@ -183,18 +217,18 @@ def send_otp_email(to_email: str, otp: str) -> None:
     msg["X-Entity-Ref-ID"] = f"otp-{uuid.uuid4()}"
 
     body = (
-        "Xin chao,\n\n"
-        f"Ma OTP cua ban la: {otp}\n"
-        f"Ma co hieu luc trong {OTP_EXPIRE_MINUTES} phut.\n\n"
-        "Neu ban khong thuc hien thao tac nay, vui long bo qua email.\n"
+        "Xin chào,\n\n"
+        f"Mã OTP của bạn là: {otp}\n"
+        f"Mã có hiệu lực trong {OTP_EXPIRE_MINUTES} phút.\n\n"
+        "Nếu bạn không thực hiện thao tác này, vui lòng bỏ qua email.\n"
         "\n"
-        "Ban nhan duoc thong tin nay tu TO XA HOI.\n"
-        "Dia chi: FPT Education, Khu Cong nghe cao Hoa Lac, Ha Noi.\n"
-        f"Huy dang ky tai day: {unsubscribe_link}"
+        "Bạn nhận được thông tin này từ TỔ XÃ HỘI.\n"
+        "Địa chỉ: FPT Education, Khu Công nghệ cao Hòa Lạc, Hà Nội.\n"
+        f"Hủy đăng ký tại đây: {unsubscribe_link}"
     )
-    msg.set_content(body)
+    msg.set_content(body, charset="utf-8")
 
-    html_content = get_otp_html(otp, OTP_EXPIRE_MINUTES, unsubscribe_link)
+    html_content = get_otp_html(otp, OTP_EXPIRE_MINUTES, unsubscribe_link, verify_link)
     msg.add_alternative(html_content, subtype="html")
 
     if not SMTP_HOST:
@@ -230,8 +264,55 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
     return user
 
 
-async def get_current_admin(current_user: User = Depends(get_current_user)):
-    if current_user.role != "admin":
+def _legacy_permission_map(permission: str):
+    return {
+        'admin': {'admin'},
+        'admin_panel': {'admin', 'website_manager', 'submission_judge'},
+        'content_manage': {'admin', 'website_manager'},
+        'submission_review': {'admin', 'submission_judge'},
+        'contestant': {'student', 'contestant', 'admin'},
+    }.get(permission, set())
+
+
+def role_has_permission(db: Session, role_slug: Optional[str], permission: str) -> bool:
+    """Return True if the given role (slug) includes the specified permission.
+
+    Falls back to legacy hardcoded role sets when the `roles` table is not populated.
+    """
+    if not role_slug:
+        return False
+
+    try:
+        role = db.query(Role).filter(Role.slug == role_slug).first()
+    except Exception:
+        role = None
+
+    if role:
+        perms = role.permissions
+        if perms is None:
+            return False
+        # perms may already be a list (JSON column) or other iterable
+        try:
+            if isinstance(perms, (list, tuple, set)):
+                return permission in perms
+            # if stored as string (fallback), check substring
+            if isinstance(perms, str):
+                import json
+                try:
+                    parsed = json.loads(perms)
+                    return permission in parsed
+                except Exception:
+                    return permission in perms
+        except Exception:
+            return False
+
+    # Fallback to legacy mapping
+    legacy = _legacy_permission_map(permission)
+    return role_slug in legacy
+
+
+async def get_current_admin(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not role_has_permission(db, current_user.role, 'admin'):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="The user does not have enough privileges",
@@ -239,8 +320,8 @@ async def get_current_admin(current_user: User = Depends(get_current_user)):
     return current_user
 
 
-async def get_current_admin_panel_user(current_user: User = Depends(get_current_user)):
-    if current_user.role not in {"admin", "website_manager", "submission_judge"}:
+async def get_current_admin_panel_user(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not role_has_permission(db, current_user.role, 'admin_panel'):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="The user does not have admin panel access",
@@ -248,8 +329,8 @@ async def get_current_admin_panel_user(current_user: User = Depends(get_current_
     return current_user
 
 
-async def get_current_website_manager(current_user: User = Depends(get_current_user)):
-    if current_user.role not in {"admin", "website_manager"}:
+async def get_current_website_manager(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not role_has_permission(db, current_user.role, 'content_manage'):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="The user does not have website management privileges",
@@ -257,8 +338,8 @@ async def get_current_website_manager(current_user: User = Depends(get_current_u
     return current_user
 
 
-async def get_current_submission_judge(current_user: User = Depends(get_current_user)):
-    if current_user.role not in {"admin", "submission_judge"}:
+async def get_current_submission_judge(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not role_has_permission(db, current_user.role, 'submission_review'):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="The user does not have submission moderation privileges",
@@ -266,8 +347,8 @@ async def get_current_submission_judge(current_user: User = Depends(get_current_
     return current_user
 
 
-async def get_current_contestant(current_user: User = Depends(get_current_user)):
-    if current_user.role not in ("student", "contestant", "admin"):
+async def get_current_contestant(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not role_has_permission(db, current_user.role, 'contestant'):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="The user is not a contestant",
@@ -289,17 +370,17 @@ async def login(
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Ten dang nhap hoac mat khau khong dung",
+            detail="Tên đăng nhập hoặc mật khẩu không đúng",
         )
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Tai khoan da bi vo hieu hoa",
+            detail="Tài khoản đã bị vô hiệu hóa",
         )
     if user.role != "admin" and not user.email_verified:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Tai khoan chua xac minh OTP email",
+            detail="Tài khoản chưa xác minh OTP email",
         )
 
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -316,6 +397,7 @@ async def login(
             "email": user.email,
             "role": user.role,
             "full_name": user.full_name,
+            "image_url": getattr(user, 'image_url', None),
             "email_verified": user.email_verified,
             "is_subscribed": user.is_subscribed,
         },
@@ -393,6 +475,7 @@ async def login_or_register_google(payload: GoogleAuthIn, db: Session = Depends(
             "email": user.email,
             "role": user.role,
             "full_name": user.full_name,
+            "image_url": getattr(user, 'image_url', None),
             "email_verified": user.email_verified,
             "is_subscribed": user.is_subscribed,
         },
@@ -410,7 +493,7 @@ async def register_user(payload: RegisterIn, db: Session = Depends(get_db)):
 
     existing = db.query(User).filter(User.email == normalized_email).first()
     if existing:
-        raise HTTPException(status_code=400, detail="Email already registered")
+        raise HTTPException(status_code=400, detail="Email đã được đăng ký")
 
     otp = make_otp()
     new_user = User(
@@ -445,16 +528,17 @@ async def verify_otp(payload: VerifyOtpIn, db: Session = Depends(get_db)):
 
     user = db.query(User).filter(User.email == normalized_email).first()
     if not user:
-        raise HTTPException(status_code=404, detail="Email khong ton tai")
+        raise HTTPException(status_code=404, detail="Email không tồn tại")
 
     if user.email_verified:
-        return {"message": "Tai khoan da xac minh"}
+        return {"message": "Tài khoản đã xác minh"}
 
     if not user.verification_token or payload.otp != str(user.verification_token):
-        raise HTTPException(status_code=400, detail="Ma OTP khong hop le")
+        raise HTTPException(status_code=400, detail="Mã OTP không hợp lệ")
 
-    if user.verification_token_expires_at and datetime.now(timezone.utc) > user.verification_token_expires_at:
-        raise HTTPException(status_code=400, detail="Ma OTP da het han")
+    expires_at = _ensure_aware(user.verification_token_expires_at)
+    if expires_at and datetime.now(timezone.utc) > expires_at:
+        raise HTTPException(status_code=400, detail="Mã OTP đã hết hạn")
 
     user.email_verified = True
     user.verification_token = None
@@ -462,17 +546,37 @@ async def verify_otp(payload: VerifyOtpIn, db: Session = Depends(get_db)):
     db.add(user)
     db.commit()
 
-    return {"message": "Xac minh OTP thanh cong"}
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.email},
+        expires_delta=access_token_expires,
+    )
+
+    return {
+        "message": "Xac minh OTP thanh cong",
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "role": user.role,
+            "full_name": user.full_name,
+            "image_url": getattr(user, 'image_url', None),
+            "email_verified": user.email_verified,
+            "is_subscribed": user.is_subscribed,
+        },
+    }
 
 
 @router.get("/verify-email")
 async def verify_email(token: str, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.verification_token == token).first()
     if not user:
-        raise HTTPException(status_code=400, detail="Token xac minh khong hop le")
+        raise HTTPException(status_code=400, detail="Token xác minh không hợp lệ")
 
-    if user.verification_token_expires_at and datetime.now(timezone.utc) > user.verification_token_expires_at:
-        raise HTTPException(status_code=400, detail="Token xac minh da het han")
+    expires_at = _ensure_aware(user.verification_token_expires_at)
+    if expires_at and datetime.now(timezone.utc) > expires_at:
+        raise HTTPException(status_code=400, detail="Token xác minh đã hết hạn")
 
     user.email_verified = True
     user.verification_token = None
@@ -480,7 +584,26 @@ async def verify_email(token: str, db: Session = Depends(get_db)):
     db.add(user)
     db.commit()
 
-    return {"message": "Xac minh email thanh cong"}
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.email},
+        expires_delta=access_token_expires,
+    )
+
+    return {
+        "message": "Xác minh email thành công",
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "role": user.role,
+            "full_name": user.full_name,
+            "image_url": getattr(user, 'image_url', None),
+            "email_verified": user.email_verified,
+            "is_subscribed": user.is_subscribed,
+        },
+    }
 
 
 @router.post("/verify-email/resend")
@@ -491,10 +614,10 @@ async def resend_verify_email(payload: VerifyResendIn, db: Session = Depends(get
 
     user = db.query(User).filter(User.email == normalized_email).first()
     if not user:
-        raise HTTPException(status_code=404, detail="Email khong ton tai")
+        raise HTTPException(status_code=404, detail="Email không tồn tại")
 
     if user.email_verified:
-        return {"message": "Tai khoan da xac minh truoc do"}
+        return {"message": "Tài khoản đã xác minh trước đó"}
 
     otp = make_otp()
     user.verification_token = otp
@@ -508,7 +631,7 @@ async def resend_verify_email(payload: VerifyResendIn, db: Session = Depends(get
     except Exception as e:
         print(f"Warning: failed to resend OTP email: {e}")
 
-    return {"message": "Da gui lai ma OTP"}
+    return {"message": "Đã gửi lại mã OTP"}
 
 
 @router.get("/me", response_model=UserOut)
@@ -531,6 +654,47 @@ async def update_current_user(
     return current_user
 
 
+@router.post('/me/avatar')
+async def upload_my_avatar(
+    avatar: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    # Validate file
+    if not avatar or not avatar.filename:
+        raise HTTPException(status_code=400, detail="Missing file")
+
+    filename_lower = avatar.filename.lower()
+    allowed_exts = (".jpg", ".jpeg", ".png", ".gif", ".webp", ".avif", ".svg")
+    if not any(filename_lower.endswith(ext) for ext in allowed_exts):
+        raise HTTPException(status_code=400, detail="Unsupported file type")
+
+    payload = await avatar.read()
+    if not payload:
+        raise HTTPException(status_code=400, detail="Empty file")
+
+    if len(payload) > IMAGE_MAX_UPLOAD_SIZE:
+        raise HTTPException(status_code=400, detail="File too large")
+
+    IMAGE_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    ext = Path(avatar.filename).suffix.lower() or '.png'
+    stored_name = f"{uuid.uuid4().hex}{ext}"
+    target = IMAGE_UPLOAD_DIR / stored_name
+    try:
+        target.write_bytes(payload)
+    except Exception:
+        raise HTTPException(status_code=500, detail="Failed to save file")
+
+    # Persist public-facing URL on user
+    public_path = f"/api/public/uploads/images/{stored_name}"
+    current_user.image_url = public_path
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
+
+    return {"url": public_path, "file_name": avatar.filename}
+
+
 @router.post("/password/set")
 async def set_password(
     payload: PasswordSetIn,
@@ -550,12 +714,90 @@ async def change_password(
     current_user: User = Depends(get_current_user),
 ):
     if not verify_password(payload.current_password, current_user.hashed_password):
-        raise HTTPException(status_code=400, detail="Mat khau hien tai khong dung")
+        raise HTTPException(status_code=400, detail="Mật khẩu hiện tại không đúng")
 
     current_user.hashed_password = get_password_hash(payload.new_password)
     db.add(current_user)
     db.commit()
-    return {"message": "Mat khau da duoc cap nhat"}
+    return {"message": "Mật khẩu đã được cập nhật"}
+
+
+@router.post("/password/forgot")
+async def forgot_password(payload: ForgotPasswordIn, db: Session = Depends(get_db)):
+    """Send a password-reset OTP to the user's email."""
+    verify_recaptcha_or_raise(payload.recaptcha_token, action="forgot_password")
+
+    normalized_email = normalize_email(payload.email)
+
+    # Always return success to avoid email enumeration
+    user = db.query(User).filter(User.email == normalized_email).first()
+    if not user:
+        return {"message": "Nếu email tồn tại, mã OTP đã được gửi."}
+
+    if not user.is_active:
+        return {"message": "Nếu email tồn tại, mã OTP đã được gửi."}
+
+    otp = make_otp()
+    user.verification_token = otp
+    user.verification_token_expires_at = datetime.now(timezone.utc) + timedelta(minutes=OTP_EXPIRE_MINUTES)
+    user.last_verification_sent_at = datetime.now(timezone.utc)
+    db.add(user)
+    db.commit()
+
+    try:
+        send_otp_email(user.email, otp)
+    except Exception as e:
+        print(f"Warning: failed to send password reset OTP: {e}")
+
+    return {"message": "Nếu email tồn tại, mã OTP đã được gửi."}
+
+
+@router.post("/password/reset")
+async def reset_password(payload: ResetPasswordIn, db: Session = Depends(get_db)):
+    """Reset password using OTP verification."""
+    verify_recaptcha_or_raise(payload.recaptcha_token, action="reset_password")
+
+    normalized_email = normalize_email(payload.email)
+
+    user = db.query(User).filter(User.email == normalized_email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Email không tồn tại")
+
+    if not user.verification_token or payload.otp != str(user.verification_token):
+        raise HTTPException(status_code=400, detail="Mã OTP không hợp lệ")
+
+    expires_at = _ensure_aware(user.verification_token_expires_at)
+    if expires_at and datetime.now(timezone.utc) > expires_at:
+        raise HTTPException(status_code=400, detail="Mã OTP đã hết hạn")
+
+    user.hashed_password = get_password_hash(payload.new_password)
+    user.verification_token = None
+    user.verification_token_expires_at = None
+    # Also mark email as verified since they proved email ownership
+    user.email_verified = True
+    db.add(user)
+    db.commit()
+
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.email},
+        expires_delta=access_token_expires,
+    )
+
+    return {
+        "message": "Mật khẩu đã được đặt lại thành công",
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "role": user.role,
+            "full_name": user.full_name,
+            "image_url": getattr(user, 'image_url', None),
+            "email_verified": user.email_verified,
+            "is_subscribed": user.is_subscribed,
+        },
+    }
 
 
 @router.get("/unsubscribe")
@@ -565,7 +807,7 @@ async def unsubscribe_confirm_page(email: str, token: str, db: Session = Depends
 
     user = db.query(User).filter(User.email == email).first()
     return {
-        "message": "Vui long gui POST /api/auth/unsubscribe de xac nhan huy dang ky",
+        "message": "Vui lòng gửi POST /api/auth/unsubscribe để xác nhận hủy đăng ký",
         "email": email,
         "is_subscribed": bool(user.is_subscribed) if user else False,
     }
@@ -574,7 +816,7 @@ async def unsubscribe_confirm_page(email: str, token: str, db: Session = Depends
 @router.post("/unsubscribe")
 async def unsubscribe(payload: UnsubscribeIn, db: Session = Depends(get_db)):
     if not is_valid_unsubscribe_token(payload.email, payload.token):
-        raise HTTPException(status_code=400, detail="Yeu cau huy dang ky khong hop le")
+        raise HTTPException(status_code=400, detail="Yêu cầu hủy đăng ký không hợp lệ")
 
     user = db.query(User).filter(User.email == payload.email).first()
     updated = False
@@ -584,10 +826,10 @@ async def unsubscribe(payload: UnsubscribeIn, db: Session = Depends(get_db)):
         db.add(user)
         db.commit()
 
-    newsletter_service.clear_push_tokens(payload.email)
+    newsletter_service.clear_user_push_subscriptions(payload.email)
 
     return {
-        "message": "Da huy dang ky nhan email",
+        "message": "Đã hủy đăng ký nhận email",
         "email": payload.email,
         "updated": updated,
         "webpush_tokens_cleared": True,
@@ -603,21 +845,26 @@ async def get_push_config():
 
 
 @router.post("/push/register", response_model=PushTokenOut)
-async def register_push_token(payload: PushTokenIn, current_user: User = Depends(get_current_user)):
+async def register_push_token(payload: PushSubscriptionIn, current_user: User = Depends(get_current_user)):
     if not current_user.is_subscribed:
         raise HTTPException(status_code=400, detail="User already unsubscribed")
 
-    tokens = newsletter_service.register_push_token(current_user.email, payload.token)
+    newsletter_service.register_push_subscription(
+        user_email=current_user.email,
+        endpoint=payload.endpoint,
+        p256dh=payload.p256dh,
+        auth=payload.auth,
+    )
     return {
-        "message": "Push token registered",
-        "tokens": tokens,
+        "message": "Push subscription registered",
+        "tokens": 0,
     }
 
 
 @router.post("/push/unregister", response_model=PushTokenOut)
-async def unregister_push_token(payload: PushTokenIn, current_user: User = Depends(get_current_user)):
-    tokens = newsletter_service.unregister_push_token(current_user.email, payload.token)
+async def unregister_push_token(payload: PushSubscriptionIn, current_user: User = Depends(get_current_user)):
+    newsletter_service.unregister_push_subscription(payload.endpoint)
     return {
-        "message": "Push token unregistered",
-        "tokens": tokens,
+        "message": "Push subscription unregistered",
+        "tokens": 0,
     }

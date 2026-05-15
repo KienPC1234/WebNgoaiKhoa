@@ -17,8 +17,8 @@ const RAW_SITEMAP = [
       },
     ],
   },
-  { path: '/doingu/scale', title: 'Tổ xã hội - quy mô', aliases: ['quy mô', 'giới thiệu', 'tổ xã hội'], keywords: ['sứ mệnh', 'định hướng'] },
-  { path: '/doingu/staff', title: 'Đội ngũ giáo viên', aliases: ['đội ngũ', 'giáo viên', 'staff'], keywords: ['nhân sự', 'giảng dạy'] },
+  { path: '/doingu/scale', title: 'Quy mô', aliases: ['quy mô', 'giới thiệu', 'tổ xã hội'], keywords: ['sứ mệnh', 'định hướng'] },
+  { path: '/doingu/staff', title: 'Đội ngũ', aliases: ['đội ngũ', 'giáo viên', 'staff'], keywords: ['nhân sự', 'giảng dạy'] },
   { path: '/events/upcoming', title: 'Sự kiện sắp tới', aliases: ['sự kiện', 'lịch sự kiện', 'workshop'], keywords: ['calendar', 'event'] },
   { path: '/stories/inspiring', title: 'Câu chuyện truyền cảm hứng', aliases: ['câu chuyện', 'truyền cảm hứng', 'stories'], keywords: ['story', 'inspiring'] },
   { path: '/doingu/honors', title: 'Vinh danh và giải thưởng', aliases: ['vinh danh', 'giải thưởng', 'honors'], keywords: ['award'] },
@@ -27,6 +27,11 @@ const RAW_SITEMAP = [
   { path: '/phanmon/lich-su', title: 'Phân môn Lịch sử', aliases: ['lịch sử', 'history'], keywords: ['subject'] },
   { path: '/phanmon/dia-li', title: 'Phân môn Địa lí', aliases: ['địa lí', 'geography'], keywords: ['subject'] },
   { path: '/phanmon/vovinam', title: 'Phân môn Vovinam', aliases: ['vovinam', 'võ thuật'], keywords: ['subject'] },
+  { path: '/phanmon/van/cuoc-thi', title: 'Cuộc thi - Ngữ văn', aliases: ['cuộc thi văn', 'cuoc thi van', 'thi văn'], keywords: ['cuộc thi', 'nhái bén'] },
+  { path: '/phanmon/ktpl/cuoc-thi', title: 'Cuộc thi - Kinh tế pháp luật', aliases: ['cuộc thi ktpl', 'cuoc thi ktpl', 'thi ktpl'], keywords: ['cuộc thi'] },
+  { path: '/phanmon/lich-su/cuoc-thi', title: 'Cuộc thi - Lịch sử', aliases: ['cuộc thi lịch sử', 'cuoc thi lich su', 'thi lịch sử'], keywords: ['cuộc thi', 'lịch sử'] },
+  { path: '/phanmon/dia-li/cuoc-thi', title: 'Cuộc thi - Địa lí', aliases: ['cuộc thi địa lí', 'cuoc thi dia li', 'thi địa lí'], keywords: ['cuộc thi', 'địa lí'] },
+  { path: '/phanmon/vovinam/cuoc-thi', title: 'Cuộc thi - Vovinam', aliases: ['cuộc thi vovinam', 'cuoc thi vovinam', 'thi vovinam'], keywords: ['cuộc thi', 'vovinam'] },
   { path: '/profile', title: 'Trang cá nhân', aliases: ['profile', 'tài khoản', 'cá nhân'], keywords: ['account'] },
   { path: '/login', title: 'Đăng nhập', aliases: ['đăng nhập', 'login'], keywords: ['auth'] },
   { path: '/register', title: 'Đăng ký', aliases: ['đăng ký', 'register'], keywords: ['auth'] },
@@ -67,6 +72,7 @@ export const AI_SITEMAP = RAW_SITEMAP.map((item) => ({
 const DYNAMIC_ROUTE_PATTERNS = [
   /^\/posts\/\d+$/,
   /^\/stories\/inspiring\/\d+$/,
+  /^\/phanmon\/[^/]+\/[^/]+$/,
 ]
 
 const normalizeRouteCandidate = (path = '') => {
@@ -76,7 +82,7 @@ const normalizeRouteCandidate = (path = '') => {
   try {
     const parsed = raw.startsWith('http://') || raw.startsWith('https://')
       ? new URL(raw)
-      : new URL(raw, 'https://ngoaikhoa.fptoj.com')
+      : new URL(raw, 'https://toxahoihola.com')
     return {
       full: `${parsed.pathname}${parsed.search || ''}`,
       pathname: parsed.pathname,

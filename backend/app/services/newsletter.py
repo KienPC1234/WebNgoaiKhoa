@@ -3,18 +3,15 @@ import os
 import smtplib
 import threading
 from email.message import EmailMessage
-from pathlib import Path
 from typing import Dict, List, Optional
 
-from app.services.email_templates import get_newsletter_html
+from pywebpush import webpush, WebPushException
 
-try:
-    import firebase_admin
-    from firebase_admin import credentials, messaging
-except Exception:  # pragma: no cover - optional dependency at runtime
-    firebase_admin = None
-    credentials = None
-    messaging = None
+from app.services.email_templates import get_newsletter_html
+from app.db.session import SessionLocal
+from app.models.notification import PushSubscription, Notification
+from app.models.user import User
+from app.db.notifications import manager
 
 
 SMTP_HOST = os.getenv("SMTP_HOST", "")
@@ -28,18 +25,10 @@ NEWSLETTER_ENABLED = os.getenv("NEWSLETTER_ENABLED", "true").lower() == "true"
 NEWSLETTER_EMAIL_ENABLED = os.getenv("NEWSLETTER_EMAIL_ENABLED", "true").lower() == "true"
 NEWSLETTER_WEBPUSH_ENABLED = os.getenv("NEWSLETTER_WEBPUSH_ENABLED", "false").lower() == "true"
 
-FCM_HTTP_V1_ENABLED = os.getenv("FCM_HTTP_V1_ENABLED", "true").lower() == "true"
-FCM_SERVICE_ACCOUNT_FILE = Path(
-    os.getenv("FCM_SERVICE_ACCOUNT_FILE", "/data/WebNgoaiKhoa/backend/fcm.secrets_json")
-)
-FCM_PROJECT_ID = os.getenv("FCM_PROJECT_ID", "")
-FCM_WEBPUSH_LINK = os.getenv("FCM_WEBPUSH_LINK", "https://ngoaikhoa.fptoj.com")
-
-PUSH_REGISTRY_FILE = Path(os.getenv("PUSH_REGISTRY_FILE", "backend/app/db/push_registry.json"))
-
-_registry_lock = threading.Lock()
-_firebase_lock = threading.Lock()
-_firebase_initialized = False
+VAPID_PRIVATE_KEY = os.getenv("VAPID_PRIVATE_KEY", "")
+VAPID_PUBLIC_KEY = os.getenv("VAPID_PUBLIC_KEY", "")
+VAPID_CLAIM_EMAIL = os.getenv("VAPID_CLAIM_EMAIL", "noreply@example.com")
+WEBPUSH_DEFAULT_URL = os.getenv("WEBPUSH_DEFAULT_URL", "https://toxahoihola.com")
 
 
 def is_newsletter_enabled() -> bool:
@@ -51,106 +40,7 @@ def is_email_channel_enabled() -> bool:
 
 
 def is_webpush_channel_enabled() -> bool:
-    if not (NEWSLETTER_ENABLED and NEWSLETTER_WEBPUSH_ENABLED and FCM_HTTP_V1_ENABLED):
-        return False
-    return _ensure_firebase_initialized()
-
-
-def _ensure_firebase_initialized() -> bool:
-    global _firebase_initialized
-
-    if _firebase_initialized:
-        return True
-
-    if firebase_admin is None or credentials is None:
-        print("[FCM_HTTP_V1] firebase_admin is not installed")
-        return False
-
-    if not FCM_SERVICE_ACCOUNT_FILE.exists():
-        print(f"[FCM_HTTP_V1] Missing service account file: {FCM_SERVICE_ACCOUNT_FILE}")
-        return False
-
-    with _firebase_lock:
-        if _firebase_initialized:
-            return True
-
-        try:
-            if not firebase_admin._apps:
-                cred = credentials.Certificate(str(FCM_SERVICE_ACCOUNT_FILE))
-                options = {"projectId": FCM_PROJECT_ID} if FCM_PROJECT_ID else None
-                firebase_admin.initialize_app(cred, options)
-            _firebase_initialized = True
-            return True
-        except Exception as exc:
-            print(f"[FCM_HTTP_V1] init failed: {exc}")
-            return False
-
-
-def _load_registry() -> Dict[str, List[str]]:
-    if not PUSH_REGISTRY_FILE.exists():
-        return {}
-
-    try:
-        data = json.loads(PUSH_REGISTRY_FILE.read_text(encoding="utf-8"))
-    except Exception:
-        return {}
-
-    if not isinstance(data, dict):
-        return {}
-
-    normalized: Dict[str, List[str]] = {}
-    for email, tokens in data.items():
-        if isinstance(email, str) and isinstance(tokens, list):
-            cleaned = [t for t in tokens if isinstance(t, str) and t.strip()]
-            if cleaned:
-                normalized[email] = list(dict.fromkeys(cleaned))
-    return normalized
-
-
-def _save_registry(data: Dict[str, List[str]]) -> None:
-    PUSH_REGISTRY_FILE.parent.mkdir(parents=True, exist_ok=True)
-    PUSH_REGISTRY_FILE.write_text(json.dumps(data, ensure_ascii=True, indent=2), encoding="utf-8")
-
-
-def register_push_token(email: str, token: str) -> int:
-    token = (token or "").strip()
-    if not token:
-        return 0
-
-    with _registry_lock:
-        data = _load_registry()
-        bucket = data.get(email, [])
-        if token not in bucket:
-            bucket.append(token)
-        data[email] = bucket
-        _save_registry(data)
-        return len(bucket)
-
-
-def unregister_push_token(email: str, token: str) -> int:
-    token = (token or "").strip()
-
-    with _registry_lock:
-        data = _load_registry()
-        bucket = data.get(email, [])
-        if token:
-            bucket = [item for item in bucket if item != token]
-
-        if bucket:
-            data[email] = bucket
-        elif email in data:
-            del data[email]
-
-        _save_registry(data)
-        return len(bucket)
-
-
-def clear_push_tokens(email: str) -> None:
-    with _registry_lock:
-        data = _load_registry()
-        if email in data:
-            del data[email]
-            _save_registry(data)
+    return NEWSLETTER_ENABLED and NEWSLETTER_WEBPUSH_ENABLED and bool(VAPID_PRIVATE_KEY)
 
 
 def _unsubscribe_link(email: str, token: str) -> str:
@@ -172,22 +62,22 @@ def send_newsletter_email(to_email: str, unsubscribe_token: str, subject: str, b
     msg["Precedence"] = "bulk"
 
     lines = [
-        "Xin chao,",
+        "Xin chào,",
         "",
         body,
         "",
     ]
     if action_url:
-        lines.extend([f"Xem chi tiet: {action_url}", ""])
+        lines.extend([f"Xem chi tiết: {action_url}", ""])
     lines.extend(
         [
-            "Ban nhan duoc thong tin nay tu TO XA HOI.",
-            "Neu khong muon nhan them email, vui long huy dang ky:",
+            "Bạn nhận được thông tin này từ TỔ XÃ HỘI.",
+            "Nếu không muốn nhận thêm email, vui lòng hủy đăng ký:",
             unsubscribe_link,
         ]
     )
 
-    msg.set_content("\n".join(lines))
+    msg.set_content("\n".join(lines), charset="utf-8")
 
     html_content = get_newsletter_html(subject, body, action_url, unsubscribe_link)
     msg.add_alternative(html_content, subtype="html")
@@ -208,23 +98,195 @@ def send_newsletter_email(to_email: str, unsubscribe_token: str, subject: str, b
         return False
 
 
-def send_webpush(token: str, title: str, body: str, link: Optional[str] = None) -> bool:
+def send_webpush(subscription: PushSubscription, title: str, body: str, url: Optional[str] = None) -> bool:
     if not is_webpush_channel_enabled():
         return False
 
     try:
-        message = messaging.Message(
-            token=token,
-            notification=messaging.Notification(title=title, body=body),
-            webpush=messaging.WebpushConfig(
-                fcm_options=messaging.WebpushFCMOptions(link=link or FCM_WEBPUSH_LINK),
-            ),
+        subscription_info = {
+            "endpoint": subscription.endpoint,
+            "keys": {
+                "p256dh": subscription.p256dh,
+                "auth": subscription.auth,
+            },
+        }
+        payload = json.dumps({
+            "title": title,
+            "body": body,
+            "url": url or WEBPUSH_DEFAULT_URL,
+        }, ensure_ascii=False)
+        webpush(
+            subscription_info=subscription_info,
+            data=payload,
+            vapid_private_key=VAPID_PRIVATE_KEY,
+            vapid_claims={"sub": f"mailto:{VAPID_CLAIM_EMAIL}"},
+            timeout=15,
         )
-        messaging.send(message)
         return True
-    except Exception as exc:
-        print(f"[FCM_HTTP_V1] send failed: {exc}")
+    except WebPushException as exc:
+        exc_str = str(exc).lower()
+        status_code = getattr(exc, "response", None)
+        status_code = getattr(status_code, "status_code", None) if status_code else None
+        # 410 Gone or 404 = subscription expired/invalid, remove it
+        if status_code in (410, 404) or "410" in exc_str or "not found" in exc_str or "unsubscribed" in exc_str:
+            try:
+                _remove_stale_subscription(subscription)
+            except Exception:
+                pass
+        print(f"[WEBPUSH] send failed (endpoint={subscription.endpoint[:60]}...): {exc}")
         return False
+    except Exception as exc:
+        print(f"[WEBPUSH] send failed: {exc}")
+        return False
+
+
+def _remove_stale_subscription(subscription: PushSubscription) -> None:
+    """Remove an invalid/expired push subscription from DB."""
+    try:
+        db = SessionLocal()
+        rows = db.query(PushSubscription).filter(PushSubscription.endpoint == subscription.endpoint).all()
+        for r in rows:
+            db.delete(r)
+        db.commit()
+    except Exception:
+        try:
+            db.rollback()
+        except Exception:
+            pass
+    finally:
+        try:
+            db.close()
+        except Exception:
+            pass
+
+
+def register_push_subscription(user_email: Optional[str], endpoint: str, p256dh: str, auth: str) -> bool:
+    """Register a new push subscription. Returns True if created, False if already exists."""
+    if not endpoint or not p256dh or not auth:
+        return False
+
+    try:
+        db = SessionLocal()
+        existing = db.query(PushSubscription).filter(PushSubscription.endpoint == endpoint).first()
+        if existing:
+            # Update keys if changed
+            existing.p256dh = p256dh
+            existing.auth = auth
+            if user_email and existing.user_id is None:
+                user = db.query(User).filter(User.email == user_email).first()
+                if user:
+                    existing.user_id = user.id
+            db.commit()
+            return False
+
+        user_id = None
+        if user_email:
+            user = db.query(User).filter(User.email == user_email).first()
+            if user:
+                user_id = user.id
+
+        sub = PushSubscription(user_id=user_id, endpoint=endpoint, p256dh=p256dh, auth=auth)
+        db.add(sub)
+        db.commit()
+        return True
+    except Exception:
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        return False
+    finally:
+        try:
+            db.close()
+        except Exception:
+            pass
+
+
+def unregister_push_subscription(endpoint: str) -> bool:
+    """Remove a push subscription by endpoint."""
+    if not endpoint:
+        return False
+
+    try:
+        db = SessionLocal()
+        rows = db.query(PushSubscription).filter(PushSubscription.endpoint == endpoint).all()
+        removed = len(rows) > 0
+        for r in rows:
+            db.delete(r)
+        db.commit()
+        return removed
+    except Exception:
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        return False
+    finally:
+        try:
+            db.close()
+        except Exception:
+            pass
+
+
+def clear_user_push_subscriptions(user_email: str) -> None:
+    """Remove all push subscriptions for a user by email."""
+    try:
+        db = SessionLocal()
+        user = db.query(User).filter(User.email == user_email).first()
+        if user:
+            subs = db.query(PushSubscription).filter(PushSubscription.user_id == user.id).all()
+            for s in subs:
+                db.delete(s)
+            db.commit()
+    except Exception:
+        try:
+            db.rollback()
+        except Exception:
+            pass
+    finally:
+        try:
+            db.close()
+        except Exception:
+            pass
+
+
+def get_user_subscriptions(user_email: str) -> List[PushSubscription]:
+    """Get all push subscriptions for a user by email."""
+    try:
+        db = SessionLocal()
+        user = db.query(User).filter(User.email == user_email).first()
+        if not user:
+            return []
+        subs = db.query(PushSubscription).filter(PushSubscription.user_id == user.id).all()
+        # Detach from session
+        result = []
+        for s in subs:
+            db.expunge(s)
+        return subs
+    except Exception:
+        return []
+    finally:
+        try:
+            db.close()
+        except Exception:
+            pass
+
+
+def get_all_subscriptions() -> List[PushSubscription]:
+    """Get all push subscriptions."""
+    try:
+        db = SessionLocal()
+        subs = db.query(PushSubscription).all()
+        for s in subs:
+            db.expunge(s)
+        return subs
+    except Exception:
+        return []
+    finally:
+        try:
+            db.close()
+        except Exception:
+            pass
 
 
 def dispatch_newsletter_bulk(
@@ -246,9 +308,6 @@ def dispatch_newsletter_bulk(
     email_sent = 0
     push_sent = 0
 
-    with _registry_lock:
-        registry = _load_registry()
-
     for item in recipients:
         email = item.get("email")
         unsubscribe_token = item.get("unsubscribe_token")
@@ -266,9 +325,63 @@ def dispatch_newsletter_bulk(
                 email_sent += 1
 
         if send_webpush_enabled:
-            for token in registry.get(email, []):
-                if send_webpush(token=token, title=title, body=body, link=action_url):
+            # Get push subscriptions for this user from DB
+            user_subs = get_user_subscriptions(email)
+            for sub in user_subs:
+                if send_webpush(subscription=sub, title=title, body=body, url=action_url):
                     push_sent += 1
+
+            # Persist in-app notification for the user if present
+            try:
+                db = SessionLocal()
+                user = db.query(User).filter(User.email == email).first()
+                if user:
+                    n = Notification(user_id=user.id, title=title, body=body, url=action_url)
+                    db.add(n)
+                    db.commit()
+                    try:
+                        db.refresh(n)
+                    except Exception:
+                        pass
+
+                    # Broadcast to connected websocket clients so UI updates live
+                    try:
+                        payload = {
+                            "type": "notification",
+                            "id": n.id,
+                            "title": n.title,
+                            "message": n.body,
+                            "url": n.url,
+                            "is_read": False,
+                            "created_at": n.created_at.isoformat() if n.created_at else None,
+                        }
+                        import asyncio
+                        try:
+                            loop = asyncio.get_event_loop()
+                        except RuntimeError:
+                            loop = None
+
+                        if loop and loop.is_running():
+                            asyncio.run_coroutine_threadsafe(
+                                manager.broadcast(payload), loop
+                            )
+                        else:
+                            try:
+                                asyncio.run(manager.broadcast(payload))
+                            except Exception:
+                                pass
+                    except Exception:
+                        pass
+            except Exception:
+                try:
+                    db.rollback()
+                except Exception:
+                    pass
+            finally:
+                try:
+                    db.close()
+                except Exception:
+                    pass
 
     return {
         "total": len(recipients),
