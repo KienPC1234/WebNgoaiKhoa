@@ -51,6 +51,9 @@ def send_newsletter_email(to_email: str, unsubscribe_token: str, subject: str, b
     if not is_email_channel_enabled():
         return False
 
+    if action_url and action_url.startswith("/"):
+        action_url = f"{WEBPUSH_DEFAULT_URL.rstrip('/')}{action_url}"
+
     unsubscribe_link = _unsubscribe_link(to_email, unsubscribe_token)
 
     msg = EmailMessage()

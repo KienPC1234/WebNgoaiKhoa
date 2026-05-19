@@ -1,0 +1,16 @@
+[Unit]
+Description=Cloudflare Tunnel (cloudflared via Docker)
+After=docker.service
+Requires=docker.service
+
+[Service]
+Environment=CF_TUNNEL_TOKEN=REPLACE_WITH_YOUR_TOKEN
+Restart=always
+RestartSec=5s
+ExecStartPre=-/usr/bin/docker rm -f cloudflared-tunnel
+ExecStart=/usr/bin/docker run --name cloudflared-tunnel --network host --rm cloudflare/cloudflared:latest tunnel --no-autoupdate run --token ${CF_TUNNEL_TOKEN}
+ExecStop=/usr/bin/docker stop -t 10 cloudflared-tunnel
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target

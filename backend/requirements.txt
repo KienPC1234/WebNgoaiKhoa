@@ -20,3 +20,4 @@ pywebpush
 cryptography
 Pillow
 python-dateutil
+google-auth

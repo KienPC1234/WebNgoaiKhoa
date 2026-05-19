@@ -62,8 +62,6 @@ export function NotificationsProvider({ children }) {
           } catch { /* ignore */ }
         }
 
-        // Auto-init: user has granted permission but no subscription
-        // (cleared browser data, new device, stale cache)
         const hasPermission = 'Notification' in window && Notification.permission === 'granted'
         const hasToken = Boolean(localStorage.getItem('token'))
 

@@ -255,14 +255,20 @@ def _get_qdrant_client():
             "qdrant-client is not installed. Install it with: pip install qdrant-client"
         )
 
-    kwargs: Dict[str, Any] = {"url": QDRANT_URL}
+    target_url = QDRANT_URL
+    if target_url.startswith("https://") and ":" not in target_url[8:]:
+        target_url = f"{target_url}:443"
+
+    kwargs: Dict[str, Any] = {
+        "url": target_url,
+        "prefer_grpc": QDRANT_PREFER_GRPC,
+    }
     if QDRANT_API_KEY:
         kwargs["api_key"] = QDRANT_API_KEY
     if QDRANT_PREFER_GRPC:
-        kwargs["prefer_grpc"] = True
         kwargs["grpc_port"] = QDRANT_GRPC_PORT
 
-    logger.info("Connecting to Qdrant at %s (grpc=%s)", QDRANT_URL, QDRANT_PREFER_GRPC)
+    logger.info("Connecting to Qdrant at %s (grpc=%s)", target_url, QDRANT_PREFER_GRPC)
     _qdrant_client = QdrantClient(**kwargs)
     return _qdrant_client
 

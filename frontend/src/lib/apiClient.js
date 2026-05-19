@@ -27,12 +27,14 @@ apiClient.interceptors.response.use(
       return Promise.reject(error)
     }
 
+    const skipToast = error.config?.skipToast || error.config?.url?.includes('/admin/auth/overview')
+
     const status = error?.response?.status
     if (status === 401) {
       localStorage.removeItem('token')
       localStorage.removeItem('user')
       try { window.dispatchEvent(new Event('auth-changed')) } catch (e) { /* noop */ }
-    } else {
+    } else if (!skipToast) {
       const message = extractErrorMessage(error, 'Không thể kết nối tới máy chủ.')
       toastError(message)
     }

@@ -995,7 +995,7 @@ async def get_public_contest(
 @router.get("/contests/{contest_slug}/submissions", response_model=List[SubmissionOut])
 async def get_public_contest_submissions(
     contest_slug: str,
-    sort: str = Query(default="newest", regex="^(newest|oldest|votes)$"),
+    sort: str = Query(default="newest", pattern="^(newest|oldest|votes)$"),
     limit: int = Query(default=50, le=200),
     offset: int = 0,
     db: Session = Depends(get_db),
@@ -1628,7 +1628,7 @@ async def vote_contest_submission(
     if existing:
         db.delete(existing)
         db.query(Submission).filter(Submission.id == sub_id).update(
-            {Submission.votes: func.greatest(Submission.votes - 1, 0)},
+            {Submission.votes: func.greatest(0, func.coalesce(Submission.votes, 0) - 1)},
             synchronize_session=False,
         )
         db.commit()
@@ -1638,7 +1638,7 @@ async def vote_contest_submission(
     vote = SubmissionVote(submission_id=sub_id, user_id=user.id)
     db.add(vote)
     db.query(Submission).filter(Submission.id == sub_id).update(
-        {Submission.votes: (Submission.votes or 0) + 1},
+        {Submission.votes: func.coalesce(Submission.votes, 0) + 1},
         synchronize_session=False,
     )
     db.commit()
@@ -2191,7 +2191,7 @@ async def vote_submission(
     vote = SubmissionVote(submission_id=sub_id, user_id=current_user.id)
     db.add(vote)
     # Atomic increment to avoid race conditions
-    db.query(Submission).filter(Submission.id == sub_id).update({Submission.votes: (Submission.votes or 0) + 1})
+    db.query(Submission).filter(Submission.id == sub_id).update({Submission.votes: func.coalesce(Submission.votes, 0) + 1})
 
     try:
         db.commit()
@@ -2230,7 +2230,7 @@ async def unvote_submission(
     if existing_vote:
         db.delete(existing_vote)
         # Atomic decrement
-        db.query(Submission).filter(Submission.id == sub_id).update({Submission.votes: func.max(0, (Submission.votes or 0) - 1)})
+        db.query(Submission).filter(Submission.id == sub_id).update({Submission.votes: func.greatest(0, func.coalesce(Submission.votes, 0) - 1)})
         db.commit()
         db.refresh(submission)
 
