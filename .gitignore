@@ -35,3 +35,4 @@ nohup.out
 .backend_pid
 qdrant_storage
 backend/uploads
+.antigravitycli

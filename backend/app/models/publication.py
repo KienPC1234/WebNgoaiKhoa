@@ -44,6 +44,16 @@ class Publication(Base):
     def category(self, value):
         """Assigning legacy `category` sets canonical `subject`."""
         self.subject = value
+
+    @property
+    def snippet(self):
+        """Legacy compatibility: return `short_description` value for older clients."""
+        return self.short_description
+
+    @snippet.setter
+    def snippet(self, value):
+        """Assigning legacy `snippet` sets canonical `short_description`."""
+        self.short_description = value
     comments_enabled = Column(Boolean, nullable=False, default=True)
     view_count = Column(Integer, nullable=False, default=0)
     favorites_count = Column(Integer, nullable=False, default=0)

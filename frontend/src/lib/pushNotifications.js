@@ -466,7 +466,7 @@ export const debugWebPush = async () => {
 
   _debugLog('SENDING', 'Calling backend /admin/debug/webpush ...')
   try {
-    const res = await apiClient.post('/admin/debug/webpush')
+    const res = (await apiClient.post('/admin/debug/webpush')).data
     report.backendResponse = res
 
     if (res.ok) {
@@ -489,7 +489,7 @@ export const debugWebPush = async () => {
 
 export const webPushStatus = async () => {
   try {
-    const res = await apiClient.get('/admin/debug/webpush/status')
+    const res = (await apiClient.get('/admin/debug/webpush/status')).data
     console.table({
       'Webpush Enabled': res.webpush_enabled ? 'Yes' : 'No',
       'VAPID Configured': res.vapid_configured ? 'Yes' : 'No',

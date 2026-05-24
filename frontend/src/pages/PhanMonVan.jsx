@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Card, Button, cn } from '../components/UI'
-import { Send, ThumbsUp, Edit3, ShieldCheck, PenTool, BookOpen, User, Calendar, X, Sparkles, FileText, MessageSquare, Eye, XCircle } from 'lucide-react'
+import { Send, ThumbsUp, Edit3, ShieldCheck, PenTool, BookOpen, User, Calendar, X, Sparkles, FileText, MessageSquare, Eye, XCircle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import ReCAPTCHA from 'react-google-recaptcha'
 import { showApiError, toastError, toastInfo, toastSuccess } from '@/lib/notify'
@@ -59,6 +59,7 @@ export const PhanMonVan = () => {
   const [pdfPreviewLoading, setPdfPreviewLoading] = useState(false)
   const [pdfPreviewPages, setPdfPreviewPages] = useState([])
   const [pdfPreviewAspectRatio, setPdfPreviewAspectRatio] = useState(1.45)
+  const [flipCurrentPage, setFlipCurrentPage] = useState(1)
   const [formErrors, setFormErrors] = useState({})
   const [mySubmissions, setMySubmissions] = useState([])
   const [mySubsLoading, setMySubsLoading] = useState(false)
@@ -167,6 +168,28 @@ export const PhanMonVan = () => {
       flipInstanceRef.current = null
     }
 
+    // Clear inner HTML to isolate from React's virtual DOM
+    flipRef.current.innerHTML = ''
+
+    // Create page DOM nodes dynamically
+    const pageElements = []
+    pdfPreviewPages.forEach((src, index) => {
+      const pageDiv = document.createElement('div')
+      pageDiv.className = 'pdf-page bg-white shadow-md relative overflow-hidden select-none'
+      pageDiv.style.width = '100%'
+      pageDiv.style.height = '100%'
+
+      const img = document.createElement('img')
+      img.src = src
+      img.alt = `PDF page ${index + 1}`
+      img.className = 'w-full h-full object-contain pointer-events-none'
+      img.style.display = 'block'
+
+      pageDiv.appendChild(img)
+      flipRef.current.appendChild(pageDiv)
+      pageElements.push(pageDiv)
+    })
+
     const instance = new PageFlip(flipRef.current, {
       width: FLIP_PREVIEW_WIDTH,
       height: pdfFlipHeight,
@@ -174,10 +197,15 @@ export const PhanMonVan = () => {
       maxShadowOpacity: 0.35,
       mobileScrollSupport: true,
       usePortrait: true,
+      showCover: true,
+      drawShadow: true,
     })
-    const pages = Array.from(flipRef.current.querySelectorAll('.pdf-page'))
-    if (pages.length) {
-      instance.loadFromHTML(pages)
+
+    if (pageElements.length) {
+      instance.loadFromHTML(pageElements)
+      instance.on('flip', (event) => {
+        setFlipCurrentPage((event.data || 0) + 1)
+      })
       flipInstanceRef.current = instance
     }
   }, [pdfPreviewPages, pdfFlipHeight])
@@ -727,32 +755,67 @@ export const PhanMonVan = () => {
                   </div>
 
                   {pdfFile && (
-                    <div className="rounded-3xl border border-orange-100 bg-orange-50/40 p-4">
-                      <div className="mb-3 flex items-center justify-between">
+                    <div className="rounded-3xl border border-slate-200 bg-slate-100/50 p-6 shadow-sm">
+                      <div className="mb-4 flex items-center justify-between border-b border-slate-200 pb-2">
                         <p className="text-xs font-black uppercase tracking-widest text-fpt-orange inline-flex items-center gap-2">
-                          <FileText size={14} /> Preview PDF với hiệu ứng lật trang
+                          <FileText size={15} /> Preview PDF với hiệu ứng lật trang
                         </p>
-                        <span className="text-[11px] font-semibold text-slate-500">{pdfFile.name}</span>
+                        <span className="text-xs font-semibold text-slate-500 max-w-[200px] truncate">{pdfFile.name}</span>
                       </div>
 
                       {pdfPreviewLoading ? (
-                        <p className="text-sm font-semibold text-slate-500">Đang render PDF...</p>
+                        <div className="py-12 flex flex-col items-center justify-center space-y-3">
+                          <div className="w-8 h-8 rounded-full border-4 border-fpt-blue/20 border-t-fpt-blue animate-spin" />
+                          <p className="text-xs font-bold text-slate-500">Đang render PDF...</p>
+                        </div>
                       ) : pdfPreviewPages.length > 0 ? (
-                        <div className="mx-auto w-full max-w-[420px]">
-                          <div
-                            ref={flipRef}
-                            style={{ height: `${pdfFlipHeight}px` }}
-                            className="w-full overflow-hidden rounded-2xl border border-slate-200 bg-white"
-                          >
-                            {pdfPreviewPages.map((src, index) => (
-                              <div key={index} className="pdf-page h-full w-full bg-white">
-                                <img src={src} alt={`PDF page ${index + 1}`} className="h-full w-full object-contain" />
-                              </div>
-                            ))}
+                        <div className="flex flex-col items-center justify-center space-y-4">
+                          
+                          {/* Skeuomorphic Desk Backdrop */}
+                          <div className="w-full flex items-center justify-center py-4 bg-slate-50 rounded-2xl border border-slate-200/60 shadow-inner">
+                            <div 
+                              className="relative flex items-center justify-center overflow-hidden rounded-xl bg-white border border-slate-200 shadow-lg"
+                              style={{ 
+                                width: '100%',
+                                maxWidth: `${FLIP_PREVIEW_WIDTH * 2}px`,
+                                height: `${pdfFlipHeight}px` 
+                              }}
+                            >
+                              {/* Empty target container for page-flip */}
+                              <div
+                                ref={flipRef}
+                                className="h-full w-full"
+                              />
+
+                              {/* Center binding spine/crease overlay */}
+                              <div className="absolute top-0 bottom-0 left-1/2 w-[12px] -translate-x-1/2 bg-gradient-to-r from-black/0 via-black/10 to-black/0 pointer-events-none z-50 hidden md:block" />
+                            </div>
                           </div>
+
+                          {/* Controls bar */}
+                          <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm text-xs">
+                            <button
+                              type="button"
+                              onClick={() => flipInstanceRef.current?.flipPrev()}
+                              disabled={flipCurrentPage === 1}
+                              className="tap-target rounded-lg p-1.5 hover:bg-slate-100 disabled:opacity-30 transition-colors"
+                            >
+                              <ChevronLeft size={16} />
+                            </button>
+                            <span className="font-bold text-slate-600">Trang {flipCurrentPage} / {pdfPreviewPages.length}</span>
+                            <button
+                              type="button"
+                              onClick={() => flipInstanceRef.current?.flipNext()}
+                              disabled={flipCurrentPage === pdfPreviewPages.length}
+                              className="tap-target rounded-lg p-1.5 hover:bg-slate-100 disabled:opacity-30 transition-colors"
+                            >
+                              <ChevronRight size={16} />
+                            </button>
+                          </div>
+
                         </div>
                       ) : (
-                        <p className="text-sm font-semibold text-slate-500">Không thể hiển thị preview cho PDF này.</p>
+                        <p className="text-sm text-center text-slate-500 bg-white p-4 rounded-2xl border border-slate-200">Không thể hiển thị preview cho PDF này.</p>
                       )}
                     </div>
                   )}

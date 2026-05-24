@@ -1054,7 +1054,7 @@ async def create_publication(
         recipients,
         title=f"[Tổ Xã Hội] Mới: {new_pub.title}",
         body="Đã có ấn phẩm/tài liệu mới trên hệ thống. Hãy truy cập để xem chi tiết.",
-        action_url=f"/public-posts/{new_pub.id}",
+        action_url=f"/posts/{new_pub.id}",
         send_email=send_email,
         send_webpush=send_webpush,
     )

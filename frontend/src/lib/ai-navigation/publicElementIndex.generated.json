@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-05-19T16:38:28.547Z",
+  "generatedAt": "2026-05-23T11:31:43.433Z",
   "version": 2,
-  "total": 231,
+  "total": 232,
   "elements": [
     {
       "route": "/phanmon/van?tab=sang-tac",
@@ -1202,7 +1202,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 573
+      "line": 601
     },
     {
       "route": "/phanmon/van",
@@ -1211,7 +1211,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 577
+      "line": 605
     },
     {
       "route": "/phanmon/van",
@@ -1220,7 +1220,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 578
+      "line": 606
     },
     {
       "route": "/phanmon/van",
@@ -1229,7 +1229,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 622
+      "line": 650
     },
     {
       "route": "/phanmon/van",
@@ -1238,7 +1238,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 626
+      "line": 654
     },
     {
       "route": "/phanmon/van",
@@ -1247,7 +1247,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 631
+      "line": 659
     },
     {
       "route": "/phanmon/van",
@@ -1256,7 +1256,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 633
+      "line": 661
     },
     {
       "route": "/phanmon/van",
@@ -1265,7 +1265,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 634
+      "line": 662
     },
     {
       "route": "/phanmon/van",
@@ -1274,7 +1274,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 635
+      "line": 663
     },
     {
       "route": "/phanmon/van",
@@ -1283,7 +1283,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 641
+      "line": 669
     },
     {
       "route": "/phanmon/van",
@@ -1292,7 +1292,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 642
+      "line": 670
     },
     {
       "route": "/phanmon/van",
@@ -1301,7 +1301,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 658
+      "line": 686
     },
     {
       "route": "/phanmon/van",
@@ -1310,7 +1310,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 689
+      "line": 717
     },
     {
       "route": "/phanmon/van",
@@ -1319,7 +1319,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 690
+      "line": 718
     },
     {
       "route": "/phanmon/van",
@@ -1328,7 +1328,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 705
+      "line": 733
     },
     {
       "route": "/phanmon/van",
@@ -1337,7 +1337,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 710
+      "line": 738
     },
     {
       "route": "/phanmon/van",
@@ -1346,7 +1346,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 711
+      "line": 739
     },
     {
       "route": "/phanmon/van",
@@ -1355,7 +1355,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 732
+      "line": 760
     },
     {
       "route": "/phanmon/van",
@@ -1364,7 +1364,16 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 739
+      "line": 769
+    },
+    {
+      "route": "/phanmon/van",
+      "kind": "span",
+      "text": "Trang /",
+      "source": "src/pages/PhanMonVan.jsx",
+      "anchor": null,
+      "componentPath": "src/pages/PhanMonVan.jsx",
+      "line": 805
     },
     {
       "route": "/phanmon/van",
@@ -1373,7 +1382,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 755
+      "line": 818
     },
     {
       "route": "/phanmon/van",
@@ -1382,7 +1391,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 762
+      "line": 825
     },
     {
       "route": "/phanmon/van",
@@ -1391,7 +1400,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 767
+      "line": 830
     },
     {
       "route": "/phanmon/van",
@@ -1400,7 +1409,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 793
+      "line": 856
     },
     {
       "route": "/phanmon/van",
@@ -1409,7 +1418,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 799
+      "line": 862
     },
     {
       "route": "/phanmon/van",
@@ -1418,7 +1427,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 808
+      "line": 871
     },
     {
       "route": "/phanmon/van",
@@ -1427,7 +1436,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 810
+      "line": 873
     },
     {
       "route": "/phanmon/van",
@@ -1436,7 +1445,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 820
+      "line": 883
     },
     {
       "route": "/phanmon/van",
@@ -1445,7 +1454,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 824
+      "line": 887
     },
     {
       "route": "/phanmon/van",
@@ -1454,7 +1463,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 826
+      "line": 889
     },
     {
       "route": "/phanmon/van",
@@ -1463,7 +1472,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 837
+      "line": 900
     },
     {
       "route": "/phanmon/van",
@@ -1472,7 +1481,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 840
+      "line": 903
     },
     {
       "route": "/phanmon/van",
@@ -1481,7 +1490,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 862
+      "line": 925
     },
     {
       "route": "/phanmon/van",
@@ -1490,7 +1499,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 870
+      "line": 933
     },
     {
       "route": "/phanmon/van",
@@ -1499,7 +1508,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 870
+      "line": 933
     },
     {
       "route": "/phanmon/van",
@@ -1508,7 +1517,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 874
+      "line": 937
     },
     {
       "route": "/phanmon/van",
@@ -1517,7 +1526,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 874
+      "line": 937
     },
     {
       "route": "/phanmon/van",
@@ -1526,7 +1535,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 879
+      "line": 942
     },
     {
       "route": "/phanmon/van",
@@ -1535,7 +1544,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 881
+      "line": 944
     },
     {
       "route": "/phanmon/van",
@@ -1544,7 +1553,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 882
+      "line": 945
     },
     {
       "route": "/phanmon/van",
@@ -1553,7 +1562,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 883
+      "line": 946
     },
     {
       "route": "/phanmon/van",
@@ -1562,7 +1571,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 889
+      "line": 952
     },
     {
       "route": "/phanmon/van",
@@ -1571,7 +1580,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 889
+      "line": 952
     },
     {
       "route": "/phanmon/van",
@@ -1580,7 +1589,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 902
+      "line": 965
     },
     {
       "route": "/phanmon/van",
@@ -1589,7 +1598,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 909
+      "line": 972
     },
     {
       "route": "/phanmon/van",
@@ -1598,7 +1607,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 910
+      "line": 973
     },
     {
       "route": "/phanmon/van",
@@ -1607,7 +1616,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 927
+      "line": 990
     },
     {
       "route": "/phanmon/van",
@@ -1616,7 +1625,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 991
+      "line": 1054
     },
     {
       "route": "/phanmon/van",
@@ -1625,7 +1634,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 994
+      "line": 1057
     },
     {
       "route": "/phanmon/van",
@@ -1634,7 +1643,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 1024
+      "line": 1087
     },
     {
       "route": "/phanmon/van",
@@ -1643,7 +1652,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 1040
+      "line": 1103
     },
     {
       "route": "/phanmon/van",
@@ -1652,7 +1661,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 1052
+      "line": 1115
     },
     {
       "route": "/phanmon/van",
@@ -1661,7 +1670,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 1072
+      "line": 1135
     },
     {
       "route": "/phanmon/van",
@@ -1670,7 +1679,7 @@
       "source": "src/pages/PhanMonVan.jsx",
       "anchor": null,
       "componentPath": "src/pages/PhanMonVan.jsx",
-      "line": 1074
+      "line": 1137
     },
     {
       "route": "/phanmon/vovinam",

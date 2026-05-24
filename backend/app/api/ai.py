@@ -1439,7 +1439,7 @@ def _build_navigation_content_index(db: Session) -> List[Dict[str, Any]]:
 
     for pub in publications:
         title = _normalize_text(pub.title)
-        snippet = _normalize_text(pub.snippet)
+        snippet = _normalize_text(pub.short_description or "")
         aliases = [
             _normalize_text(pub.category),
             _normalize_text(pub.subject),
@@ -1747,7 +1747,8 @@ def _build_chroma_source_counts(collection) -> Dict[str, int]:
 
 
 def get_ai_knowledge_overview(db: Session) -> Dict[str, Any]:
-    _sync_knowledge_base(db)
+    # We do NOT run sync synchronously during overview checks to prevent API timeouts.
+    # Sync is managed by background threads or explicit resync actions.
     collection = _get_chroma_collection()
     counts = _build_chroma_source_counts(collection)
 
@@ -2364,7 +2365,8 @@ def delete_knowledge_file(asset_id: str) -> bool:
 
 
 def get_ai_health_snapshot(db: Session) -> Dict[str, Any]:
-    _sync_knowledge_base(db)
+    # We do NOT run sync synchronously during health checks to prevent API timeouts.
+    # Sync is managed by background threads or explicit resync actions.
     collection = _get_chroma_collection()
     return {
         "status": "ok",
@@ -3205,7 +3207,8 @@ async def ai_knowledge_search(
     _enforce_rate_limit(request, "knowledge_search")
 
     try:
-        _sync_knowledge_base(db)
+        # We do NOT run sync synchronously during search to prevent API timeouts and improve search latency.
+        # Sync is managed by background threads or explicit resync actions.
         items = _search_knowledge_records(query, n_results)
     except Exception as exc:
         logger.exception("Error searching AI knowledge for query=%s: %s", query, str(exc))

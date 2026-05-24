@@ -2748,7 +2748,7 @@ async def remove_publication_vote(pub_id: int, db: Session = Depends(get_db), us
     if existing:
         db.delete(existing)
         # Atomic decrement
-        db.query(Publication).filter(Publication.id == pub_id).update({Publication.votes_count: func.max(0, (Publication.votes_count or 0) - 1)})
+        db.query(Publication).filter(Publication.id == pub_id).update({Publication.votes_count: func.greatest(0, func.coalesce(Publication.votes_count, 0) - 1)})
         db.commit()
         db.refresh(pub)
 

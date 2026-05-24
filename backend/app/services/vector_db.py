@@ -74,6 +74,9 @@ NAVIGATION_COLLECTION: str = os.getenv(
 # Lazy singletons
 # ---------------------------------------------------------------------------
 _qdrant_client = None
+_is_fallback_client = False
+_last_remote_attempt = 0.0
+REMOTE_ATTEMPT_COOLDOWN = 300.0  # 5 minutes
 _embedding_model = None
 _vector_size: Optional[int] = None
 
@@ -243,17 +246,22 @@ def _embed_texts(texts: List[str]) -> List[List[float]]:
 
 
 def _get_qdrant_client():
-    """Return (and cache) the QdrantClient instance."""
-    global _qdrant_client
-    if _qdrant_client is not None:
+    """Return (and cache) the QdrantClient instance. Falls back to in-memory on connection failure."""
+    global _qdrant_client, _is_fallback_client, _last_remote_attempt
+    import time
+    from qdrant_client import QdrantClient
+
+    now = time.monotonic()
+
+    # If we have a working remote client, return it
+    if _qdrant_client is not None and not _is_fallback_client:
         return _qdrant_client
 
-    try:
-        from qdrant_client import QdrantClient
-    except ImportError:
-        raise RuntimeError(
-            "qdrant-client is not installed. Install it with: pip install qdrant-client"
-        )
+    # If we have a fallback client, check if we should retry the remote connection
+    if _qdrant_client is not None and _is_fallback_client:
+        if now - _last_remote_attempt < REMOTE_ATTEMPT_COOLDOWN:
+            return _qdrant_client
+        logger.info("Fallback client cooldown expired. Attempting to reconnect to remote Qdrant...")
 
     target_url = QDRANT_URL
     if target_url.startswith("https://") and ":" not in target_url[8:]:
@@ -262,24 +270,53 @@ def _get_qdrant_client():
     kwargs: Dict[str, Any] = {
         "url": target_url,
         "prefer_grpc": QDRANT_PREFER_GRPC,
+        "timeout": 5.0,
     }
     if QDRANT_API_KEY:
         kwargs["api_key"] = QDRANT_API_KEY
     if QDRANT_PREFER_GRPC:
         kwargs["grpc_port"] = QDRANT_GRPC_PORT
 
-    logger.info("Connecting to Qdrant at %s (grpc=%s)", target_url, QDRANT_PREFER_GRPC)
-    _qdrant_client = QdrantClient(**kwargs)
-    return _qdrant_client
+    _last_remote_attempt = now
+    try:
+        logger.info("Connecting to Qdrant at %s (grpc=%s)", target_url, QDRANT_PREFER_GRPC)
+        client = QdrantClient(**kwargs)
+        # Probe connection to verify it's working
+        client.get_collections()
+        _qdrant_client = client
+        _is_fallback_client = False
+        logger.info("Successfully connected to remote Qdrant.")
+        return _qdrant_client
+    except Exception as exc:
+        logger.warning(
+            "Failed to connect to remote Qdrant at %s (Error: %s). Falling back to in-memory Qdrant client.",
+            target_url, exc
+        )
+        if _qdrant_client is None or not _is_fallback_client:
+            _qdrant_client = QdrantClient(location=":memory:")
+            _is_fallback_client = True
+        return _qdrant_client
 
 
 def _ensure_collection(collection_name: str):
     """Create the collection if it does not exist, or recreate if vector dimension mismatches."""
     client = _get_qdrant_client()
+
+    if not hasattr(client, "_verified_collections"):
+        client._verified_collections = set()
+
+    if collection_name in client._verified_collections:
+        return
+
     from qdrant_client.models import Distance, VectorParams
 
     expected_dim = get_vector_size()
-    existing_names = [c.name for c in client.get_collections().collections]
+
+    try:
+        existing_names = [c.name for c in client.get_collections().collections]
+    except Exception as exc:
+        logger.error("Failed to query collections from Qdrant: %s", exc)
+        raise
 
     if collection_name in existing_names:
         # Verify existing collection has the correct vector dimension
@@ -300,11 +337,18 @@ def _ensure_collection(collection_name: str):
         except Exception:
             logger.exception("Failed to verify collection '%s' dimensions; keeping existing", collection_name)
     else:
-        client.create_collection(
-            collection_name=collection_name,
-            vectors_config=VectorParams(size=expected_dim, distance=Distance.COSINE),
-        )
-        logger.info("Created Qdrant collection '%s' (dim=%d)", collection_name, expected_dim)
+        try:
+            client.create_collection(
+                collection_name=collection_name,
+                vectors_config=VectorParams(size=expected_dim, distance=Distance.COSINE),
+            )
+            logger.info("Created Qdrant collection '%s' (dim=%d)", collection_name, expected_dim)
+        except Exception as exc:
+            logger.error("Failed to create collection '%s': %s", collection_name, exc)
+            raise
+
+    client._verified_collections.add(collection_name)
+
 
 
 # ---------------------------------------------------------------------------
@@ -320,7 +364,12 @@ class QdrantCollection:
 
     def __init__(self, name: str):
         self.name = name
-        _ensure_collection(name)
+        # We wrap the initial ensure in a try-except to swallow early connection failures.
+        # Since every operation runs _ensure_collection dynamically, it will be retry-ensured on first use.
+        try:
+            _ensure_collection(name)
+        except Exception as exc:
+            logger.warning("Initial collection ensure failed for '%s'. It will be retried upon use. Error: %s", name, exc)
 
     # -- helpers ----------------------------------------------------------
 
@@ -328,12 +377,47 @@ class QdrantCollection:
     def _client(self):
         return _get_qdrant_client()
 
+    def _is_connection_error(self, exc: Exception) -> bool:
+        exc_name = type(exc).__name__.lower()
+        exc_str = str(exc).lower()
+
+        # Check type names
+        if any(k in exc_name for k in ("connection", "connect", "timeout", "responsehandling", "unexpectedresponse", "network")):
+            return True
+
+        # Check message content
+        if any(k in exc_str for k in ("temporary failure in name resolution", "connection refused", "connect timeout", "read timeout")):
+            return True
+
+        return False
+
+    def _execute(self, func, *args, **kwargs):
+        """Execute a Qdrant operation, with automatic failover to fallback client if remote fails."""
+        import time
+        try:
+            _ensure_collection(self.name)
+            return func(*args, **kwargs)
+        except Exception as exc:
+            if self._is_connection_error(exc):
+                logger.warning("Qdrant connection error detected during operation: %s. Forcing fallback...", exc)
+                global _qdrant_client, _is_fallback_client, _last_remote_attempt
+                _qdrant_client = None
+                _is_fallback_client = True
+                _last_remote_attempt = time.monotonic()
+
+                # Re-ensure on the new fallback client and retry
+                _ensure_collection(self.name)
+                return func(*args, **kwargs)
+            raise
+
     # -- count ------------------------------------------------------------
 
     def count(self) -> int:
         """Return total number of points in the collection."""
-        result = self._client.count(collection_name=self.name, exact=True)
-        return result.count
+        def _op():
+            result = self._client.count(collection_name=self.name, exact=True)
+            return result.count
+        return self._execute(_op)
 
     # -- upsert -----------------------------------------------------------
 
@@ -360,13 +444,15 @@ class QdrantCollection:
                 )
             )
 
-        # Upsert in batches of 100
-        batch_size = 100
-        for start in range(0, len(points), batch_size):
-            self._client.upsert(
-                collection_name=self.name,
-                points=points[start : start + batch_size],
-            )
+        def _op():
+            # Upsert in batches of 100
+            batch_size = 100
+            for start in range(0, len(points), batch_size):
+                self._client.upsert(
+                    collection_name=self.name,
+                    points=points[start : start + batch_size],
+                )
+        self._execute(_op)
 
     # -- get --------------------------------------------------------------
 
@@ -383,55 +469,58 @@ class QdrantCollection:
         include_documents = include and "documents" in include
         include_metadatas = include and "metadatas" in include
 
-        if ids is not None:
-            stable_ids = [self._stable_id(pid) for pid in ids]
-            points = self._client.retrieve(
-                collection_name=self.name,
-                ids=stable_ids,
-                with_payload=True,
-                with_vectors=False,
-            )
-            # Build lookup by stable id
-            id_map = {p.id: p for p in points}
-            ordered = [id_map.get(sid) for sid in stable_ids]
+        def _op():
+            if ids is not None:
+                stable_ids = [self._stable_id(pid) for pid in ids]
+                points = self._client.retrieve(
+                    collection_name=self.name,
+                    ids=stable_ids,
+                    with_payload=True,
+                    with_vectors=False,
+                )
+                # Build lookup by stable id
+                id_map = {p.id: p for p in points}
+                ordered = [id_map.get(sid) for sid in stable_ids]
 
-            result_ids: List[str] = []
-            result_docs: List[Optional[str]] = []
-            result_metas: List[Optional[dict]] = []
-            for orig_id, pt in zip(ids, ordered):
-                result_ids.append(orig_id)
-                if pt is None:
-                    result_docs.append(None)
-                    result_metas.append(None)
-                else:
+                result_ids: List[str] = []
+                result_docs: List[Optional[str]] = []
+                result_metas: List[Optional[dict]] = []
+                for orig_id, pt in zip(ids, ordered):
+                    result_ids.append(orig_id)
+                    if pt is None:
+                        result_docs.append(None)
+                        result_metas.append(None)
+                    else:
+                        payload = pt.payload or {}
+                        result_docs.append(payload.get("document") if include_documents else None)
+                        result_metas.append(payload.get("metadata") if include_metadatas else None)
+
+                return {"ids": result_ids, "documents": result_docs, "metadatas": result_metas}
+
+            # No ids → return all
+            all_ids: List[str] = []
+            all_docs: List[Optional[str]] = []
+            all_metas: List[Optional[dict]] = []
+            offset = None
+            while True:
+                points, offset = self._client.scroll(
+                    collection_name=self.name,
+                    offset=offset,
+                    limit=500,
+                    with_payload=True,
+                    with_vectors=False,
+                )
+                for pt in points:
                     payload = pt.payload or {}
-                    result_docs.append(payload.get("document") if include_documents else None)
-                    result_metas.append(payload.get("metadata") if include_metadatas else None)
+                    all_ids.append(str(pt.id))
+                    all_docs.append(payload.get("document") if include_documents else None)
+                    all_metas.append(payload.get("metadata") if include_metadatas else None)
+                if offset is None:
+                    break
 
-            return {"ids": result_ids, "documents": result_docs, "metadatas": result_metas}
+            return {"ids": all_ids, "documents": all_docs, "metadatas": all_metas}
 
-        # No ids → return all
-        all_ids: List[str] = []
-        all_docs: List[Optional[str]] = []
-        all_metas: List[Optional[dict]] = []
-        offset = None
-        while True:
-            points, offset = self._client.scroll(
-                collection_name=self.name,
-                offset=offset,
-                limit=500,
-                with_payload=True,
-                with_vectors=False,
-            )
-            for pt in points:
-                payload = pt.payload or {}
-                all_ids.append(str(pt.id))
-                all_docs.append(payload.get("document") if include_documents else None)
-                all_metas.append(payload.get("metadata") if include_metadatas else None)
-            if offset is None:
-                break
-
-        return {"ids": all_ids, "documents": all_docs, "metadatas": all_metas}
+        return self._execute(_op)
 
     # -- delete -----------------------------------------------------------
 
@@ -440,10 +529,13 @@ class QdrantCollection:
         from qdrant_client.models import PointIdsList
 
         stable_ids = [self._stable_id(pid) for pid in ids]
-        self._client.delete(
-            collection_name=self.name,
-            points_selector=PointIdsList(points=stable_ids),
-        )
+
+        def _op():
+            self._client.delete(
+                collection_name=self.name,
+                points_selector=PointIdsList(points=stable_ids),
+            )
+        self._execute(_op)
 
     # -- query (semantic search) ------------------------------------------
 
@@ -455,31 +547,34 @@ class QdrantCollection:
         """Semantic search. Returns dict with keys: ids, documents, metadatas, distances."""
         query_vec = _embed_texts(query_texts)[0]
 
-        results = self._client.query_points(
-            collection_name=self.name,
-            query=query_vec,
-            limit=n_results,
-            with_payload=True,
-        )
+        def _op():
+            results = self._client.query_points(
+                collection_name=self.name,
+                query=query_vec,
+                limit=n_results,
+                with_payload=True,
+            )
 
-        ids_list: List[List[str]] = [[]]
-        docs_list: List[List[Optional[str]]] = [[]]
-        metas_list: List[List[Optional[dict]]] = [[]]
-        dists_list: List[List[Optional[float]]] = [[]]
+            ids_list: List[List[str]] = [[]]
+            docs_list: List[List[Optional[str]]] = [[]]
+            metas_list: List[List[Optional[dict]]] = [[]]
+            dists_list: List[List[Optional[float]]] = [[]]
 
-        for hit in results.points:
-            payload = hit.payload or {}
-            ids_list[0].append(str(hit.id))
-            docs_list[0].append(payload.get("document"))
-            metas_list[0].append(payload.get("metadata"))
-            dists_list[0].append(hit.score)  # Qdrant returns similarity score
+            for hit in results.points:
+                payload = hit.payload or {}
+                ids_list[0].append(str(hit.id))
+                docs_list[0].append(payload.get("document"))
+                metas_list[0].append(payload.get("metadata"))
+                dists_list[0].append(hit.score)  # Qdrant returns similarity score
 
-        return {
-            "ids": ids_list,
-            "documents": docs_list,
-            "metadatas": metas_list,
-            "distances": dists_list,
-        }
+            return {
+                "ids": ids_list,
+                "documents": docs_list,
+                "metadatas": metas_list,
+                "distances": dists_list,
+            }
+
+        return self._execute(_op)
 
     # -- stable id mapping ------------------------------------------------
 
@@ -493,6 +588,7 @@ class QdrantCollection:
 
         h = hashlib.sha256(string_id.encode("utf-8")).hexdigest()
         return int(h[:16], 16)  # first 16 hex chars → 64-bit int
+
 
 
 # ---------------------------------------------------------------------------

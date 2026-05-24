@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, FileText, Save, Trash2, UploadCloud } from 'lucide-react'
+import { ArrowLeft, FileText, Save, Trash2, UploadCloud, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button, Card } from '@/components/UI'
 import { HybridCMSEditorRoot } from '@/cms-editor'
 import { createDocument } from '@/cms-editor/core/model'
@@ -102,6 +102,28 @@ export const AdminPostDesigner = () => {
       flipInstanceRef.current = null
     }
 
+    // Clear inner HTML to isolate from React's virtual DOM
+    flipRef.current.innerHTML = ''
+
+    // Create page DOM nodes dynamically
+    const pageElements = []
+    pdfPreviewPages.forEach((page, index) => {
+      const pageDiv = document.createElement('div')
+      pageDiv.className = 'pdf-page bg-white shadow-md relative overflow-hidden select-none'
+      pageDiv.style.width = '100%'
+      pageDiv.style.height = '100%'
+
+      const img = document.createElement('img')
+      img.src = page.src
+      img.alt = `PDF page ${index + 1}`
+      img.className = 'w-full h-full object-contain pointer-events-none'
+      img.style.display = 'block'
+
+      pageDiv.appendChild(img)
+      flipRef.current.appendChild(pageDiv)
+      pageElements.push(pageDiv)
+    })
+
     const instance = new PageFlip(flipRef.current, {
       width: flipSize.width,
       height: flipSize.height,
@@ -109,11 +131,12 @@ export const AdminPostDesigner = () => {
       maxShadowOpacity: 0.35,
       mobileScrollSupport: true,
       usePortrait: true,
+      showCover: true,
+      drawShadow: true,
     })
 
-    const pages = Array.from(flipRef.current.querySelectorAll('.pdf-page'))
-    if (pages.length) {
-      instance.loadFromHTML(pages)
+    if (pageElements.length) {
+      instance.loadFromHTML(pageElements)
       instance.on('flip', (event) => {
         setFlipCurrentPage((event.data || 0) + 1)
       })
@@ -745,46 +768,60 @@ export const AdminPostDesigner = () => {
               </p>
             )}
 
-            <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-6 shadow-inner">
               {pdfPreviewLoading ? (
-                <p className="text-sm font-semibold text-slate-500">Đang render preview flipbook...</p>
+                <div className="py-12 flex flex-col items-center justify-center space-y-3">
+                  <div className="w-8 h-8 rounded-full border-4 border-fpt-blue/20 border-t-fpt-blue animate-spin" />
+                  <p className="text-xs font-bold text-slate-500">Đang render preview flipbook...</p>
+                </div>
               ) : pdfPreviewPages.length > 0 ? (
-                <div className="mx-auto w-full max-w-[460px] space-y-3">
-                  <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600">
-                    <span>Trang {Math.min(flipCurrentPage, pdfPreviewPages.length)} / {pdfPreviewPages.length}</span>
-                    <div className="inline-flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => flipInstanceRef.current?.flipPrev()}
-                        className="rounded-md border border-slate-200 px-2 py-1 hover:bg-slate-50"
-                      >
-                        Trước
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => flipInstanceRef.current?.flipNext()}
-                        className="rounded-md border border-slate-200 px-2 py-1 hover:bg-slate-50"
-                      >
-                        Sau
-                      </button>
+                <div className="flex flex-col items-center justify-center space-y-4">
+                  
+                  {/* Skeuomorphic Desk Backdrop */}
+                  <div className="w-full flex items-center justify-center py-4 bg-white rounded-xl border border-slate-200 shadow-sm">
+                    <div 
+                      className="relative flex items-center justify-center overflow-hidden rounded-lg bg-white border border-slate-200 shadow-md"
+                      style={{ 
+                        width: '100%',
+                        maxWidth: `${flipSize.width * 2}px`,
+                        height: `${flipSize.height}px` 
+                      }}
+                    >
+                      {/* Target element for PageFlip */}
+                      <div
+                        ref={flipRef}
+                        className="h-full w-full"
+                      />
+
+                      {/* Center crease shadow overlay (spine) */}
+                      <div className="absolute top-0 bottom-0 left-1/2 w-[12px] -translate-x-1/2 bg-gradient-to-r from-black/0 via-black/10 to-black/0 pointer-events-none z-50 hidden md:block" />
                     </div>
                   </div>
 
-                  <div
-                    ref={flipRef}
-                    className="overflow-hidden rounded-xl border border-slate-200 bg-white"
-                    style={{ height: `${flipSize.height}px` }}
-                  >
-                    {pdfPreviewPages.map((page, index) => (
-                      <div key={`admin-pdf-page-${index}`} className="pdf-page h-full w-full bg-white">
-                        <img src={page.src} alt={`PDF page ${index + 1}`} className="h-full w-full object-contain" />
-                      </div>
-                    ))}
+                  {/* Controls bar */}
+                  <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm text-xs">
+                    <button
+                      type="button"
+                      onClick={() => flipInstanceRef.current?.flipPrev()}
+                      disabled={flipCurrentPage === 1}
+                      className="tap-target rounded-lg p-1.5 hover:bg-slate-100 disabled:opacity-30 transition-colors"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+                    <span className="font-bold text-slate-600">Trang {flipCurrentPage} / {pdfPreviewPages.length}</span>
+                    <button
+                      type="button"
+                      onClick={() => flipInstanceRef.current?.flipNext()}
+                      disabled={flipCurrentPage === pdfPreviewPages.length}
+                      className="tap-target rounded-lg p-1.5 hover:bg-slate-100 disabled:opacity-30 transition-colors"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
                   </div>
-                  <p className="text-center text-xs font-medium text-slate-500">Lật trang bằng kéo góc trang hoặc nút Trước/Sau.</p>
+
                 </div>
               ) : (
-                <p className="text-sm font-semibold text-slate-500">Chưa có PDF để preview.</p>
+                <p className="text-sm font-semibold text-slate-500 text-center py-6">Chưa có PDF để preview.</p>
               )}
             </div>
           </Card>

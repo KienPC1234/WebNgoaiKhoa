@@ -1,6 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Calendar, FileText, Layers3, User } from 'lucide-react'
+import {
+  ArrowLeft,
+  Calendar,
+  FileText,
+  Layers3,
+  User,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  Play,
+  Pause,
+  Maximize2,
+  Minimize2,
+  X
+} from 'lucide-react'
 import { apiClient } from '@/lib/apiClient'
 import PostActions from '@/components/PostActions'
 import { Card } from '@/components/ui/core'
@@ -22,8 +37,11 @@ export const PublicPostDetail = () => {
   const [pdfPreviewLoading, setPdfPreviewLoading] = useState(false)
   const [flipSize, setFlipSize] = useState({ width: 390, height: 552 })
   const [flipCurrentPage, setFlipCurrentPage] = useState(1)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [isAutoplay, setIsAutoplay] = useState(false)
   const flipRef = useRef(null)
   const flipInstanceRef = useRef(null)
+  const autoplayTimerRef = useRef(null)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -71,6 +89,30 @@ export const PublicPostDetail = () => {
   const cmsDocument = useMemo(() => normalizeLayoutMetadataToDocument(post?.layout_metadata, post?.title || 'Publication'), [post])
   const pdfAttachmentUrl = cmsDocument?.metadata?.pdf_attachment_url || ''
 
+  const getFlipSize = useCallback((pages, fullscreen = false) => {
+    if (!pages || !pages.length || !pages[0]) return { width: 390, height: 552 }
+    const ratio = pages[0].height / pages[0].width
+    if (fullscreen) {
+      const isMobile = window.innerWidth < 768
+      const availableWidth = window.innerWidth - 64
+      const availableHeight = window.innerHeight - 180
+      
+      let singleWidth = isMobile ? availableWidth : availableWidth / 2
+      singleWidth = Math.min(singleWidth, 550) // Cap max single page width
+      
+      if (singleWidth * ratio > availableHeight) {
+        singleWidth = availableHeight / ratio
+      }
+      
+      return { width: Math.round(singleWidth), height: Math.round(singleWidth * ratio) }
+    } else {
+      const isMobile = window.innerWidth < 768
+      const maxSingleWidth = isMobile ? Math.min(window.innerWidth - 48, 380) : 440
+      const width = Math.round(maxSingleWidth)
+      return { width, height: Math.round(width * ratio) }
+    }
+  }, [])
+
   const buildPdfPreview = useCallback(async (sourceUrl) => {
     if (!sourceUrl) {
       setPdfPreviewPages([])
@@ -115,11 +157,8 @@ export const PublicPostDetail = () => {
       }
 
       setPdfPreviewPages(pages)
-      if (pages[0]?.width && pages[0]?.height) {
-        const containerWidth = Math.min(window.innerWidth - 64, 430)
-        const width = Math.min(Math.max(pages[0].width, 300), containerWidth)
-        const ratio = pages[0].height / pages[0].width
-        setFlipSize({ width, height: Math.round(width * ratio) })
+      if (pages[0]) {
+        setFlipSize(getFlipSize(pages, isFullscreen))
       }
       setFlipCurrentPage(1)
     } catch (err) {
@@ -128,7 +167,7 @@ export const PublicPostDetail = () => {
     } finally {
       setPdfPreviewLoading(false)
     }
-  }, [])
+  }, [isFullscreen, getFlipSize])
 
   useEffect(() => {
     // Only build preview if we have an attachment and post is loaded
@@ -143,6 +182,16 @@ export const PublicPostDetail = () => {
       }
     }
   }, [buildPdfPreview, pdfAttachmentUrl, post])
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (pdfPreviewPages.length) {
+        setFlipSize(getFlipSize(pdfPreviewPages, isFullscreen))
+      }
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [pdfPreviewPages, isFullscreen, getFlipSize])
 
   useEffect(() => {
     if (!pdfPreviewPages.length || !flipRef.current) return
@@ -161,21 +210,42 @@ export const PublicPostDetail = () => {
           flipInstanceRef.current = null
         }
 
+        // Clear container HTML to isolate from React's virtual DOM
+        flipRef.current.innerHTML = ''
+
+        // Create page DOM nodes dynamically
+        const pageElements = []
+        pdfPreviewPages.forEach((page, index) => {
+          const pageDiv = document.createElement('div')
+          pageDiv.className = 'pdf-page bg-white shadow-md relative overflow-hidden select-none'
+          pageDiv.style.width = '100%'
+          pageDiv.style.height = '100%'
+
+          const img = document.createElement('img')
+          img.src = page.src
+          img.alt = `PDF page ${index + 1}`
+          img.className = 'w-full h-full object-contain pointer-events-none'
+          img.style.display = 'block'
+
+          pageDiv.appendChild(img)
+          flipRef.current.appendChild(pageDiv)
+          pageElements.push(pageDiv)
+        })
+
         instance = new PageFlip(flipRef.current, {
           width: flipSize.width,
           height: flipSize.height,
           size: 'stretch',
-          maxShadowOpacity: 0.3,
+          maxShadowOpacity: 0.35,
           mobileScrollSupport: true,
           usePortrait: true,
-          showCover: false,
+          showCover: true,
           drawShadow: true,
           flippingTime: 800,
         })
 
-        const pages = Array.from(flipRef.current.querySelectorAll('.pdf-page'))
-        if (pages.length) {
-          instance.loadFromHTML(pages)
+        if (pageElements.length) {
+          instance.loadFromHTML(pageElements)
           instance.on('flip', (event) => {
             setFlipCurrentPage((event.data || 0) + 1)
           })
@@ -196,6 +266,44 @@ export const PublicPostDetail = () => {
       }
     }
   }, [pdfPreviewPages, flipSize])
+
+  // Autoplay slideshow effect
+  useEffect(() => {
+    if (isAutoplay) {
+      autoplayTimerRef.current = setInterval(() => {
+        if (flipInstanceRef.current) {
+          const current = flipInstanceRef.current.getCurrentPageIndex()
+          const total = pdfPreviewPages.length
+          if (current < total - 1) {
+            flipInstanceRef.current.flipNext()
+          } else {
+            flipInstanceRef.current.flip(0)
+          }
+        }
+      }, 3000)
+    } else {
+      if (autoplayTimerRef.current) {
+        clearInterval(autoplayTimerRef.current)
+      }
+    }
+    return () => {
+      if (autoplayTimerRef.current) {
+        clearInterval(autoplayTimerRef.current)
+      }
+    }
+  }, [isAutoplay, pdfPreviewPages.length])
+
+  const toggleFullscreen = () => {
+    const nextFullscreen = !isFullscreen
+    setIsFullscreen(nextFullscreen)
+    if (pdfPreviewPages.length) {
+      setFlipSize(getFlipSize(pdfPreviewPages, nextFullscreen))
+    }
+  }
+
+  const toggleAutoplay = () => {
+    setIsAutoplay(prev => !prev)
+  }
 
   if (loading || (!post && !showError)) {
     return <PostDetailSkeleton />
@@ -249,55 +357,149 @@ export const PublicPostDetail = () => {
         )}
 
         {pdfAttachmentUrl && (
-          <Card className="p-6 rounded-3xl border-none shadow-lg space-y-4 bg-white/80 backdrop-blur-sm">
-            <div className="flex items-center justify-between gap-3">
-              <h3 className="inline-flex items-center gap-2 text-lg font-black uppercase tracking-widest text-fpt-blue">
-                <FileText size={18} /> Flipbook PDF
+          <Card className={isFullscreen 
+            ? "fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-slate-950/98 p-6 text-white backdrop-blur-md" 
+            : "p-6 rounded-3xl border border-slate-100 shadow-xl space-y-4 bg-white/90 backdrop-blur-sm"
+          }>
+            {/* Header / Top actions */}
+            <div className="flex w-full max-w-5xl items-center justify-between gap-3 border-b border-slate-200/20 pb-3">
+              <h3 className={`inline-flex items-center gap-2 text-base md:text-lg font-black uppercase tracking-widest ${isFullscreen ? 'text-white' : 'text-fpt-blue'}`}>
+                <FileText size={18} className="text-fpt-orange" /> 
+                {isFullscreen ? 'Đọc Flipbook Toàn Màn Hình' : 'Flipbook PDF'}
               </h3>
-              <a href={pdfAttachmentUrl} target="_blank" rel="noreferrer" className="tap-target rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 bg-white">
-                Mở file PDF
-              </a>
+              <div className="inline-flex gap-2">
+                <a 
+                  href={pdfAttachmentUrl} 
+                  target="_blank" 
+                  rel="noreferrer" 
+                  className={`tap-target rounded-full px-4 py-1.5 text-xs font-bold border transition-colors ${isFullscreen ? 'bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'}`}
+                >
+                  Mở file PDF
+                </a>
+                {isFullscreen && (
+                  <button 
+                    type="button" 
+                    onClick={toggleFullscreen} 
+                    className="tap-target rounded-full bg-red-600/90 text-white p-1.5 hover:bg-red-500 transition-colors"
+                  >
+                    <X size={16} />
+                  </button>
+                )}
+              </div>
             </div>
 
             {pdfPreviewLoading ? (
-              <div className="py-12 flex flex-col items-center justify-center space-y-3 animate-pulse">
-                <div className="w-12 h-12 rounded-full border-4 border-fpt-blue/20 border-t-fpt-blue animate-spin" />
-                <p className="text-sm font-black uppercase tracking-tighter text-slate-400">Đang dựng flipbook...</p>
+              <div className="py-24 flex flex-col items-center justify-center space-y-4">
+                <div className={`w-12 h-12 rounded-full border-4 ${isFullscreen ? 'border-white/10 border-t-fpt-orange' : 'border-fpt-blue/20 border-t-fpt-blue'} animate-spin`} />
+                <p className={`text-sm font-black uppercase tracking-tighter ${isFullscreen ? 'text-slate-400' : 'text-slate-500'}`}>Đang dựng flipbook...</p>
               </div>
             ) : pdfPreviewPages.length > 0 ? (
-              <div className="mx-auto w-full max-w-[460px] space-y-3">
-                <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 text-xs font-semibold text-slate-600">
-                  <span>Trang {Math.min(flipCurrentPage, pdfPreviewPages.length)} / {pdfPreviewPages.length}</span>
-                  <div className="inline-flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => flipInstanceRef.current?.flipPrev()}
-                      className="tap-target rounded-md border border-slate-200 bg-white px-2 py-1 hover:bg-slate-100 active:scale-95 transition-transform"
-                    >
-                      Trước
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => flipInstanceRef.current?.flipNext()}
-                      className="tap-target rounded-md border border-slate-200 bg-white px-2 py-1 hover:bg-slate-100 active:scale-95 transition-transform"
-                    >
-                      Sau
-                    </button>
+              <div className={`w-full flex flex-col items-center justify-center ${isFullscreen ? 'flex-1 h-[calc(100vh-140px)]' : 'space-y-4'}`}>
+                
+                {/* Book Container with Realistic Backdrop Desk styling */}
+                <div className={`relative flex items-center justify-center ${isFullscreen ? 'flex-1 w-full my-auto' : 'w-full py-6 rounded-2xl border border-slate-100 bg-slate-50 shadow-inner'}`}>
+                  <div 
+                    className={`relative flex items-center justify-center overflow-hidden rounded-xl bg-white shadow-2xl transition-all duration-300 ${isFullscreen ? 'border-4 border-slate-800' : 'border border-slate-200'}`}
+                    style={{ 
+                      width: '100%',
+                      maxWidth: `${flipSize.width * 2}px`,
+                      height: `${flipSize.height}px` 
+                    }}
+                  >
+                    {/* The page-flip target container */}
+                    <div
+                      ref={flipRef}
+                      className="h-full w-full"
+                    />
+                    
+                    {/* Center crease shadow overlay (spine) */}
+                    <div className="absolute top-0 bottom-0 left-1/2 w-[18px] -translate-x-1/2 bg-gradient-to-r from-black/0 via-black/15 to-black/0 pointer-events-none z-50 hidden md:block" />
                   </div>
                 </div>
 
-                <div
-                  ref={flipRef}
-                  className="overflow-hidden rounded-xl border border-slate-100 bg-white shadow-inner"
-                  style={{ height: `${flipSize.height}px` }}
-                >
-                  {pdfPreviewPages.map((page, index) => (
-                    <div key={`public-pdf-page-${index}`} className="pdf-page h-full w-full bg-white">
-                      <img src={page.src} alt={`PDF page ${index + 1}`} className="h-full w-full object-contain" loading="lazy" />
-                    </div>
-                  ))}
+                {/* Toolbar Controls */}
+                <div className={`w-full max-w-2xl flex flex-wrap items-center justify-center gap-2 md:gap-4 rounded-2xl p-3 border transition-colors ${isFullscreen ? 'bg-slate-900/90 border-slate-800' : 'bg-slate-100/80 border-slate-200/50'}`}>
+                  {/* First page button */}
+                  <button
+                    type="button"
+                    onClick={() => flipInstanceRef.current?.flip(0)}
+                    disabled={flipCurrentPage === 1}
+                    className={`tap-target flex h-8 w-8 items-center justify-center rounded-lg disabled:opacity-30 disabled:pointer-events-none transition-colors ${isFullscreen ? 'bg-slate-800 hover:bg-slate-700 text-white' : 'bg-white hover:bg-slate-200 text-slate-700 border border-slate-200'}`}
+                  >
+                    <ChevronsLeft size={16} />
+                  </button>
+                  
+                  {/* Prev page button */}
+                  <button
+                    type="button"
+                    onClick={() => flipInstanceRef.current?.flipPrev()}
+                    disabled={flipCurrentPage === 1}
+                    className={`tap-target flex h-8 w-8 items-center justify-center rounded-lg disabled:opacity-30 disabled:pointer-events-none transition-colors ${isFullscreen ? 'bg-slate-800 hover:bg-slate-700 text-white' : 'bg-white hover:bg-slate-200 text-slate-700 border border-slate-200'}`}
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  
+                  {/* Current Page Indicator / Input */}
+                  <div className={`flex items-center gap-1.5 px-2 text-xs md:text-sm font-bold ${isFullscreen ? 'text-slate-200' : 'text-slate-600'}`}>
+                    <span>Trang</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={pdfPreviewPages.length}
+                      value={flipCurrentPage}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value, 10)
+                        if (val >= 1 && val <= pdfPreviewPages.length) {
+                          flipInstanceRef.current?.flip(val - 1)
+                        }
+                      }}
+                      className={`w-10 rounded py-0.5 text-center text-xs focus:outline-none focus:ring-1 focus:ring-fpt-orange ${isFullscreen ? 'bg-slate-950 border border-slate-800 text-white' : 'bg-white border border-slate-300 text-slate-800 shadow-sm'}`}
+                    />
+                    <span>/ {pdfPreviewPages.length}</span>
+                  </div>
+                  
+                  {/* Next page button */}
+                  <button
+                    type="button"
+                    onClick={() => flipInstanceRef.current?.flipNext()}
+                    disabled={flipCurrentPage === pdfPreviewPages.length}
+                    className={`tap-target flex h-8 w-8 items-center justify-center rounded-lg disabled:opacity-30 disabled:pointer-events-none transition-colors ${isFullscreen ? 'bg-slate-800 hover:bg-slate-700 text-white' : 'bg-white hover:bg-slate-200 text-slate-700 border border-slate-200'}`}
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+
+                  {/* Last page button */}
+                  <button
+                    type="button"
+                    onClick={() => flipInstanceRef.current?.flip(pdfPreviewPages.length - 1)}
+                    disabled={flipCurrentPage === pdfPreviewPages.length}
+                    className={`tap-target flex h-8 w-8 items-center justify-center rounded-lg disabled:opacity-30 disabled:pointer-events-none transition-colors ${isFullscreen ? 'bg-slate-800 hover:bg-slate-700 text-white' : 'bg-white hover:bg-slate-200 text-slate-700 border border-slate-200'}`}
+                  >
+                    <ChevronsRight size={16} />
+                  </button>
+                  
+                  <div className={`h-6 w-px ${isFullscreen ? 'bg-slate-800' : 'bg-slate-300'} hidden sm:block`} />
+
+                  {/* Autoplay button */}
+                  <button
+                    type="button"
+                    onClick={toggleAutoplay}
+                    className={`tap-target flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-colors ${isAutoplay ? 'bg-fpt-orange text-white hover:bg-orange-600' : isFullscreen ? 'bg-slate-800 hover:bg-slate-700 text-slate-200' : 'bg-white hover:bg-slate-200 text-slate-700 border border-slate-200'}`}
+                  >
+                    {isAutoplay ? <Pause size={14} /> : <Play size={14} />}
+                    <span className="hidden sm:inline">{isAutoplay ? 'Dừng phát' : 'Tự động lật'}</span>
+                  </button>
+                  
+                  {/* Fullscreen button */}
+                  <button
+                    type="button"
+                    onClick={toggleFullscreen}
+                    className={`tap-target flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-colors ${isFullscreen ? 'bg-slate-800 hover:bg-slate-700 text-slate-200' : 'bg-white hover:bg-slate-200 text-slate-700 border border-slate-200'}`}
+                  >
+                    {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                    <span>{isFullscreen ? 'Thu nhỏ' : 'Toàn màn hình'}</span>
+                  </button>
                 </div>
-                <p className="text-center text-xs font-medium text-slate-400 italic">Bạn có thể vuốt/kéo góc trang hoặc dùng nút Trước/Sau.</p>
               </div>
             ) : (
               <p className="text-sm text-slate-500 bg-slate-50 p-4 rounded-xl text-center">Không thể hiển thị preview flipbook. Bạn vẫn có thể mở PDF trực tiếp.</p>
